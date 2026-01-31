@@ -1,0 +1,13 @@
+# Frontend test pages (excluded from git)
+test-page.html
+health-check.html
+
+# Test server (local development only)
+test-server.js
+
+# Test scripts (local development only)
+test-*.js
+test.js
+
+# Logs
+*.log

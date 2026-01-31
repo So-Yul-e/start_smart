@@ -42,7 +42,15 @@ const analyzeRequestExample = {
     initialInvestment: 500000000,  // 초기 투자금 (원)
     monthlyRent: 3000000,           // 월세 (원)
     area: 33,                      // 평수 (평)
-    ownerWorking: true              // 점주 근무 여부
+    ownerWorking: true,             // 점주 근무 여부
+    loans: [                       // 대출 정보 배열 (선택적)
+      {
+        principal: 200000000,      // 대출 원금 (원)
+        apr: 0.05,                 // 연 이자율 (0-1, 예: 0.05 = 5%)
+        termMonths: 60,            // 대출 기간 (개월)
+        repaymentType: "equal_payment"  // 상환 방식: "equal_payment" | "equal_principal" | "interest_only"
+      }
+    ]
   },
   targetDailySales: 300  // 목표 일 판매량 (잔)
 };
@@ -102,9 +110,38 @@ const financeResultExample = {
     marketing: 540000,            // 마케팅비
     etc: 500000                   // 기타
   },
-  monthlyProfit: 10000000,        // 월 순이익 (원)
+  monthlyProfit: 10000000,        // 월 순이익 (원, 대출 상환 후)
+  operatingProfit: 12000000,      // 영업 이익 (원, 대출 상환 전)
   paybackMonths: 50,              // 회수 개월 수
   breakEvenDailySales: 200,       // 손익분기점 일 판매량 (잔)
+  expected: {                      // 기대값 관련 정보
+    expectedDailySales: 250,       // 최종 사용된 기대 일 판매량 (잔)
+    expectedMonthlyRevenue: 22500000,  // 기대 월 매출 (원)
+    gapPctVsTarget: 0.20,         // 목표 대비 GAP 비율
+    gapWarning: false,             // 최후 fallback 시 true
+    // 브랜드 데이터 기반 파생 지표
+    rawExpectedDailySales: 280,   // 원시 기대 판매량 (브랜드 평균 매출 기반)
+    adjustedExpectedDailySales: 250,  // 보정된 기대 판매량 (점포 감소율 반영)
+    revenueAdjustmentFactor: 0.89,    // 매출 보정 계수
+    brandDeclineRate: 0.208           // 브랜드 점포 감소율 (3년간)
+  },
+  debt: {                          // 대출 관련 정보
+    monthlyPayment: 3775000,       // 월 대출 상환액 (원)
+    monthlyInterest: 833333,       // 월 이자 (원)
+    monthlyPrincipal: 2941667,    // 월 원금 상환액 (원)
+    balanceAfterMonth: 197058333,  // 1개월 후 잔액 (원)
+    dscr: 3.18,                    // DSCR (Debt Service Coverage Ratio) = operatingProfit / monthlyPayment
+    debtSchedulePreview: [         // 12개월 상환 스케줄 미리보기
+      {
+        month: 1,
+        payment: 3775000,
+        interest: 833333,
+        principal: 2941667,
+        balance: 197058333
+      }
+      // ... 12개월치
+    ]
+  },
   sensitivity: {
     plus10: {
       monthlyProfit: 12000000,
@@ -246,6 +283,70 @@ const reportResponseExample = {
 };
 
 // ============================================
+// 9. 경쟁 밀도 분석 결과 (백엔드 → 프론트엔드)
+// POST /api/competition/analyze
+// ============================================
+const competitionAnalysisExample = {
+  summary: {
+    total_count: 47,
+    density_grade: "very_high",
+    density_label: "매우 높음",
+    density_icon: "🔴",
+    percentile: 92,
+    comparison: {
+      region_avg: 20.5,
+      ratio: 2.29,
+      description: "서울 평균 대비 2.29배"
+    }
+  },
+  breakdown: {
+    franchise: 32,
+    independent: 15,
+    top_brands: [
+      { name: "스타벅스", count: 5 },
+      { name: "투썸플레이스", count: 4 },
+      { name: "이디야", count: 3 }
+    ]
+  },
+  poi_list: [
+    {
+      name: "스타벅스 강남역점",
+      category: "cafe",
+      distance_meters: 50,
+      coordinates: [127.0281, 37.4982],
+      is_franchise: true,
+      brand_name: "스타벅스",
+      address: "서울시 강남구 테헤란로 123"
+    }
+    // ... 더 많은 POI
+  ],
+  map_bounds: {
+    center: [127.0276, 37.4979],
+    radius: 500
+  },
+  confidence: 0.95,
+  data_freshness: "2025-01-15",
+  location_info: {
+    address: "서울시 강남구 역삼동",
+    coordinates: [127.0276, 37.4979]
+  }
+};
+
+// 경쟁 밀도 분석 요청
+const competitionAnalysisRequestExample = {
+  location: {
+    type: "address", // "address" | "coordinates" | "place_name"
+    value: "서울시 강남구 역삼동 123"
+  },
+  category: "cafe", // "cafe" | "restaurant" | "convenience_store" | ...
+  radius_meters: 500, // 100 ~ 1000
+  options: {
+    include_closed: false,
+    franchise_only: false
+  }
+};
+
+// ============================================
 // Export
 // ============================================
 module.exports = {
@@ -260,6 +361,8 @@ module.exports = {
     marketAnalysis: marketAnalysisExample,
     finalResult: finalResultExample,
     resultResponse: resultResponseExample,
-    reportResponse: reportResponseExample
+    reportResponse: reportResponseExample,
+    competitionAnalysis: competitionAnalysisExample,
+    competitionAnalysisRequest: competitionAnalysisRequestExample
   }
 };

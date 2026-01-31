@@ -1,5 +1,5 @@
 /**
- * Input Page - Kakao Map + Roadview + Form Pre-fill + Loading Animation
+ * Input Page - Kakao Map (입지 선택) + Form Pre-fill + Loading Animation
  */
 (function () {
   // ── State ──
@@ -11,8 +11,9 @@
   var marker = null;
   var circle = null;
   var geocoder = null;
-  var roadviewClient = null;
-  var roadview = null;
+  var kakaoRoadview = null; // 카카오 로드뷰 객체
+  var kakaoRoadviewClient = null; // 카카오 로드뷰 클라이언트
+  var capturedRoadviewImage = null; // 캡처한 로드뷰 이미지 (base64)
   var mapLoaded = false;
 
   // ── DOM ──
@@ -33,6 +34,8 @@
     brandDisplay.textContent = brand.name;
     investHint.textContent = '브랜드 기준 초기투자: ' + Utils.formatKRW(brand.initialInvestment);
     inputInvestment.placeholder = Math.round(brand.initialInvestment / 10000);
+    // 브랜드가 있으면 AI 판매량 제안 표시
+    showScenario();
   }
 
   // ── Pre-fill from previous analysis ──
@@ -54,9 +57,8 @@
         updateOwnerLabel();
       }
     }
-    if (prevInput.targetDailySales) {
-      inputDailySales.value = prevInput.targetDailySales;
-    }
+    // 이전 분석의 목표 판매량은 showScenario에서 처리 (기본값은 기대치)
+    // prevInput.targetDailySales는 showScenario에서 확인하여 일치하는 카드 선택
     if (prevInput.radius) {
       selectedRadius = prevInput.radius;
       var radiusBtns = document.querySelectorAll('.radius-btn[data-radius]');
@@ -88,66 +90,138 @@
 
   // ── Kakao Map Init ──
   function initMap() {
+    console.log('[initMap] 함수 호출됨, kakao 객체:', typeof kakao, 'kakaoMapLoaded:', window.kakaoMapLoaded);
+    
     try {
-      if (typeof kakao === 'undefined' || !kakao.maps) throw new Error('SDK not loaded');
-
-      kakao.maps.load(function () {
-        var centerLat = 37.5665;
-        var centerLng = 126.9780;
-
-        // Restore previous location center
-        if (prevInput && prevInput.location) {
-          centerLat = prevInput.location.lat;
-          centerLng = prevInput.location.lng;
-        }
-
-        var container = document.getElementById('map');
-        var options = {
-          center: new kakao.maps.LatLng(centerLat, centerLng),
-          level: 5
+      // 카카오맵 SDK가 로드되었는지 확인
+      if (window.kakaoMapLoaded && typeof kakao !== 'undefined' && kakao.maps && kakao.maps.Map) {
+        console.log('[initMap] 카카오맵 SDK 로드 완료, 지도 초기화 시작');
+        // SDK가 이미 로드된 경우 바로 지도 생성
+        createKakaoMap();
+      } else {
+        console.warn('[initMap] 카카오맵 SDK가 아직 로드되지 않았습니다. 콜백으로 등록합니다.');
+        // SDK가 아직 로드되지 않았으면 콜백으로 등록
+        window.initMapCallback = function() {
+          console.log('[initMap] 콜백 실행됨');
+          createKakaoMap();
         };
-        map = new kakao.maps.Map(container, options);
-        geocoder = new kakao.maps.services.Geocoder();
-        mapLoaded = true;
-
-        // Init roadview client
-        try {
-          roadviewClient = new kakao.maps.RoadviewClient();
-          var rvContainer = document.getElementById('roadview');
-          if (rvContainer) {
-            roadview = new kakao.maps.Roadview(rvContainer);
-          }
-        } catch (e) {
-          console.warn('Roadview init failed:', e);
+        // 최대 10초 대기
+        if (!window.kakaoMapRetryTimeout) {
+          window.kakaoMapRetryTimeout = setTimeout(function() {
+            if (!window.kakaoMapLoaded) {
+              console.error('[initMap] 카카오맵 SDK 로드 실패 (타임아웃)');
+              var mapEl = document.getElementById('map');
+              var fallbackEl = document.getElementById('mapFallback');
+              if (mapEl) mapEl.style.display = 'none';
+              if (fallbackEl) fallbackEl.style.display = 'flex';
+            }
+          }, 10000);
         }
+        return;
+      }
+    } catch (e) {
+      console.error('[initMap] 오류 발생:', e);
+      var mapEl = document.getElementById('map');
+      var fallbackEl = document.getElementById('mapFallback');
+      if (mapEl) mapEl.style.display = 'none';
+      if (fallbackEl) fallbackEl.style.display = 'flex';
+    }
+  }
 
-        // Restore previous pin
-        if (prevInput && prevInput.location) {
-          var prevLatlng = new kakao.maps.LatLng(prevInput.location.lat, prevInput.location.lng);
-          placeMarker(prevLatlng);
-          selectedLocation = prevInput.location;
-          if (selectedLocation.address) {
-            document.getElementById('addressText').textContent = selectedLocation.address;
-            document.getElementById('addressBar').style.display = 'flex';
-          }
-          showMockCards();
-          showRoadview(prevLatlng);
-          validateForm();
+  // 실제 지도 생성 함수
+  function createKakaoMap() {
+    try {
+      console.log('[createKakaoMap] 지도 생성 시작');
+      
+      // kakao 객체 최종 확인
+      if (typeof kakao === 'undefined' || !kakao.maps || !kakao.maps.Map) {
+        console.error('[createKakaoMap] kakao.maps.Map이 없습니다. SDK가 완전히 로드되지 않았습니다.');
+        var mapEl = document.getElementById('map');
+        var fallbackEl = document.getElementById('mapFallback');
+        if (mapEl) mapEl.style.display = 'none';
+        if (fallbackEl) fallbackEl.style.display = 'flex';
+        return;
+      }
+      
+      var centerLat = 37.5665;
+      var centerLng = 126.9780;
+
+      // Restore previous location center
+      if (prevInput && prevInput.location) {
+        centerLat = prevInput.location.lat;
+        centerLng = prevInput.location.lng;
+      }
+
+      var container = document.getElementById('map');
+      if (!container) {
+        console.error('[createKakaoMap] 지도 컨테이너를 찾을 수 없습니다.');
+        return;
+      }
+      
+      // 지도 컨테이너가 숨겨져 있으면 표시
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+      }
+      
+      // 높이가 설정되지 않았으면 기본 높이 설정
+      if (!container.style.height || container.style.height === '0px' || container.style.height === '') {
+        container.style.height = '400px';
+      }
+      
+      // 부모 컨테이너도 확인
+      var mapContainer = document.getElementById('mapContainer');
+      if (mapContainer && mapContainer.style.display === 'none') {
+        mapContainer.style.display = 'block';
+      }
+      
+      console.log('[createKakaoMap] 컨테이너 확인:', {
+        exists: !!container,
+        display: container.style.display,
+        height: container.style.height,
+        offsetWidth: container.offsetWidth,
+        offsetHeight: container.offsetHeight,
+        parentDisplay: mapContainer ? mapContainer.style.display : 'N/A'
+      });
+      
+      var options = {
+        center: new kakao.maps.LatLng(centerLat, centerLng),
+        level: 5
+      };
+      
+      console.log('[createKakaoMap] 지도 옵션:', options);
+      map = new kakao.maps.Map(container, options);
+      geocoder = new kakao.maps.services.Geocoder();
+      mapLoaded = true;
+      
+      console.log('[createKakaoMap] 지도 생성 완료, map 객체:', !!map);
+
+      // 카카오 로드뷰는 showRoadview에서 초기화됨
+
+      // Restore previous pin
+      if (prevInput && prevInput.location) {
+        var prevLatlng = new kakao.maps.LatLng(prevInput.location.lat, prevInput.location.lng);
+        placeMarker(prevLatlng);
+        selectedLocation = prevInput.location;
+        if (selectedLocation.address) {
+          document.getElementById('addressText').textContent = selectedLocation.address;
+          document.getElementById('addressBar').style.display = 'flex';
         }
+        showMockCards();
+        showRoadview(prevLatlng);
+        validateForm();
+      }
 
-        // Click event
-        kakao.maps.event.addListener(map, 'click', function (mouseEvent) {
-          var latlng = mouseEvent.latLng;
-          placeMarker(latlng);
-          reverseGeocode(latlng);
-          showRoadview(latlng);
-        });
+      // Click event
+      kakao.maps.event.addListener(map, 'click', function (mouseEvent) {
+        var latlng = mouseEvent.latLng;
+        placeMarker(latlng);
+        reverseGeocode(latlng);
+        showRoadview(latlng);
       });
     } catch (e) {
-      console.warn('Kakao Map init failed:', e);
+      console.error('[createKakaoMap] 오류:', e);
       document.getElementById('map').style.display = 'none';
       document.getElementById('mapFallback').style.display = 'flex';
-      document.getElementById('mapContainer').classList.add('fallback-mode');
       // Still allow pre-fill to work without map
       if (prevInput && prevInput.location) {
         selectedLocation = prevInput.location;
@@ -184,6 +258,8 @@
       lng: latlng.getLng(),
       address: ''
     };
+    
+    console.log('[위치 설정] selectedLocation:', selectedLocation);
 
     showMockCards();
     validateForm();
@@ -203,126 +279,114 @@
     });
   }
 
-  // ── Roadview ──
+  // ── 카카오 로드뷰 (캡처용) ──
   function showRoadview(latlng) {
-    if (!roadviewClient || !roadview) {
-      // Fallback: show placeholder
-      document.getElementById('roadviewFallback').style.display = 'flex';
+    var lat = latlng.getLat ? latlng.getLat() : latlng.lat;
+    var lng = latlng.getLng ? latlng.getLng() : latlng.lng;
+    var rvContainer = document.getElementById('roadview');
+    var fallback = document.getElementById('roadviewFallback');
+
+    // 카카오 로드뷰 초기화
+    if (!kakaoRoadview && typeof kakao !== 'undefined' && kakao.maps && kakao.maps.Roadview) {
+      try {
+        kakaoRoadview = new kakao.maps.Roadview(rvContainer);
+        kakaoRoadviewClient = new kakao.maps.RoadviewClient();
+        
+        // 로드뷰 초기화 완료 이벤트
+        kakao.maps.event.addListener(kakaoRoadview, 'init', function() {
+          console.log('[카카오 로드뷰] 초기화 완료');
+          captureRoadviewImage();
+        });
+      } catch (e) {
+        console.warn('[카카오 로드뷰] 초기화 실패:', e);
+        if (fallback) fallback.style.display = 'flex';
+        return;
+      }
+    }
+
+    // 파노라마 ID 조회 및 로드뷰 표시
+    if (kakaoRoadviewClient) {
+      var position = new kakao.maps.LatLng(lat, lng);
+      kakaoRoadviewClient.getNearestPanoId(position, 50, function(panoId) {
+        if (panoId === null) {
+          console.warn('[카카오 로드뷰] 해당 위치에 로드뷰가 없습니다.');
+          if (fallback) fallback.style.display = 'flex';
+          capturedRoadviewImage = null;
+          return;
+        }
+        
+        if (fallback) fallback.style.display = 'none';
+        kakaoRoadview.setPanoId(panoId, 0);
+        
+        // 로드뷰 로드 완료 후 캡처
+        setTimeout(function() {
+          captureRoadviewImage();
+        }, 1000); // 로드뷰 렌더링 대기
+      });
+    } else {
+      console.warn('[카카오 로드뷰] 클라이언트가 초기화되지 않았습니다.');
+      if (fallback) fallback.style.display = 'flex';
+    }
+  }
+
+  // ── 로드뷰 이미지 캡처 ──
+  function captureRoadviewImage() {
+    if (!kakaoRoadview) {
+      console.warn('[로드뷰 캡처] 로드뷰 객체가 없습니다.');
       return;
     }
 
-    var position = new kakao.maps.LatLng(latlng.getLat ? latlng.getLat() : latlng.lat, latlng.getLng ? latlng.getLng() : latlng.lng);
-    roadviewClient.getNearestPanoId(position, 50, function (panoId) {
-      if (panoId) {
-        document.getElementById('roadviewFallback').style.display = 'none';
-        roadview.setPanoId(panoId, position);
-      } else {
-        document.getElementById('roadviewFallback').style.display = 'flex';
+    try {
+      var rvContainer = document.getElementById('roadview');
+      if (!rvContainer) {
+        console.warn('[로드뷰 캡처] 컨테이너를 찾을 수 없습니다.');
+        return;
       }
-    });
-  }
 
-  // ── Capture: html2canvas helpers ──
+      // html2canvas를 사용하여 캡처 (동적 로드)
+      if (typeof html2canvas === 'undefined') {
+        // html2canvas 동적 로드
+        var script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        script.onload = function() {
+          captureRoadviewImage();
+        };
+        script.onerror = function() {
+          console.error('[로드뷰 캡처] html2canvas 로드 실패');
+        };
+        document.head.appendChild(script);
+        return;
+      }
 
-  /**
-   * Capture a single DOM element to JPEG Blob via html2canvas.
-   * Handles WebGL canvas (Kakao Maps) by manually copying via drawImage in onclone.
-   */
-  function captureElement(el, cb) {
-    if (typeof html2canvas === 'undefined') {
-      console.warn('html2canvas not loaded, skipping capture');
-      return cb(null);
-    }
-    html2canvas(el, {
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
-      onclone: function (clonedDoc) {
-        // Copy WebGL / hardware-accelerated canvases that html2canvas can't read
-        var origCanvases = el.querySelectorAll('canvas');
-        var clonedEl = clonedDoc.getElementById(el.id) || clonedDoc.querySelector('[data-capture="' + el.id + '"]');
-        if (!clonedEl) return;
-        var clonedCanvases = clonedEl.querySelectorAll('canvas');
-        for (var i = 0; i < origCanvases.length; i++) {
-          try {
-            clonedCanvases[i].width = origCanvases[i].width;
-            clonedCanvases[i].height = origCanvases[i].height;
-            var ctx = clonedCanvases[i].getContext('2d');
-            ctx.drawImage(origCanvases[i], 0, 0);
-          } catch (e) {
-            console.warn('Canvas copy failed:', e);
+      // 캡처 실행
+      html2canvas(rvContainer, {
+        useCORS: true,
+        allowTaint: false,
+        scale: 0.8, // 이미지 크기 축소 (네트워크 부하 감소)
+        logging: false
+      }).then(function(canvas) {
+        // Canvas를 Blob으로 변환
+        canvas.toBlob(function(blob) {
+          if (!blob) {
+            console.error('[로드뷰 캡처] Blob 변환 실패');
+            return;
           }
-        }
-      }
-    }).then(function (canvas) {
-      canvas.toBlob(function (blob) {
-        cb(blob);
-      }, 'image/jpeg', 0.85);
-    }).catch(function (err) {
-      console.warn('html2canvas capture failed:', err);
-      cb(null);
-    });
-  }
 
-  /**
-   * Orchestrate capture of roadview + map images.
-   * Skips captures that aren't available (fallback states).
-   * cb(roadviewBlob, roadmapBlob)
-   */
-  function captureAllImages(cb) {
-    var roadviewBlob = null;
-    var roadmapBlob = null;
-    var done = 0;
-    var total = 0;
-
-    var isFallbackMode = document.getElementById('mapContainer').classList.contains('fallback-mode');
-    var roadviewHidden = document.getElementById('roadviewFallback').style.display !== 'none';
-
-    // Determine what to capture
-    var captureRoadview = !isFallbackMode && !roadviewHidden && roadview;
-    var captureMap = !isFallbackMode && mapLoaded;
-
-    if (!captureRoadview && !captureMap) {
-      console.log('Capture: nothing to capture (fallback mode)');
-      return cb(null, null);
-    }
-
-    function checkDone() {
-      done++;
-      if (done >= total) {
-        cb(roadviewBlob, roadmapBlob);
-      }
-    }
-
-    if (captureRoadview) {
-      total++;
-      var rvEl = document.getElementById('roadviewPreview');
-      captureElement(rvEl, function (blob) {
-        roadviewBlob = blob;
-        console.log('Capture roadview:', blob ? (blob.size + ' bytes') : 'skipped');
-        checkDone();
+          // Blob을 base64로 변환
+          var reader = new FileReader();
+          reader.onloadend = function() {
+            var base64data = reader.result;
+            capturedRoadviewImage = base64data;
+            console.log('[로드뷰 캡처] 완료, 크기:', (base64data.length / 1024).toFixed(2) + 'KB');
+          };
+          reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.85); // JPEG, 품질 85%
+      }).catch(function(error) {
+        console.error('[로드뷰 캡처] 오류:', error);
       });
+    } catch (e) {
+      console.error('[로드뷰 캡처] 예외:', e);
     }
-
-    if (captureMap) {
-      total++;
-      var mapEl = document.getElementById('mapContainer');
-      captureElement(mapEl, function (blob) {
-        roadmapBlob = blob;
-        console.log('Capture map:', blob ? (blob.size + ' bytes') : 'skipped');
-        checkDone();
-      });
-    }
-  }
-
-  /**
-   * Fallback to mock data when backend is unavailable.
-   */
-  function fallbackToMock(input) {
-    console.log('Falling back to mock data');
-    var result = MockData.generateResult(input);
-    Utils.saveSession('analysisResult', result);
-    window.location.href = '../dashboard/';
   }
 
   // ── Radius Buttons ──
@@ -381,97 +445,162 @@
     var optimistic = Math.round(brand.avgDailySales * 1.3);
 
     document.getElementById('scenarioReason').textContent =
-      brand.name + ' 평균 판매량 + 상권 분석 기반 AI 추정치 — 클릭하여 선택';
+      brand.name + ' 브랜드의 평균 판매량과 상권 유동인구, 경쟁 밀도를 종합 분석한 AI 추정치입니다.';
 
     document.getElementById('scenarioCards').innerHTML =
-      '<div class="scenario-card" data-sales="' + conservative + '">' +
+      '<div class="scenario-card" data-value="' + conservative + '" style="cursor:pointer;">' +
       '<div class="label">보수적</div>' +
       '<div class="value">' + conservative + '</div>' +
       '<div class="unit">잔/일</div>' +
       '</div>' +
-      '<div class="scenario-card highlight" data-sales="' + expected + '">' +
+      '<div class="scenario-card" data-value="' + expected + '" style="cursor:pointer;">' +
       '<div class="label">기대치</div>' +
       '<div class="value">' + expected + '</div>' +
       '<div class="unit">잔/일</div>' +
       '</div>' +
-      '<div class="scenario-card" data-sales="' + optimistic + '">' +
+      '<div class="scenario-card" data-value="' + optimistic + '" style="cursor:pointer;">' +
       '<div class="label">낙관적</div>' +
       '<div class="value">' + optimistic + '</div>' +
       '<div class="unit">잔/일</div>' +
       '</div>';
 
-    // Click to select scenario
-    var cards = document.querySelectorAll('#scenarioCards .scenario-card');
-    for (var i = 0; i < cards.length; i++) {
-      cards[i].addEventListener('click', function () {
-        for (var j = 0; j < cards.length; j++) {
-          cards[j].classList.remove('highlight');
-        }
-        this.classList.add('highlight');
-        inputDailySales.value = this.getAttribute('data-sales');
-        updateSalesHint();
-        validateForm();
-      });
-    }
-
-    // Set default value
-    if (!inputDailySales.value) {
-      inputDailySales.value = expected;
-    }
-    updateSalesHint();
-    validateForm();
-  }
-
-  // ── Sales Hint — sync highlight with input value ──
-  function updateSalesHint() {
-    var hint = document.getElementById('salesHint');
-    if (!hint) return;
-    var val = parseInt(inputDailySales.value);
-    if (!val) {
-      hint.textContent = '잔/일';
-      return;
-    }
-    var cards = document.querySelectorAll('#scenarioCards .scenario-card');
-    if (cards.length === 0) {
-      hint.textContent = '잔/일';
-      return;
-    }
-    var matched = false;
-    for (var i = 0; i < cards.length; i++) {
-      if (parseInt(cards[i].getAttribute('data-sales')) === val) {
-        var label = cards[i].querySelector('.label').textContent;
-        hint.textContent = '잔/일 — AI ' + label + ' 기준';
-        cards[i].classList.add('highlight');
-        matched = true;
-      } else {
-        cards[i].classList.remove('highlight');
+    // 카드 클릭 이벤트 추가 (DOM 업데이트 후 실행)
+    setTimeout(function() {
+      var cards = document.querySelectorAll('.scenario-card');
+      for (var i = 0; i < cards.length; i++) {
+        cards[i].addEventListener('click', function() {
+          var value = this.getAttribute('data-value');
+          inputDailySales.value = value;
+          validateForm();
+          
+          // 선택된 카드 하이라이트
+          for (var j = 0; j < cards.length; j++) {
+            cards[j].classList.remove('selected');
+          }
+          this.classList.add('selected');
+        });
       }
-    }
-    if (!matched) {
-      hint.textContent = '잔/일 — 직접 입력';
-    }
+
+      // 이전 분석의 목표 판매량 확인
+      var prevTargetSales = prevInput && prevInput.targetDailySales ? prevInput.targetDailySales : null;
+      
+      // 기본값 설정: 이전 값이 없거나 0이면 기대치로 설정
+      var currentValue = parseInt(inputDailySales.value) || 0;
+      
+      // 이전 분석 값이 있고, 카드 값 중 하나와 일치하면 사용, 아니면 기대치 사용
+      if (prevTargetSales && prevTargetSales > 0) {
+        // 이전 값이 카드 값 중 하나와 일치하는지 확인
+        var matchesCard = false;
+        for (var m = 0; m < cards.length; m++) {
+          if (parseInt(cards[m].getAttribute('data-value')) === prevTargetSales) {
+            matchesCard = true;
+            break;
+          }
+        }
+        if (matchesCard) {
+          currentValue = prevTargetSales;
+          inputDailySales.value = prevTargetSales;
+        } else {
+          // 이전 값이 카드 값과 일치하지 않으면 기대치 사용
+          currentValue = expected;
+          inputDailySales.value = expected;
+        }
+      } else {
+        // 이전 값이 없으면 기대치 사용
+        currentValue = expected;
+        inputDailySales.value = expected;
+      }
+      
+      // 입력값과 일치하는 카드를 기본 선택으로 표시
+      var matched = false;
+      for (var k = 0; k < cards.length; k++) {
+        var cardValue = parseInt(cards[k].getAttribute('data-value'));
+        if (cardValue === currentValue) {
+          cards[k].classList.add('selected');
+          matched = true;
+          break;
+        }
+      }
+      
+      // 일치하는 카드가 없으면 기대치 카드(인덱스 1)를 기본 선택
+      if (!matched && cards.length >= 2) {
+        cards[1].classList.add('selected');
+        inputDailySales.value = expected;
+      }
+    }, 0);
+    // 값이 설정된 후 검증 실행 (약간의 지연을 두어 DOM 업데이트 반영)
+    setTimeout(validateForm, 100);
   }
 
   // ── Form Validation ──
   function validateForm() {
     var hasLocation = !!selectedLocation;
-    var hasInvestment = inputInvestment.value && parseInt(inputInvestment.value) > 0;
-    var hasRent = inputRent.value && parseInt(inputRent.value) > 0;
-    var hasArea = inputArea.value && parseInt(inputArea.value) > 0;
-    var hasSales = inputDailySales.value && parseInt(inputDailySales.value) > 0;
+    var investmentVal = inputInvestment.value ? parseInt(inputInvestment.value) : 0;
+    var rentVal = inputRent.value ? parseInt(inputRent.value) : 0;
+    var areaVal = inputArea.value ? parseInt(inputArea.value) : 0;
+    var salesVal = inputDailySales.value ? parseInt(inputDailySales.value) : 0;
+    
+    var hasInvestment = investmentVal > 0;
+    var hasRent = rentVal > 0;
+    var hasArea = areaVal > 0;
+    var hasSales = salesVal > 0;
 
-    btnAnalyze.disabled = !(hasLocation && hasInvestment && hasRent && hasArea && hasSales);
+    var isValid = hasLocation && hasInvestment && hasRent && hasArea && hasSales;
+    btnAnalyze.disabled = !isValid;
+    
+    // 디버깅용 로그
+    if (!isValid) {
+      console.log('[폼 검증] 버튼 비활성화:', {
+        hasLocation: hasLocation,
+        selectedLocation: selectedLocation,
+        hasInvestment: hasInvestment,
+        investmentValue: inputInvestment.value,
+        hasRent: hasRent,
+        rentValue: inputRent.value,
+        hasArea: hasArea,
+        areaValue: inputArea.value,
+        hasSales: hasSales,
+        salesValue: inputDailySales.value,
+        salesParsed: salesVal
+      });
+    } else {
+      console.log('[폼 검증] 버튼 활성화됨');
+    }
   }
 
   [inputInvestment, inputRent, inputArea, inputDailySales].forEach(function (el) {
     el.addEventListener('input', validateForm);
   });
 
-  inputDailySales.addEventListener('input', updateSalesHint);
-
   // ── Analysis Execution ──
-  btnAnalyze.addEventListener('click', function () {
-    if (btnAnalyze.disabled) return;
+  btnAnalyze.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('[분석 실행] 버튼 클릭됨');
+    console.log('[분석 실행] 버튼 disabled 상태:', btnAnalyze.disabled);
+    
+    if (btnAnalyze.disabled) {
+      console.warn('[분석 실행] 버튼이 비활성화되어 있습니다.');
+      alert('모든 필수 항목을 입력해주세요:\n- 위치 선택\n- 초기 투자금\n- 월세\n- 매장 평수\n- 목표 일 판매량');
+      return;
+    }
+
+    if (!brand || !brand.id) {
+      console.error('[분석 실행] 브랜드가 선택되지 않았습니다.');
+      console.error('[분석 실행] brand 객체:', brand);
+      alert('브랜드를 먼저 선택해주세요.');
+      window.location.href = '../brand/';
+      return;
+    }
+    
+    console.log('[분석 실행] 사용할 브랜드 ID:', brand.id);
+
+    if (!selectedLocation) {
+      console.error('[분석 실행] 위치가 선택되지 않았습니다.');
+      alert('지도를 클릭하여 위치를 선택해주세요.');
+      return;
+    }
 
     var analysisInput = {
       brandId: brand.id,
@@ -486,107 +615,245 @@
       targetDailySales: parseInt(inputDailySales.value)
     };
 
+    console.log('[분석 실행] 분석 입력 데이터:', analysisInput);
     Utils.saveSession('analysisInput', analysisInput);
     startLoading(analysisInput);
   });
 
-  // ── Loading Animation ──
+  // ── Loading Animation & API Call ──
   function startLoading(input) {
     var overlay = document.getElementById('loadingOverlay');
     overlay.classList.add('active');
 
     var steps = document.querySelectorAll('.loading-step');
     var current = 0;
-    // 5 steps: capture(0), data(1), simulation(2), roadview AI(3), consulting(4)
-    var delays = [600, 800, 1200, 1000, 1500];
-    var animationDone = false;
-    var apiDone = false;
-    var apiResult = null;
-    var apiFailed = false;
+    var delays = [800, 1200, 1000, 1500];
 
-    function markStep(idx) {
-      if (idx >= 0 && idx < steps.length) {
-        steps[idx].classList.remove('active');
-        steps[idx].classList.add('done');
-        steps[idx].querySelector('i').className = 'fa-solid fa-circle-check';
-      }
-    }
+    // API Base URL 가져오기
+    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 
+                     (window.location.protocol + '//' + window.location.hostname + ':3000');
 
     function nextStep() {
-      if (current > 0) markStep(current - 1);
+      if (current > 0) {
+        steps[current - 1].classList.remove('active');
+        steps[current - 1].classList.add('done');
+        steps[current - 1].querySelector('i').className = 'fa-solid fa-circle-check';
+      }
       if (current < steps.length) {
         steps[current].classList.add('active');
         current++;
         setTimeout(nextStep, delays[current - 1]);
       } else {
-        animationDone = true;
-        tryNavigate();
+        // 실제 백엔드 API 호출
+        callAnalyzeAPI(input, apiBaseUrl);
       }
     }
-
-    function tryNavigate() {
-      if (!animationDone || !apiDone) return;
-      setTimeout(function () {
-        window.location.href = '../dashboard/';
-      }, 400);
-    }
-
-    // Start animation
     nextStep();
+  }
 
-    // Start capture → API flow
-    captureAllImages(function (roadviewBlob, roadmapBlob) {
+  // ── 실제 백엔드 API 호출 ──
+  function callAnalyzeAPI(input, apiBaseUrl) {
+    console.log('[분석 실행] API 호출 시작:', apiBaseUrl);
+    
+    // 로드뷰 이미지가 캡처되었는지 확인
+    if (capturedRoadviewImage) {
+      console.log('[분석 실행] 로드뷰 이미지 캡처됨, 로드뷰 분석 먼저 진행');
+      // 로드뷰 분석 먼저 진행
+      sendRoadviewAnalysis(input, apiBaseUrl).then(function(roadviewResult) {
+        // 로드뷰 분석 완료 후 일반 분석 진행
+        sendAnalyzeRequest(input, apiBaseUrl, roadviewResult);
+      }).catch(function(error) {
+        console.warn('[분석 실행] 로드뷰 분석 실패, 기본 분석 진행:', error);
+        // 로드뷰 분석 실패해도 일반 분석은 진행
+        sendAnalyzeRequest(input, apiBaseUrl, null);
+      });
+    } else {
+      console.log('[분석 실행] 로드뷰 이미지 없음, 기본 분석 진행');
+      // 로드뷰 없이 분석 진행
+      sendAnalyzeRequest(input, apiBaseUrl, null);
+    }
+  }
+
+  // ── 로드뷰 분석 API 호출 ──
+  function sendRoadviewAnalysis(input, apiBaseUrl) {
+    return new Promise(function(resolve, reject) {
+      // base64를 Blob으로 변환
+      var base64Data = capturedRoadviewImage.split(',')[1]; // data:image/jpeg;base64, 제거
+      var byteCharacters = atob(base64Data);
+      var byteNumbers = new Array(byteCharacters.length);
+      for (var i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      var byteArray = new Uint8Array(byteNumbers);
+      var blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+      // FormData 생성
       var formData = new FormData();
-      formData.append('data', JSON.stringify(input));
-      if (roadviewBlob) formData.append('roadview', roadviewBlob, 'roadview.jpg');
-      if (roadmapBlob) formData.append('roadmap', roadmapBlob, 'roadmap.jpg');
+      formData.append('address', input.location.address || '');
+      formData.append('lat', input.location.lat.toString());
+      formData.append('lng', input.location.lng.toString());
+      formData.append('roadview', blob, 'roadview.jpg');
 
-      // Attempt backend API call with timeout
-      var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      var timeoutId = setTimeout(function () {
-        if (controller) controller.abort();
-        console.warn('API timeout, falling back to mock');
-        if (!apiDone) {
-          apiDone = true;
-          fallbackToMock(input);
-        }
-      }, 15000);
-
-      var fetchOptions = {
+      // 로드뷰 분석 API 호출
+      fetch(apiBaseUrl + '/api/roadview/analyze', {
         method: 'POST',
         body: formData
-      };
-      if (controller) fetchOptions.signal = controller.signal;
+      })
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('로드뷰 분석 실패: ' + response.status);
+        }
+        return response.json();
+      })
+      .then(function(roadviewResult) {
+        console.log('[분석 실행] 로드뷰 분석 완료:', roadviewResult);
+        resolve(roadviewResult);
+      })
+      .catch(function(error) {
+        console.error('[분석 실행] 로드뷰 분석 오류:', error);
+        reject(error);
+      });
+    });
+  }
 
-      fetch('/api/analyze', fetchOptions)
-        .then(function (res) {
-          clearTimeout(timeoutId);
-          if (!res.ok) throw new Error('API returned ' + res.status);
-          return res.json();
-        })
-        .then(function (data) {
-          console.log('API success:', data);
-          // If backend returns a full result, use it; otherwise mock
-          if (data.result) {
-            Utils.saveSession('analysisResult', data.result);
-          } else {
-            var result = MockData.generateResult(input);
-            Utils.saveSession('analysisResult', result);
+  // ── 일반 분석 요청 (로드뷰 결과 포함) ──
+  function sendAnalyzeRequest(input, apiBaseUrl, roadviewAnalysis) {
+    // 로드뷰 분석 결과가 있으면 input에 추가 (백엔드에서 사용)
+    if (roadviewAnalysis && roadviewAnalysis.success && roadviewAnalysis.results && roadviewAnalysis.results.roadview) {
+      // 백엔드 orchestrator에서 로드뷰 분석 결과를 사용하도록 함
+      input.roadviewAnalysis = roadviewAnalysis.results.roadview;
+      console.log('[분석 실행] 로드뷰 분석 결과를 백엔드에 전달할 준비 완료');
+    }
+    
+    fetch(apiBaseUrl + '/api/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(input)
+    })
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error('분석 요청 실패: ' + response.status);
+      }
+      return response.json();
+    })
+    .then(function(data) {
+      console.log('[분석 실행] 분석 ID 받음:', data.analysisId);
+      
+      // 로드뷰 분석 결과가 있으면 세션에 저장 (리포트에서 사용)
+      if (roadviewAnalysis && roadviewAnalysis.success) {
+        Utils.saveSession('roadviewAnalysis', roadviewAnalysis);
+      }
+      
+      // 분석 결과를 폴링하여 가져오기
+      pollAnalysisResult(data.analysisId, apiBaseUrl);
+    })
+    .catch(function(error) {
+      console.error('[분석 실행] 오류:', error);
+      
+      // 오류 메시지 표시
+      var overlay = document.getElementById('loadingOverlay');
+      var errorMsg = document.createElement('div');
+      errorMsg.className = 'error-message';
+      errorMsg.style.cssText = 'text-align:center; color:#f87171; margin-top:2rem; padding:1rem; background:rgba(248,113,113,0.1); border-radius:8px;';
+      errorMsg.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> 분석 실행 중 오류가 발생했습니다.<br>' + 
+                           '<span style="font-size:0.85rem; margin-top:0.5rem; display:block;">' + error.message + '</span>';
+      
+      var stepsContainer = document.getElementById('loadingSteps');
+      stepsContainer.appendChild(errorMsg);
+      
+      // 3초 후 오버레이 닫기
+      setTimeout(function() {
+        overlay.classList.remove('active');
+        errorMsg.remove();
+      }, 3000);
+    });
+  }
+
+  // ── 분석 결과 폴링 ──
+  function pollAnalysisResult(analysisId, apiBaseUrl) {
+    var maxAttempts = 120; // 최대 120번 시도 (약 2분)
+    var attempt = 0;
+    var pollInterval = 1000; // 1초마다 확인
+
+    function poll() {
+      attempt++;
+      console.log('[분석 실행] 결과 확인 시도', attempt + '/' + maxAttempts);
+
+      fetch(apiBaseUrl + '/api/result/' + analysisId)
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('결과 조회 실패: ' + response.status);
           }
-          apiDone = true;
-          tryNavigate();
+          return response.json();
         })
-        .catch(function (err) {
-          clearTimeout(timeoutId);
-          console.warn('API failed:', err.message);
-          if (!apiDone) {
-            apiDone = true;
-            var result = MockData.generateResult(input);
-            Utils.saveSession('analysisResult', result);
-            tryNavigate();
+        .then(function(data) {
+          console.log('[분석 실행] 응답 상태:', data.status, '결과 있음:', !!data.result);
+          
+          if (data.status === 'completed' && data.result) {
+            console.log('[분석 실행] 분석 완료!');
+            console.log('[분석 실행] 받은 결과 데이터:', data.result);
+            console.log('[분석 실행] 결과 데이터 구조:', {
+              hasId: !!data.result.id,
+              hasBrand: !!data.result.brand,
+              hasLocation: !!data.result.location,
+              hasFinance: !!data.result.finance,
+              hasDecision: !!data.result.decision,
+              hasAiConsulting: !!data.result.aiConsulting,
+              hasMarket: !!data.result.market,
+              hasRoadview: !!data.result.roadview,
+              resultKeys: Object.keys(data.result || {})
+            });
+            
+            // 결과 저장
+            Utils.saveSession('analysisResult', data.result);
+            Utils.saveSession('analysisId', analysisId);
+            
+            console.log('[분석 실행] 세션 저장 완료');
+            
+            // 대시보드로 이동
+            setTimeout(function() {
+              window.location.href = '../dashboard/';
+            }, 500);
+          } else if (data.status === 'failed') {
+            throw new Error('분석 실패: ' + (data.error || '알 수 없는 오류'));
+          } else {
+            // 아직 진행 중
+            if (attempt < maxAttempts) {
+              setTimeout(poll, pollInterval);
+            } else {
+              throw new Error('분석 시간 초과 (2분). 서버 로그를 확인하세요.');
+            }
+          }
+        })
+        .catch(function(error) {
+          console.error('[분석 실행] 폴링 오류:', error);
+          
+          if (attempt < maxAttempts) {
+            setTimeout(poll, pollInterval);
+          } else {
+            // 최종 오류 처리
+            var overlay = document.getElementById('loadingOverlay');
+            var errorMsg = document.createElement('div');
+            errorMsg.className = 'error-message';
+            errorMsg.style.cssText = 'text-align:center; color:#f87171; margin-top:2rem; padding:1rem; background:rgba(248,113,113,0.1); border-radius:8px;';
+            errorMsg.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> 분석 결과를 가져오는 중 오류가 발생했습니다.<br>' + 
+                                 '<span style="font-size:0.85rem; margin-top:0.5rem; display:block;">' + error.message + '</span>' +
+                                 '<span style="font-size:0.75rem; margin-top:0.5rem; display:block; color:var(--text-muted);">분석 ID: ' + analysisId + '</span>';
+            
+            var stepsContainer = document.getElementById('loadingSteps');
+            stepsContainer.appendChild(errorMsg);
+            
+            setTimeout(function() {
+              overlay.classList.remove('active');
+              errorMsg.remove();
+            }, 5000);
           }
         });
-    });
+    }
+
+    poll();
   }
 
   // ── Header Scroll ──
@@ -617,5 +884,20 @@
 
   // ── Init ──
   prefillFromPrevious();
-  initMap();
+  
+  // window.onload 이벤트에서 initMap 호출 (원래 방식)
+  window.onload = function() {
+    console.log('[전역] window.load 이벤트 발생, initMap 호출');
+    setTimeout(initMap, 500); // SDK 로드 대기
+  };
+  
+  // DOMContentLoaded 이벤트도 처리
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(initMap, 500);
+    });
+  } else {
+    // 이미 로드된 경우
+    setTimeout(initMap, 500);
+  }
 })();

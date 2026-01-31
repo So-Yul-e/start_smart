@@ -49,7 +49,7 @@
           <div id="map" style="width:100%; height:100%;"></div>
           <div id="mapFallback" class="map-fallback" style="display:none;">
             <i class="fa-solid fa-map" style="font-size:3rem; color:var(--text-muted); margin-bottom:1rem;"></i>
-            <p>카카오맵을 불러올 수 없습니다</p>
+            <p>지도를 불러올 수 없습니다</p>
             <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">주소를 직접 입력하여 위치를 설정하세요</p>
             <div style="display:flex; gap:0.5rem; width:100%; max-width:400px;">
               <input type="text" id="manualAddress" class="field-input" placeholder="예: 서울시 강남구 역삼동 123" style="flex:1; margin:0;">
@@ -141,16 +141,19 @@
         </div>
       </div>
 
-      <!-- 목표 일 판매량 (AI 제안 통합) -->
+      <!-- IA 3: AI 판매량 제안 -->
+      <div id="scenarioSection" class="glass-card" style="display:none;">
+        <h3><i class="fa-solid fa-robot" style="color:var(--gold); margin-right:0.5rem;"></i> AI 판매량 제안</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;" id="scenarioReason"></p>
+        <div class="scenario-cards" id="scenarioCards"></div>
+      </div>
+
+      <!-- 목표 판매량 입력 -->
       <div class="glass-card">
         <h3><i class="fa-solid fa-bullseye" style="color:var(--gold); margin-right:0.5rem;"></i> 목표 일 판매량</h3>
-        <div id="scenarioSection" style="display:none; margin-top:0.75rem;">
-          <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.75rem;" id="scenarioReason"></p>
-          <div class="scenario-cards" id="scenarioCards"></div>
-        </div>
         <div class="field-group" style="margin-top:1rem;">
           <input type="number" id="inputDailySales" class="field-input" placeholder="예: 300" style="font-size:2rem; text-align:center;">
-          <div class="field-hint" style="text-align:center;" id="salesHint">잔/일 (위치 선택 시 AI가 판매량을 제안합니다)</div>
+          <div class="field-hint" style="text-align:center;">잔/일 (AI 기대치 기준 입력 추천)</div>
         </div>
       </div>
 
@@ -168,7 +171,6 @@
   <div id="loadingOverlay" class="loading-overlay">
     <div class="loading-spinner"></div>
     <div class="loading-steps" id="loadingSteps">
-      <div class="loading-step" data-step="0"><i class="fa-solid fa-camera"></i> 로드뷰/지도 캡처 중...</div>
       <div class="loading-step" data-step="1"><i class="fa-solid fa-map-location-dot"></i> 상권 데이터 수집 중...</div>
       <div class="loading-step" data-step="2"><i class="fa-solid fa-calculator"></i> 손익 시뮬레이션 중...</div>
       <div class="loading-step" data-step="3"><i class="fa-solid fa-eye"></i> AI 로드뷰 분석 중...</div>
@@ -180,10 +182,61 @@
     <p>&copy; 2024 StartSmart. Premium Intelligence.</p>
   </footer>
 
-  <!-- Kakao Map SDK -->
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2ff501fa54ad54b13eb7914e077ac876&libraries=services"></script>
-  <!-- html2canvas for roadview/map capture -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Kakao Map SDK (입지 선택용) -->
+  <script>
+    // 카카오맵 SDK 로드 상태 추적
+    window.kakaoMapLoaded = false;
+    window.kakaoMapLoadError = false;
+    
+    // SDK 로드 완료 콜백
+    window.onKakaoMapReady = function() {
+      console.log('[카카오맵] SDK 로드 완료, kakao 객체:', typeof kakao);
+      window.kakaoMapLoaded = true;
+      // script.js의 initMap이 대기 중이면 호출
+      if (window.initMapCallback) {
+        console.log('[카카오맵] initMapCallback 호출');
+        window.initMapCallback();
+        window.initMapCallback = null;
+      }
+    };
+    
+    // 스크립트 로드 핸들러
+    window.kakaoMapScriptOnLoad = function() {
+      console.log('[카카오맵] 스크립트 태그 onload 이벤트 발생');
+      setTimeout(function() {
+        if (typeof kakao !== 'undefined') {
+          window.onKakaoMapReady();
+        }
+      }, 100);
+    };
+    
+  </script>
+  <script>
+    // 카카오맵 SDK 동적 로드 (autoload=false + kakao.maps.load 사용)
+    (function() {
+      var sdkUrl = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=27b440fcdad2758673282f470834f270&autoload=false&libraries=services';
+      var script = document.createElement('script');
+      script.src = sdkUrl;
+      script.onload = function() {
+        console.log('[카카오맵] 스크립트 로드 성공');
+        kakao.maps.load(function() {
+          console.log('[카카오맵] SDK 초기화 완료');
+          window.kakaoMapLoaded = true;
+          if (window.initMapCallback) {
+            window.initMapCallback();
+            window.initMapCallback = null;
+          }
+        });
+      };
+      script.onerror = function() {
+        console.error('[카카오맵] 스크립트 로드 실패');
+        window.kakaoMapLoadError = true;
+      };
+      document.head.appendChild(script);
+    })();
+  </script>
+  
+  <script src="../config.js"></script>
   <script src="../js/mock-data.js"></script>
   <script src="../js/utils.js"></script>
   <script src="script.js"></script>

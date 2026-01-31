@@ -42,6 +42,34 @@ ai/consulting/
     monthlyProfit: 10000000,
     paybackMonths: 50
   },
+  decision: {
+    score: 65,
+    signal: "yellow",
+    survivalMonths: 24,
+    riskLevel: "medium",
+    finalJudgement: {
+      signal: "yellow",
+      label: "CONDITIONAL RISK",
+      summary: "조건부 리스크가 존재하여 신중한 검토가 필요합니다.",
+      nonNegotiable: false,
+      primaryReason: null
+    },
+    hardCutReasons: []
+  },
+  decision: {
+    score: 65,
+    signal: "yellow",
+    survivalMonths: 24,
+    riskLevel: "medium",
+    finalJudgement: {
+      signal: "yellow",
+      label: "CONDITIONAL RISK",
+      summary: "조건부 리스크가 존재하여 신중한 검토가 필요합니다.",
+      nonNegotiable: false,
+      primaryReason: null
+    },
+    hardCutReasons: []
+  },
   market: {
     competitors: { total: 5, density: "high" },
     footTraffic: { weekday: "high", weekend: "medium" }
@@ -154,6 +182,20 @@ async function test() {
       monthlyProfit: 10000000,
       paybackMonths: 50
     },
+    decision: {
+      score: 65,
+      signal: "yellow",
+      survivalMonths: 24,
+      riskLevel: "medium",
+      finalJudgement: {
+        signal: "yellow",
+        label: "CONDITIONAL RISK",
+        summary: "조건부 리스크가 존재하여 신중한 검토가 필요합니다.",
+        nonNegotiable: false,
+        primaryReason: null
+      },
+      hardCutReasons: []
+    },
     market: {
       competitors: { total: 5, density: "high" },
       footTraffic: { weekday: "high", weekend: "medium" }
@@ -227,10 +269,40 @@ const salesScenarioPrompt = `
 const riskAnalysisPrompt = `
 다음 재무 분석 결과를 바탕으로 핵심 리스크 Top 3를 식별하고 개선 제안을 해주세요:
 
+【시스템 판정 결과 (반드시 참고)】
+- 신호등: ${decision.finalJudgement?.signal || decision.signal} (${decision.finalJudgement?.label || 'N/A'})
+- 판정 요약: ${decision.finalJudgement?.summary || 'N/A'}
+- 시스템 판정 (컨설팅으로 변경 불가): ${decision.finalJudgement?.nonNegotiable ? '예' : '아니오'}
+- 하드컷 판정 근거: ${decision.hardCutReasons?.length > 0 ? decision.hardCutReasons.join(', ') : '없음'}
+
+⚠️ 중요: 시스템 판정이 "HIGH RISK"이고 nonNegotiable이 true인 경우, 
+반드시 해당 판정을 존중하여 리스크 분석을 작성하세요.
+
 재무 결과:
-- 월 순이익: ${finance.monthlyProfit}원
+- 월 매출: ${finance.monthlyRevenue}원
+  (계산식: 판매량(${targetDailySales}잔/일) × 아메리카노 판매금액 × 30일)
+- 총 지출 금액: ${totalMonthlyCosts}원
+  (계산식: 월세 + 인건비 + 원재료비 + 공과금 + 로열티 + 마케팅비 + 기타고정비)
+  - 월세 (rent): ${monthlyCosts.rent}원
+  - 인건비 (labor): ${monthlyCosts.labor}원
+  - 원재료비 (materials): ${monthlyCosts.materials}원
+  - 공과금 (utilities): ${monthlyCosts.utilities}원
+  - 로열티 (royalty): ${monthlyCosts.royalty}원
+  - 마케팅비 (marketing): ${monthlyCosts.marketing}원
+  - 기타 고정비 (etc): ${monthlyCosts.etc}원
+- 월 순수익: ${finance.monthlyProfit}원
+  (계산식: 월 매출 - 총 지출금액)
 - 회수 개월: ${finance.paybackMonths}개월
+  (계산식: 초기 투자비용 - (월순수익 × N) ≤ 0이 되는 최소 정수 N)
 - 목표 판매량: ${targetDailySales}잔/일
+  (계산식: 월 매출 - 총지출금액이 30% 이상인 수량)
+
+⚠️ 중요 계산식:
+1. 월 매출 = 판매량(잔/일) × 아메리카노 판매금액 × 30일
+2. 총 지출금액 = 월세 + 인건비 + 원재료비 + 공과금 + 로열티 + 마케팅비 + 기타고정비
+3. 월 순수익 = 월 매출 - 총 지출금액
+4. 회수 개월 = 초기 투자비용 - (월순수익 × N) ≤ 0이 되는 최소 정수 N
+5. 목표 판매량 = 월 매출 - 총지출금액이 30% 이상인 수량
 
 다음 형식으로 JSON을 반환해주세요:
 {
