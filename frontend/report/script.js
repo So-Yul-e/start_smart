@@ -61,6 +61,50 @@
   document.getElementById('rOwner').textContent = input && input.conditions.ownerWorking ? '직접 근무' : '고용 운영';
   document.getElementById('rTarget').textContent = (input ? input.targetDailySales : '-') + '잔/일';
   
+  // 대출 정보 표시 (있는 경우)
+  var loansRow = document.getElementById('rLoansRow');
+  var loansCell = document.getElementById('rLoans');
+  var inputConditions = reportModel?.inputConditions || input?.conditions || result?.conditions || null;
+  if (inputConditions && inputConditions.loans && Array.isArray(inputConditions.loans) && inputConditions.loans.length > 0) {
+    var loansHtml = '';
+    for (var i = 0; i < inputConditions.loans.length; i++) {
+      var loan = inputConditions.loans[i];
+      var aprPercent = (loan.apr * 100).toFixed(2);
+      loansHtml += '<div style="margin-bottom:0.5rem; padding:0.5rem; background:rgba(255,255,255,0.03); border-radius:4px;">';
+      loansHtml += '<strong>대출 ' + (i + 1) + ':</strong> ';
+      loansHtml += Utils.formatKRW(loan.principal) + ' / ';
+      loansHtml += aprPercent + '% / ';
+      loansHtml += loan.termMonths + '개월 / ';
+      var repaymentTypeMap = {
+        'equal_payment': '원리금 균등',
+        'equal_principal': '원금 균등',
+        'interest_only': '이자만 상환'
+      };
+      loansHtml += repaymentTypeMap[loan.repaymentType] || loan.repaymentType;
+      loansHtml += '</div>';
+    }
+    loansCell.innerHTML = loansHtml;
+    loansRow.style.display = '';
+  } else {
+    loansRow.style.display = 'none';
+  }
+
+  // Exit Plan 입력값 표시 (있는 경우)
+  var exitInputsRow = document.getElementById('rExitInputsRow');
+  var exitInputsCell = document.getElementById('rExitInputs');
+  if (inputConditions && inputConditions.exitInputs) {
+    var exit = inputConditions.exitInputs;
+    var exitHtml = '';
+    if (exit.keyMoney) exitHtml += '권리금: ' + Utils.formatKRW(exit.keyMoney) + ' / ';
+    if (exit.demolitionBase) exitHtml += '철거 기본비: ' + Utils.formatKRW(exit.demolitionBase) + ' / ';
+    if (exit.demolitionPerPyeong) exitHtml += '평당 철거비: ' + Utils.formatKRW(exit.demolitionPerPyeong) + ' / ';
+    if (exit.workingCapital) exitHtml += '운영자금: ' + Utils.formatKRW(exit.workingCapital);
+    exitInputsCell.textContent = exitHtml || '없음';
+    exitInputsRow.style.display = '';
+  } else {
+    exitInputsRow.style.display = 'none';
+  }
+  
   // 1일 방문객 수와 1인당 평균 구매비용 제거됨
 
   // Score (executive 우선 사용)
@@ -163,6 +207,10 @@
   var costs = finance.monthlyCosts;
   var rev = finance.monthlyRevenue;
 
+  // 대출 상환액 가져오기 (있는 경우)
+  var debtPayment = finance.debt?.monthlyPayment || 0;
+  var operatingProfit = finance.operatingProfit || (rev - Object.values(costs).reduce(function(a, b) { return a + b; }, 0));
+
   var finRows = [
     ['월 매출', rev, '100%'],
     ['재료비', costs.materials, pct(costs.materials, rev)],
@@ -171,8 +219,15 @@
     ['로열티', costs.royalty, pct(costs.royalty, rev)],
     ['마케팅비', costs.marketing, pct(costs.marketing, rev)],
     ['공과금/기타', costs.utilities + costs.etc, pct(costs.utilities + costs.etc, rev)],
-    ['월 순이익', finance.monthlyProfit, pct(finance.monthlyProfit, rev)]
+    ['영업 이익', operatingProfit, pct(operatingProfit, rev)]
   ];
+
+  // 대출 상환액이 있으면 추가
+  if (debtPayment > 0) {
+    finRows.push(['대출 상환액', -debtPayment, pct(debtPayment, rev)]);
+  }
+
+  finRows.push(['월 순이익', finance.monthlyProfit, pct(finance.monthlyProfit, rev)]);
 
   var finHtml = '';
   for (var i = 0; i < finRows.length; i++) {
@@ -190,12 +245,25 @@
   var monthlyProfit = executive?.monthlyProfit ?? finance?.monthlyProfit ?? 0;
   var breakEvenDailySales = executive?.breakEvenDailySales ?? finance?.breakEvenDailySales ?? 0;
   
+  // 대출 정보 가져오기
+  var debt = finance.debt || null;
+  var dscr = debt?.dscr || null;
+
   var kpis = [
     { label: '생존 개월', value: survivalMonths + '개월', danger: survivalMonths < 24 },
     { label: '회수 기간', value: paybackMonths >= 999 ? '회수 불가' : paybackMonths + '개월', danger: paybackMonths > 36 },
     { label: '월 순이익', value: Utils.formatKRW(monthlyProfit), danger: monthlyProfit <= 0 },
     { label: '손익분기', value: breakEvenDailySales + '잔/일', danger: false }
   ];
+
+  // DSCR이 있으면 KPI에 추가
+  if (dscr !== null) {
+    kpis.push({ 
+      label: 'DSCR', 
+      value: dscr.toFixed(2), 
+      danger: dscr < 1.0  // DSCR < 1.0이면 위험
+    });
+  }
 
   var kpiHtml = '';
   for (var k = 0; k < kpis.length; k++) {

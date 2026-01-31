@@ -126,6 +126,8 @@ function buildReportModel(finalResult) {
       paybackMonths: toNum(finance?.paybackMonths),
       sensitivity: finance?.sensitivity ?? null,
       breakEvenDailySales: toNum(finance?.breakEvenDailySales),
+      // 대출 정보 추가
+      debt: finance?.debt ?? null,
     },
     gap,
     scenario,
@@ -137,6 +139,15 @@ function buildReportModel(finalResult) {
     competitive,
     market: marketData,
     roadview: roadviewData,
+    // 입력 조건 정보 추가 (리포트에서 표시용)
+    inputConditions: {
+      initialInvestment: toMoney(conditions?.initialInvestment),
+      monthlyRent: toMoney(conditions?.monthlyRent),
+      area: toNum(conditions?.area),
+      ownerWorking: conditions?.ownerWorking ?? false,
+      loans: Array.isArray(conditions?.loans) ? conditions.loans : null,
+      exitInputs: conditions?.exitInputs ?? null,
+    },
     sources: {
       hasMarket: !!market,
       hasRoadview: !!roadview,
