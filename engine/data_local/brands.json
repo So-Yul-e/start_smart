@@ -1,0 +1,316 @@
+{
+  "brands": [
+    {
+      "id": "brand_mega",
+      "name": "메가커피",
+      "position": "저가형",
+      "defaults": {
+        "avgPrice": 3500,
+        "cogsRate": 0.35,
+        "laborRate": 0.20,
+        "utilitiesRate": 0.03,
+        "etcFixed": 1100000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 76000000,
+        "max": 76000000,
+        "note": "본사 기준 창업비 (가맹비+교육비+기자재+인테리어)"
+      },
+      "metadata": {
+        "pdfFile": "메가커피.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_compose",
+      "name": "컴포즈커피",
+      "position": "저가형",
+      "defaults": {
+        "avgPrice": 3250,
+        "cogsRate": 0.35,
+        "laborRate": 0.20,
+        "utilitiesRate": 0.03,
+        "etcFixed": 1000000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 70000000,
+        "max": 70000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "컴포즈(2024).pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_baek",
+      "name": "빽다방",
+      "position": "중가형",
+      "defaults": {
+        "avgPrice": 4050,
+        "cogsRate": 0.38,
+        "laborRate": 0.22,
+        "utilitiesRate": 0.03,
+        "etcFixed": 1200000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 100000000,
+        "max": 120000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "빽다방.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_ediya",
+      "name": "이디야커피",
+      "position": "중가형",
+      "defaults": {
+        "avgPrice": 3800,
+        "cogsRate": 0.36,
+        "laborRate": 0.21,
+        "utilitiesRate": 0.03,
+        "etcFixed": 1150000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 80000000,
+        "max": 100000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "이디야.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_twosome",
+      "name": "투썸플레이스",
+      "position": "프리미엄",
+      "defaults": {
+        "avgPrice": 5500,
+        "cogsRate": 0.40,
+        "laborRate": 0.25,
+        "utilitiesRate": 0.04,
+        "etcFixed": 1500000,
+        "royaltyRate": 0.06,
+        "marketingRate": 0.03,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 150000000,
+        "max": 200000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "투썸플레이스.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_hollys",
+      "name": "할리스",
+      "position": "프리미엄",
+      "defaults": {
+        "avgPrice": 5200,
+        "cogsRate": 0.39,
+        "laborRate": 0.24,
+        "utilitiesRate": 0.04,
+        "etcFixed": 1400000,
+        "royaltyRate": 0.06,
+        "marketingRate": 0.03,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 140000000,
+        "max": 180000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "할리스.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_tomntoms",
+      "name": "탐앤탐스",
+      "position": "중가형",
+      "defaults": {
+        "avgPrice": 4200,
+        "cogsRate": 0.37,
+        "laborRate": 0.22,
+        "utilitiesRate": 0.03,
+        "etcFixed": 1250000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 90000000,
+        "max": 110000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "탐앤탐스.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_dunkin",
+      "name": "던킨도너츠",
+      "position": "베이커리",
+      "defaults": {
+        "avgPrice": 3200,
+        "cogsRate": 0.33,
+        "laborRate": 0.19,
+        "utilitiesRate": 0.03,
+        "etcFixed": 1050000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 80000000,
+        "max": 100000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "던킨도너츠.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_paris",
+      "name": "파리바게트",
+      "position": "베이커리",
+      "defaults": {
+        "avgPrice": 4500,
+        "cogsRate": 0.35,
+        "laborRate": 0.20,
+        "utilitiesRate": 0.03,
+        "etcFixed": 1300000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 120000000,
+        "max": 150000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "파리바게트.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_tous",
+      "name": "뚜레쥬르",
+      "position": "베이커리",
+      "defaults": {
+        "avgPrice": 4200,
+        "cogsRate": 0.34,
+        "laborRate": 0.20,
+        "utilitiesRate": 0.03,
+        "etcFixed": 1200000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 110000000,
+        "max": 140000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "뚜레쥬르.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_banapresso",
+      "name": "바나프레소",
+      "position": "저가형",
+      "defaults": {
+        "avgPrice": 3000,
+        "cogsRate": 0.34,
+        "laborRate": 0.19,
+        "utilitiesRate": 0.03,
+        "etcFixed": 950000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 65000000,
+        "max": 80000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "바나프레소.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    },
+    {
+      "id": "brand_manleap",
+      "name": "만렙커피",
+      "position": "저가형",
+      "defaults": {
+        "avgPrice": 3100,
+        "cogsRate": 0.33,
+        "laborRate": 0.18,
+        "utilitiesRate": 0.03,
+        "etcFixed": 900000,
+        "royaltyRate": 0.05,
+        "marketingRate": 0.02,
+        "ownerWorkingMultiplier": 0.6,
+        "expectedDailySales": null
+      },
+      "initialInvestmentRange": {
+        "min": 60000000,
+        "max": 75000000,
+        "note": "본사 기준 창업비"
+      },
+      "metadata": {
+        "pdfFile": "만렙커피.pdf",
+        "source": "정보공개서",
+        "lastUpdated": "2024"
+      }
+    }
+  ]
+}
