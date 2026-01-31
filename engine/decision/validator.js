@@ -159,8 +159,106 @@ function validateDecisionOutput(result) {
         if (!validSignals.includes(sim.signal)) {
           errors.push(`improvementSimulations[${idx}].signal은 ${validSignals.join(', ')} 중 하나여야 합니다.`);
         }
+        // 신규: signalChange (선택적)
+        if (sim.signalChange !== undefined && typeof sim.signalChange !== 'string') {
+          errors.push(`improvementSimulations[${idx}].signalChange는 문자열이어야 합니다.`);
+        }
+        // 신규: thresholdCrossed (선택적)
+        if (sim.thresholdCrossed !== undefined && !Array.isArray(sim.thresholdCrossed)) {
+          errors.push(`improvementSimulations[${idx}].thresholdCrossed는 배열이어야 합니다.`);
+        }
       });
     }
+  }
+
+  // ============================================
+  // 신규: 최종 판정자 필드 검증
+  // ============================================
+
+  // finalJudgement (선택적이지만 권장)
+  if (result.finalJudgement !== undefined) {
+    if (typeof result.finalJudgement !== 'object') {
+      errors.push('finalJudgement는 객체여야 합니다.');
+    } else {
+      const validSignals = ['green', 'yellow', 'red'];
+      if (!validSignals.includes(result.finalJudgement.signal)) {
+        errors.push(`finalJudgement.signal은 ${validSignals.join(', ')} 중 하나여야 합니다.`);
+      }
+      if (typeof result.finalJudgement.label !== 'string') {
+        errors.push('finalJudgement.label는 문자열이어야 합니다.');
+      }
+      if (typeof result.finalJudgement.nonNegotiable !== 'boolean') {
+        errors.push('finalJudgement.nonNegotiable는 불린 값이어야 합니다.');
+      }
+      if (result.finalJudgement.primaryReason !== null && typeof result.finalJudgement.primaryReason !== 'string') {
+        errors.push('finalJudgement.primaryReason는 문자열이거나 null이어야 합니다.');
+      }
+      if (typeof result.finalJudgement.summary !== 'string') {
+        errors.push('finalJudgement.summary는 문자열이어야 합니다.');
+      }
+    }
+  } else {
+    warnings.push('확장 필드 누락: finalJudgement (선택적이지만 권장)');
+  }
+
+  // hardCutReasons (선택적이지만 권장)
+  if (result.hardCutReasons !== undefined) {
+    if (!Array.isArray(result.hardCutReasons)) {
+      errors.push('hardCutReasons는 배열이어야 합니다.');
+    } else {
+      result.hardCutReasons.forEach((reason, idx) => {
+        if (typeof reason !== 'string') {
+          errors.push(`hardCutReasons[${idx}]는 문자열이어야 합니다.`);
+        }
+      });
+    }
+  } else {
+    warnings.push('확장 필드 누락: hardCutReasons (선택적이지만 권장)');
+  }
+
+  // failureTriggers (선택적이지만 권장)
+  if (result.failureTriggers !== undefined) {
+    if (!Array.isArray(result.failureTriggers)) {
+      errors.push('failureTriggers는 배열이어야 합니다.');
+    } else {
+      result.failureTriggers.forEach((trigger, idx) => {
+        if (typeof trigger.trigger !== 'string') {
+          errors.push(`failureTriggers[${idx}].trigger는 문자열이어야 합니다.`);
+        }
+        if (typeof trigger.outcome !== 'string') {
+          errors.push(`failureTriggers[${idx}].outcome는 문자열이어야 합니다.`);
+        }
+        const validImpacts = ['low', 'medium', 'high', 'critical'];
+        if (!validImpacts.includes(trigger.impact)) {
+          errors.push(`failureTriggers[${idx}].impact는 ${validImpacts.join(', ')} 중 하나여야 합니다.`);
+        }
+        if (trigger.estimatedFailureWindow && typeof trigger.estimatedFailureWindow !== 'string') {
+          errors.push(`failureTriggers[${idx}].estimatedFailureWindow는 문자열이어야 합니다.`);
+        }
+      });
+    }
+  } else {
+    warnings.push('확장 필드 누락: failureTriggers (선택적이지만 권장)');
+  }
+
+  // decisionConfidence (선택적이지만 권장)
+  if (result.decisionConfidence !== undefined) {
+    if (typeof result.decisionConfidence !== 'object') {
+      errors.push('decisionConfidence는 객체여야 합니다.');
+    } else {
+      const validLevels = ['low', 'medium', 'high'];
+      if (!validLevels.includes(result.decisionConfidence.dataCoverage)) {
+        errors.push(`decisionConfidence.dataCoverage는 ${validLevels.join(', ')} 중 하나여야 합니다.`);
+      }
+      if (!validLevels.includes(result.decisionConfidence.assumptionRisk)) {
+        errors.push(`decisionConfidence.assumptionRisk는 ${validLevels.join(', ')} 중 하나여야 합니다.`);
+      }
+      if (!validLevels.includes(result.decisionConfidence.judgementStability)) {
+        errors.push(`decisionConfidence.judgementStability는 ${validLevels.join(', ')} 중 하나여야 합니다.`);
+      }
+    }
+  } else {
+    warnings.push('확장 필드 누락: decisionConfidence (선택적이지만 권장)');
   }
   
   // ============================================
