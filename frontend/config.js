@@ -18,8 +18,13 @@ const getApiBaseUrl = () => {
     return process.env.REACT_APP_API_URL;
   }
   
-  // 3. 기본값: localhost (같은 컴퓨터에서 실행 시)
-  // 다른 기기에서 접근하려면 HTML에서 window.API_BASE_URL 설정 필요
+  // 3. 현재 호스트 기반으로 자동 설정 (동일 호스트의 백엔드 사용)
+  // 예: http://172.16.48.47:3000/input/ -> http://172.16.48.47:3000
+  if (window.location.hostname) {
+    return window.location.protocol + '//' + window.location.hostname + ':3000';
+  }
+  
+  // 4. 기본값: localhost (fallback)
   return 'http://localhost:3000';
 };
 

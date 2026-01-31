@@ -183,6 +183,8 @@
       lng: latlng.getLng(),
       address: ''
     };
+    
+    console.log('[위치 설정] selectedLocation:', selectedLocation);
 
     showMockCards();
     validateForm();
@@ -297,21 +299,47 @@
       '</div>';
 
     // Only set daily sales if not already pre-filled
-    if (!inputDailySales.value) {
+    if (!inputDailySales.value || parseInt(inputDailySales.value) === 0) {
       inputDailySales.value = expected;
     }
-    validateForm();
+    // 값이 설정된 후 검증 실행 (약간의 지연을 두어 DOM 업데이트 반영)
+    setTimeout(validateForm, 100);
   }
 
   // ── Form Validation ──
   function validateForm() {
     var hasLocation = !!selectedLocation;
-    var hasInvestment = inputInvestment.value && parseInt(inputInvestment.value) > 0;
-    var hasRent = inputRent.value && parseInt(inputRent.value) > 0;
-    var hasArea = inputArea.value && parseInt(inputArea.value) > 0;
-    var hasSales = inputDailySales.value && parseInt(inputDailySales.value) > 0;
+    var investmentVal = inputInvestment.value ? parseInt(inputInvestment.value) : 0;
+    var rentVal = inputRent.value ? parseInt(inputRent.value) : 0;
+    var areaVal = inputArea.value ? parseInt(inputArea.value) : 0;
+    var salesVal = inputDailySales.value ? parseInt(inputDailySales.value) : 0;
+    
+    var hasInvestment = investmentVal > 0;
+    var hasRent = rentVal > 0;
+    var hasArea = areaVal > 0;
+    var hasSales = salesVal > 0;
 
-    btnAnalyze.disabled = !(hasLocation && hasInvestment && hasRent && hasArea && hasSales);
+    var isValid = hasLocation && hasInvestment && hasRent && hasArea && hasSales;
+    btnAnalyze.disabled = !isValid;
+    
+    // 디버깅용 로그
+    if (!isValid) {
+      console.log('[폼 검증] 버튼 비활성화:', {
+        hasLocation: hasLocation,
+        selectedLocation: selectedLocation,
+        hasInvestment: hasInvestment,
+        investmentValue: inputInvestment.value,
+        hasRent: hasRent,
+        rentValue: inputRent.value,
+        hasArea: hasArea,
+        areaValue: inputArea.value,
+        hasSales: hasSales,
+        salesValue: inputDailySales.value,
+        salesParsed: salesVal
+      });
+    } else {
+      console.log('[폼 검증] 버튼 활성화됨');
+    }
   }
 
   [inputInvestment, inputRent, inputArea, inputDailySales].forEach(function (el) {
@@ -319,8 +347,31 @@
   });
 
   // ── Analysis Execution ──
-  btnAnalyze.addEventListener('click', function () {
-    if (btnAnalyze.disabled) return;
+  btnAnalyze.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('[분석 실행] 버튼 클릭됨');
+    console.log('[분석 실행] 버튼 disabled 상태:', btnAnalyze.disabled);
+    
+    if (btnAnalyze.disabled) {
+      console.warn('[분석 실행] 버튼이 비활성화되어 있습니다.');
+      alert('모든 필수 항목을 입력해주세요:\n- 위치 선택\n- 초기 투자금\n- 월세\n- 매장 평수\n- 목표 일 판매량');
+      return;
+    }
+
+    if (!brand || !brand.id) {
+      console.error('[분석 실행] 브랜드가 선택되지 않았습니다.');
+      alert('브랜드를 먼저 선택해주세요.');
+      window.location.href = '../brand/';
+      return;
+    }
+
+    if (!selectedLocation) {
+      console.error('[분석 실행] 위치가 선택되지 않았습니다.');
+      alert('지도를 클릭하여 위치를 선택해주세요.');
+      return;
+    }
 
     var analysisInput = {
       brandId: brand.id,
@@ -335,11 +386,12 @@
       targetDailySales: parseInt(inputDailySales.value)
     };
 
+    console.log('[분석 실행] 분석 입력 데이터:', analysisInput);
     Utils.saveSession('analysisInput', analysisInput);
     startLoading(analysisInput);
   });
 
-  // ── Loading Animation ──
+  // ── Loading Animation & API Call ──
   function startLoading(input) {
     var overlay = document.getElementById('loadingOverlay');
     overlay.classList.add('active');
@@ -347,6 +399,10 @@
     var steps = document.querySelectorAll('.loading-step');
     var current = 0;
     var delays = [800, 1200, 1000, 1500];
+
+    // API Base URL 가져오기
+    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 
+                     (window.location.protocol + '//' + window.location.hostname + ':3000');
 
     function nextStep() {
       if (current > 0) {
@@ -359,14 +415,124 @@
         current++;
         setTimeout(nextStep, delays[current - 1]);
       } else {
-        var result = MockData.generateResult(input);
-        Utils.saveSession('analysisResult', result);
-        setTimeout(function () {
-          window.location.href = '../dashboard/';
-        }, 500);
+        // 실제 백엔드 API 호출
+        callAnalyzeAPI(input, apiBaseUrl);
       }
     }
     nextStep();
+  }
+
+  // ── 실제 백엔드 API 호출 ──
+  function callAnalyzeAPI(input, apiBaseUrl) {
+    console.log('[분석 실행] API 호출 시작:', apiBaseUrl);
+    
+    fetch(apiBaseUrl + '/api/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(input)
+    })
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error('분석 요청 실패: ' + response.status);
+      }
+      return response.json();
+    })
+    .then(function(data) {
+      console.log('[분석 실행] 분석 ID 받음:', data.analysisId);
+      
+      // 분석 결과를 폴링하여 가져오기
+      pollAnalysisResult(data.analysisId, apiBaseUrl);
+    })
+    .catch(function(error) {
+      console.error('[분석 실행] 오류:', error);
+      
+      // 오류 메시지 표시
+      var overlay = document.getElementById('loadingOverlay');
+      var errorMsg = document.createElement('div');
+      errorMsg.className = 'error-message';
+      errorMsg.style.cssText = 'text-align:center; color:#f87171; margin-top:2rem; padding:1rem; background:rgba(248,113,113,0.1); border-radius:8px;';
+      errorMsg.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> 분석 실행 중 오류가 발생했습니다.<br>' + 
+                           '<span style="font-size:0.85rem; margin-top:0.5rem; display:block;">' + error.message + '</span>';
+      
+      var stepsContainer = document.getElementById('loadingSteps');
+      stepsContainer.appendChild(errorMsg);
+      
+      // 3초 후 오버레이 닫기
+      setTimeout(function() {
+        overlay.classList.remove('active');
+        errorMsg.remove();
+      }, 3000);
+    });
+  }
+
+  // ── 분석 결과 폴링 ──
+  function pollAnalysisResult(analysisId, apiBaseUrl) {
+    var maxAttempts = 30; // 최대 30번 시도 (약 30초)
+    var attempt = 0;
+    var pollInterval = 1000; // 1초마다 확인
+
+    function poll() {
+      attempt++;
+      console.log('[분석 실행] 결과 확인 시도', attempt + '/' + maxAttempts);
+
+      fetch(apiBaseUrl + '/api/result/' + analysisId)
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('결과 조회 실패: ' + response.status);
+          }
+          return response.json();
+        })
+        .then(function(data) {
+          if (data.status === 'completed' && data.result) {
+            console.log('[분석 실행] 분석 완료!');
+            
+            // 결과 저장
+            Utils.saveSession('analysisResult', data.result);
+            Utils.saveSession('analysisId', analysisId);
+            
+            // 대시보드로 이동
+            setTimeout(function() {
+              window.location.href = '../dashboard/';
+            }, 500);
+          } else if (data.status === 'failed') {
+            throw new Error('분석 실패: ' + (data.error || '알 수 없는 오류'));
+          } else {
+            // 아직 진행 중
+            if (attempt < maxAttempts) {
+              setTimeout(poll, pollInterval);
+            } else {
+              throw new Error('분석 시간 초과 (30초)');
+            }
+          }
+        })
+        .catch(function(error) {
+          console.error('[분석 실행] 폴링 오류:', error);
+          
+          if (attempt < maxAttempts) {
+            setTimeout(poll, pollInterval);
+          } else {
+            // 최종 오류 처리
+            var overlay = document.getElementById('loadingOverlay');
+            var errorMsg = document.createElement('div');
+            errorMsg.className = 'error-message';
+            errorMsg.style.cssText = 'text-align:center; color:#f87171; margin-top:2rem; padding:1rem; background:rgba(248,113,113,0.1); border-radius:8px;';
+            errorMsg.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> 분석 결과를 가져오는 중 오류가 발생했습니다.<br>' + 
+                                 '<span style="font-size:0.85rem; margin-top:0.5rem; display:block;">' + error.message + '</span>';
+            
+            var stepsContainer = document.getElementById('loadingSteps');
+            stepsContainer.appendChild(errorMsg);
+            
+            setTimeout(function() {
+              overlay.classList.remove('active');
+              errorMsg.remove();
+            }, 3000);
+          }
+        });
+    }
+
+    poll();
   }
 
   // ── Header Scroll ──
