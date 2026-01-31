@@ -59,30 +59,36 @@ app.use((req, res) => {
   });
 });
 
-// 서버 시작
-const PORT = process.env.PORT || 3000;
-// HOST 설정:
-// - 특정 IP (예: <로컬IP>): 해당 IP로만 바인딩 (보안상 안전, 권장)
-// - 0.0.0.0: 모든 네트워크 인터페이스에서 접근 가능 (보안상 취약, 개발 환경에서만)
-// - localhost/127.0.0.1: 로컬에서만 접근 (가장 안전, 다른 기기 접근 불가)
-const HOST = process.env.HOST || 'localhost';
+// 서버 시작 (로컬 개발 환경에서만)
+// Vercel에서는 서버리스 함수로 실행되므로 app.listen()을 호출하지 않음
+if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
+  const PORT = process.env.PORT || 3000;
+  // HOST 설정:
+  // - 특정 IP (예: <로컬IP>): 해당 IP로만 바인딩 (보안상 안전, 권장)
+  // - 0.0.0.0: 모든 네트워크 인터페이스에서 접근 가능 (보안상 취약, 개발 환경에서만)
+  // - localhost/127.0.0.1: 로컬에서만 접근 (가장 안전, 다른 기기 접근 불가)
+  const HOST = process.env.HOST || 'localhost';
 
-app.listen(PORT, HOST, () => {
-  const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
-  console.log(`🚀 Server running on http://${displayHost}:${PORT}`);
-  console.log(`📊 Health check: http://${displayHost}:${PORT}/health`);
-  // console.log(`📊 경쟁 밀도 분석 API: POST /api/competition/analyze`); // competition 라우트 비활성화
-  console.log(`🖼️  거리뷰 이미지 분석 API: POST /api/roadview/analyze`);
-  console.log(`💬 리포트 Q&A API: POST /api/consulting/chat`);
-  
-  if (HOST === '0.0.0.0') {
-    console.log(`⚠️  보안 경고: 모든 네트워크 인터페이스에서 접근 가능합니다.`);
-    console.log(`🌐 다른 기기에서 접근: http://<로컬IP>:${PORT}`);
-  } else if (HOST !== 'localhost' && HOST !== '127.0.0.1') {
-    console.log(`🌐 다른 기기에서 접근: http://${HOST}:${PORT}`);
-  } else {
-    console.log(`🔒 로컬에서만 접근 가능 (다른 기기 접근 불가)`);
-  }
-});
+  app.listen(PORT, HOST, () => {
+    const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
+    console.log(`🚀 Server running on http://${displayHost}:${PORT}`);
+    console.log(`📊 Health check: http://${displayHost}:${PORT}/health`);
+    // console.log(`📊 경쟁 밀도 분석 API: POST /api/competition/analyze`); // competition 라우트 비활성화
+    console.log(`🖼️  거리뷰 이미지 분석 API: POST /api/roadview/analyze`);
+    console.log(`💬 리포트 Q&A API: POST /api/consulting/chat`);
+    
+    if (HOST === '0.0.0.0') {
+      console.log(`⚠️  보안 경고: 모든 네트워크 인터페이스에서 접근 가능합니다.`);
+      console.log(`🌐 다른 기기에서 접근: http://<로컬IP>:${PORT}`);
+    } else if (HOST !== 'localhost' && HOST !== '127.0.0.1') {
+      console.log(`🌐 다른 기기에서 접근: http://${HOST}:${PORT}`);
+    } else {
+      console.log(`🔒 로컬에서만 접근 가능 (다른 기기 접근 불가)`);
+    }
+  });
+} else {
+  console.log('🌐 Vercel 서버리스 환경에서 실행 중');
+}
 
+// Vercel 서버리스 함수로 export
 module.exports = app;
