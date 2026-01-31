@@ -162,22 +162,53 @@ async function updateAnalysis(analysisId, updates) {
  * 분석 결과 조회
  */
 async function getAnalysis(analysisId) {
-  const result = await pool.query(
-    `SELECT 
-      id, brand_id as "brandId", 
-      location_lat as "locationLat", 
-      location_lng as "locationLng", 
-      location_address as "locationAddress",
-      radius, initial_investment as "initialInvestment",
-      monthly_rent as "monthlyRent", area, owner_working as "ownerWorking",
-      target_daily_sales as "targetDailySales",
-      status, result, error_message as "errorMessage",
-      progress,
-      created_at as "createdAt", updated_at as "updatedAt"
-    FROM analyses 
-    WHERE id = $1`,
-    [analysisId]
-  );
+  let result;
+  let hasProgressColumn = true;
+  
+  // progress 컬럼이 있는지 확인하기 위해 먼저 시도
+  try {
+    result = await pool.query(
+      `SELECT 
+        id, brand_id as "brandId", 
+        location_lat as "locationLat", 
+        location_lng as "locationLng", 
+        location_address as "locationAddress",
+        radius, initial_investment as "initialInvestment",
+        monthly_rent as "monthlyRent", area, owner_working as "ownerWorking",
+        target_daily_sales as "targetDailySales",
+        status, result, error_message as "errorMessage",
+        progress,
+        created_at as "createdAt", updated_at as "updatedAt"
+      FROM analyses 
+      WHERE id = $1`,
+      [analysisId]
+    );
+  } catch (error) {
+    // progress 컬럼이 없는 경우 (에러 코드 42703: undefined_column)
+    if (error.code === '42703') {
+      console.warn('[getAnalysis] progress 컬럼이 없습니다. progress 없이 조회 재시도');
+      hasProgressColumn = false;
+      // progress 없이 재시도
+      result = await pool.query(
+        `SELECT 
+          id, brand_id as "brandId", 
+          location_lat as "locationLat", 
+          location_lng as "locationLng", 
+          location_address as "locationAddress",
+          radius, initial_investment as "initialInvestment",
+          monthly_rent as "monthlyRent", area, owner_working as "ownerWorking",
+          target_daily_sales as "targetDailySales",
+          status, result, error_message as "errorMessage",
+          created_at as "createdAt", updated_at as "updatedAt"
+        FROM analyses 
+        WHERE id = $1`,
+        [analysisId]
+      );
+    } else {
+      // 다른 에러는 그대로 throw
+      throw error;
+    }
+  }
 
   if (result.rows.length === 0) {
     return null;
@@ -194,16 +225,35 @@ async function getAnalysis(analysisId) {
     }
   }
 
-  // progress가 JSONB이면 파싱
-  if (row.progress && typeof row.progress === 'string') {
+  // progress가 JSONB이면 파싱 (컬럼이 있는 경우만)
+  if (hasProgressColumn && row.progress && typeof row.progress === 'string') {
     try {
       row.progress = JSON.parse(row.progress);
     } catch (e) {
       // 이미 객체인 경우
     }
+  } else if (!hasProgressColumn) {
+    // progress 컬럼이 없으면 null로 설정
+    row.progress = null;
   }
 
   // 응답 형식 변환
+  // result JSONB에 conditions가 있으면 우선 사용 (loans, exitInputs 포함)
+  let conditions = {
+    initialInvestment: parseInt(row.initialInvestment),
+    monthlyRent: parseInt(row.monthlyRent),
+    area: parseInt(row.area),
+    ownerWorking: row.ownerWorking
+  };
+  
+  // result JSONB에서 conditions를 가져와서 병합 (loans, exitInputs 포함)
+  if (row.result && row.result.conditions) {
+    conditions = {
+      ...conditions,
+      ...row.result.conditions
+    };
+  }
+
   return {
     id: row.id,
     status: row.status,
@@ -213,12 +263,7 @@ async function getAnalysis(analysisId) {
       lng: parseFloat(row.locationLng),
       address: row.locationAddress
     },
-    conditions: {
-      initialInvestment: parseInt(row.initialInvestment),
-      monthlyRent: parseInt(row.monthlyRent),
-      area: parseInt(row.area),
-      ownerWorking: row.ownerWorking
-    },
+    conditions: conditions,
     targetDailySales: parseInt(row.targetDailySales),
     result: row.result,
     error: row.errorMessage,

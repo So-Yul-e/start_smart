@@ -330,6 +330,12 @@
     var lng = latlng.getLng ? latlng.getLng() : latlng.lng;
     var rvContainer = document.getElementById('roadview');
     var fallback = document.getElementById('roadviewFallback');
+    var roadviewCard = document.getElementById('roadviewCard');
+
+    // 로드뷰 카드 표시
+    if (roadviewCard) {
+      roadviewCard.style.display = 'block';
+    }
 
     // 카카오 로드뷰 초기화
     if (!kakaoRoadview && typeof kakao !== 'undefined' && kakao.maps && kakao.maps.Roadview) {
@@ -340,6 +346,7 @@
         // 로드뷰 초기화 완료 이벤트
         kakao.maps.event.addListener(kakaoRoadview, 'init', function() {
           console.log('[카카오 로드뷰] 초기화 완료');
+          // 로드뷰 이미지 캡처 시도
           captureRoadviewImage();
         });
       } catch (e) {
@@ -366,7 +373,7 @@
         // 로드뷰 로드 완료 후 캡처
         setTimeout(function() {
           captureRoadviewImage();
-        }, 1000); // 로드뷰 렌더링 대기
+        }, 1500); // 로드뷰 렌더링 대기 (시간 약간 증가)
       });
     } else {
       console.warn('[카카오 로드뷰] 클라이언트가 초기화되지 않았습니다.');
@@ -375,45 +382,47 @@
   }
 
   // ── 로드뷰 이미지 캡처 ──
+  // 카카오 로드뷰에서 캡처한 이미지를 백엔드로 전송하여 AI 분석 수행
   function captureRoadviewImage() {
     if (!kakaoRoadview) {
-      console.warn('[로드뷰 캡처] 로드뷰 객체가 없습니다.');
       return;
     }
 
     try {
       var rvContainer = document.getElementById('roadview');
       if (!rvContainer) {
-        console.warn('[로드뷰 캡처] 컨테이너를 찾을 수 없습니다.');
         return;
       }
 
       // html2canvas를 사용하여 캡처 (동적 로드)
       if (typeof html2canvas === 'undefined') {
-        // html2canvas 동적 로드
         var script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
         script.onload = function() {
           captureRoadviewImage();
         };
         script.onerror = function() {
-          console.error('[로드뷰 캡처] html2canvas 로드 실패');
+          console.warn('[로드뷰 캡처] html2canvas 로드 실패');
         };
         document.head.appendChild(script);
         return;
       }
 
       // 캡처 실행
+      // allowTaint: true로 설정하여 CORS 에러가 있어도 캡처 시도
+      // 브라우저 콘솔에 CORS 경고가 나타날 수 있지만, 캡처는 가능합니다
       html2canvas(rvContainer, {
-        useCORS: true,
-        allowTaint: false,
+        useCORS: false, // CORS 사용 안 함 (외부 이미지 포함 시 tainted canvas 허용)
+        allowTaint: true, // tainted canvas 허용 (CORS 에러 무시)
         scale: 0.8, // 이미지 크기 축소 (네트워크 부하 감소)
-        logging: false
+        logging: false, // html2canvas 로그 비활성화
+        backgroundColor: null // 투명 배경
       }).then(function(canvas) {
         // Canvas를 Blob으로 변환
+        // tainted canvas는 toBlob은 가능하지만, getImageData는 제한될 수 있음
         canvas.toBlob(function(blob) {
           if (!blob) {
-            console.error('[로드뷰 캡처] Blob 변환 실패');
+            console.warn('[로드뷰 캡처] Blob 변환 실패');
             return;
           }
 
@@ -424,13 +433,17 @@
             capturedRoadviewImage = base64data;
             console.log('[로드뷰 캡처] 완료, 크기:', (base64data.length / 1024).toFixed(2) + 'KB');
           };
+          reader.onerror = function() {
+            console.warn('[로드뷰 캡처] Base64 변환 실패');
+          };
           reader.readAsDataURL(blob);
         }, 'image/jpeg', 0.85); // JPEG, 품질 85%
       }).catch(function(error) {
-        console.error('[로드뷰 캡처] 오류:', error);
+        // CORS 에러는 브라우저 콘솔에 표시되지만, 캡처는 계속 시도됨
+        console.warn('[로드뷰 캡처] 캡처 중 오류 (무시 가능):', error.message);
       });
     } catch (e) {
-      console.error('[로드뷰 캡처] 예외:', e);
+      console.warn('[로드뷰 캡처] 예외 발생:', e.message);
     }
   }
 
@@ -663,16 +676,69 @@
       return;
     }
 
+    // 대출 정보를 API 형식으로 변환 (원 단위, apr는 0-1 범위)
+    var formattedLoans = [];
+    if (loans && loans.length > 0) {
+      formattedLoans = loans
+        .filter(function(loan) {
+          // 유효한 대출만 포함 (원금, 이자율, 기간이 모두 입력된 경우)
+          var principal = parseInt(loan.principal);
+          var apr = parseFloat(loan.apr);
+          var termMonths = parseInt(loan.termMonths);
+          return principal > 0 && apr > 0 && apr <= 100 && termMonths > 0;
+        })
+        .map(function(loan) {
+          return {
+            principal: parseInt(loan.principal) * 10000, // 만원 → 원
+            apr: parseFloat(loan.apr) / 100, // % → 0-1 범위
+            termMonths: parseInt(loan.termMonths),
+            repaymentType: loan.repaymentType || 'equal_payment'
+          };
+        });
+    }
+
+    // Exit Plan 입력값을 API 형식으로 변환 (원 단위)
+    var exitInputs = null;
+    if (exitPlanExpanded && inputKeyMoney && inputDemolitionBase && inputDemolitionPerPyeong) {
+      // 실제로 값이 입력되었는지 확인 (하나라도 입력되면 exitInputs 생성)
+      var hasKeyMoney = inputKeyMoney.value && parseInt(inputKeyMoney.value) > 0;
+      var hasDemolitionBase = inputDemolitionBase.value && parseInt(inputDemolitionBase.value) > 0;
+      var hasDemolitionPerPyeong = inputDemolitionPerPyeong.value && parseInt(inputDemolitionPerPyeong.value) > 0;
+      var hasWorkingCapital = inputWorkingCapital.value && parseInt(inputWorkingCapital.value) > 0;
+      
+      if (hasKeyMoney || hasDemolitionBase || hasDemolitionPerPyeong || hasWorkingCapital) {
+        exitInputs = {
+          keyMoney: (inputKeyMoney.value ? parseInt(inputKeyMoney.value) * 10000 : 0),
+          pyeong: parseInt(inputArea.value) || 10,
+          demolitionBase: (inputDemolitionBase.value ? parseInt(inputDemolitionBase.value) * 10000 : 15000000),
+          demolitionPerPyeong: (inputDemolitionPerPyeong.value ? parseInt(inputDemolitionPerPyeong.value) * 10000 : 1000000),
+          workingCapital: (inputWorkingCapital.value ? parseInt(inputWorkingCapital.value) * 10000 : 0)
+        };
+      }
+    }
+
+    var conditions = {
+      initialInvestment: parseInt(inputInvestment.value) * 10000,
+      monthlyRent: parseInt(inputRent.value) * 10000,
+      area: parseInt(inputArea.value),
+      ownerWorking: inputOwnerWork.checked
+    };
+
+    // 대출 정보가 있으면 conditions에 추가
+    if (formattedLoans.length > 0) {
+      conditions.loans = formattedLoans;
+    }
+
+    // Exit Plan 입력값이 있으면 conditions에 추가
+    if (exitInputs) {
+      conditions.exitInputs = exitInputs;
+    }
+
     var analysisInput = {
       brandId: brand.id,
       location: selectedLocation,
       radius: selectedRadius,
-      conditions: {
-        initialInvestment: parseInt(inputInvestment.value) * 10000,
-        monthlyRent: parseInt(inputRent.value) * 10000,
-        area: parseInt(inputArea.value),
-        ownerWorking: inputOwnerWork.checked
-      },
+      conditions: conditions,
       targetDailySales: parseInt(inputDailySales.value),
       mapImage: capturedMapImage || null,
       roadviewImage: capturedRoadviewImage || null
