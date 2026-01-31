@@ -17,9 +17,10 @@
 ### 2. 실제 API 호출 테스트 결과
 ```json
 {
-  "imageUrl": "https://maps.googleapis.com/maps/api/streetview?size=800x600&location=37.499403,127.029708&key=AIzaSyDt368FF_c5cbzvYNtsRlLAZ4pryzXZZnE&fov=90&heading=0&pitch=0"
+  "imageUrl": "https://maps.googleapis.com/maps/api/streetview?size=800x600&location=37.499403,127.029708&key={GOOGLE_MAPS_API_KEY}&fov=90&heading=0&pitch=0"
 }
 ```
+⚠️ **보안 주의**: `{GOOGLE_MAPS_API_KEY}`를 실제 API 키로 교체하세요. API 키는 환경변수(`.env` 파일)에 저장하고 절대 코드에 하드코딩하지 마세요.
 
 ## 카카오 로드뷰 API 상태
 
