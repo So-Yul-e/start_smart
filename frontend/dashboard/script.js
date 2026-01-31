@@ -15,6 +15,46 @@
     return;
   }
 
+  // 데이터 검증 및 로깅
+  console.log('[대시보드] 분석 결과 데이터:', result);
+  console.log('[대시보드] 결과 데이터 타입:', typeof result);
+  console.log('[대시보드] 결과 데이터 키:', result ? Object.keys(result) : 'null');
+  console.log('[대시보드] finance:', result.finance, '타입:', typeof result.finance);
+  console.log('[대시보드] decision:', result.decision, '타입:', typeof result.decision);
+  console.log('[대시보드] aiConsulting:', result.aiConsulting, '타입:', typeof result.aiConsulting);
+  console.log('[대시보드] market:', result.market, '타입:', typeof result.market);
+  
+  // finance 구조 확인
+  if (result.finance) {
+    console.log('[대시보드] finance 키:', Object.keys(result.finance));
+    console.log('[대시보드] finance.monthlyProfit:', result.finance.monthlyProfit);
+    console.log('[대시보드] finance.paybackMonths:', result.finance.paybackMonths);
+  }
+  
+  // decision 구조 확인
+  if (result.decision) {
+    console.log('[대시보드] decision 키:', Object.keys(result.decision));
+    console.log('[대시보드] decision.score:', result.decision.score);
+    console.log('[대시보드] decision.survivalMonths:', result.decision.survivalMonths);
+  }
+
+  if (!result.finance || !result.decision || !result.aiConsulting || !result.market) {
+    console.error('[대시보드] 필수 데이터가 없습니다:', {
+      hasFinance: !!result.finance,
+      hasDecision: !!result.decision,
+      hasAiConsulting: !!result.aiConsulting,
+      hasMarket: !!result.market
+    });
+    document.querySelector('.container').innerHTML =
+      '<div style="text-align:center; padding:6rem 2rem;">' +
+      '<i class="fa-solid fa-exclamation-triangle" style="font-size:4rem; color:#f87171; margin-bottom:1.5rem;"></i>' +
+      '<h2 style="margin-bottom:1rem;">분석 데이터가 불완전합니다</h2>' +
+      '<p style="color:var(--text-muted); margin-bottom:2rem;">브라우저 콘솔을 확인하세요.</p>' +
+      '<a href="../brand/" class="btn-cta">다시 분석하기</a>' +
+      '</div>';
+    return;
+  }
+
   var finance = result.finance;
   var decision = result.decision;
   var ai = result.aiConsulting;
@@ -53,14 +93,21 @@
   // ═══════════════════════════════════════════
 
   // Score Circle
-  var scoreColor = Utils.scoreColor(decision.score);
+  var score = decision.score || 0;
+  console.log('[대시보드] 점수:', score);
+  var scoreColor = Utils.scoreColor(score);
   var scoreCircle = document.getElementById('scoreCircle');
-  scoreCircle.style.setProperty('--score-color', scoreColor);
-  setTimeout(function () {
-    scoreCircle.style.setProperty('--score-pct', decision.score);
-  }, 100);
-  document.getElementById('scoreNum').textContent = decision.score;
-  document.getElementById('scoreNum').style.color = scoreColor;
+  if (scoreCircle) {
+    scoreCircle.style.setProperty('--score-color', scoreColor);
+    setTimeout(function () {
+      scoreCircle.style.setProperty('--score-pct', score);
+    }, 100);
+    var scoreNumEl = document.getElementById('scoreNum');
+    if (scoreNumEl) {
+      scoreNumEl.textContent = score;
+      scoreNumEl.style.color = scoreColor;
+    }
+  }
 
   var sig = Utils.getSignal(decision.signal);
   document.getElementById('signalBadge').innerHTML =
@@ -70,32 +117,76 @@
     decision.riskFactors && decision.riskFactors[0] ? decision.riskFactors[0] : '';
 
   // Metrics
-  document.getElementById('mSurvival').textContent = decision.survivalMonths + '개월';
-  document.getElementById('mSurvivalSub').textContent = decision.survivalMonths >= 36 ? '안정적' : '관리 필요';
+  var survivalMonths = decision.survivalMonths || 0;
+  var paybackMonths = finance.paybackMonths || 999;
+  var monthlyProfit = finance.monthlyProfit || 0;
+  var monthlyRevenue = finance.monthlyRevenue || 0;
+  var breakEvenDailySales = finance.breakEvenDailySales || 0;
 
-  document.getElementById('mPayback').textContent = finance.paybackMonths >= 999 ? '회수 불가' : finance.paybackMonths + '개월';
-  document.getElementById('mPaybackSub').textContent = finance.paybackMonths <= 24 ? '빠른 회수' : finance.paybackMonths <= 36 ? '평균 수준' : '장기 소요';
-  if (finance.paybackMonths > 36) {
-    document.getElementById('mPayback').style.color = '#f87171';
+  console.log('[대시보드] 메트릭:', {
+    survivalMonths: survivalMonths,
+    paybackMonths: paybackMonths,
+    monthlyProfit: monthlyProfit,
+    monthlyRevenue: monthlyRevenue,
+    breakEvenDailySales: breakEvenDailySales
+  });
+
+  var mSurvivalEl = document.getElementById('mSurvival');
+  if (mSurvivalEl) {
+    mSurvivalEl.textContent = survivalMonths + '개월';
+    var mSurvivalSubEl = document.getElementById('mSurvivalSub');
+    if (mSurvivalSubEl) {
+      mSurvivalSubEl.textContent = survivalMonths >= 36 ? '안정적' : '관리 필요';
+    }
   }
 
-  document.getElementById('mProfit').textContent = Utils.formatKRW(finance.monthlyProfit);
-  if (finance.monthlyProfit <= 0) {
-    document.getElementById('mProfit').style.color = '#f87171';
-    document.getElementById('mProfitSub').textContent = '적자';
-    document.getElementById('mProfitSub').style.color = '#f87171';
-  } else {
-    var margin = Math.round(finance.monthlyProfit / finance.monthlyRevenue * 100);
-    document.getElementById('mProfitSub').textContent = '마진율 ' + margin + '%';
+  var mPaybackEl = document.getElementById('mPayback');
+  if (mPaybackEl) {
+    mPaybackEl.textContent = paybackMonths >= 999 ? '회수 불가' : paybackMonths + '개월';
+    var mPaybackSubEl = document.getElementById('mPaybackSub');
+    if (mPaybackSubEl) {
+      mPaybackSubEl.textContent = paybackMonths <= 24 ? '빠른 회수' : paybackMonths <= 36 ? '평균 수준' : '장기 소요';
+    }
+    if (paybackMonths > 36) {
+      mPaybackEl.style.color = '#f87171';
+    }
   }
 
-  document.getElementById('mBreakeven').textContent = finance.breakEvenDailySales + '잔/일';
-  document.getElementById('mBreakevenSub').textContent = '이상 판매 시 흑자 전환';
+  var mProfitEl = document.getElementById('mProfit');
+  if (mProfitEl) {
+    mProfitEl.textContent = Utils.formatKRW(monthlyProfit);
+    if (monthlyProfit <= 0) {
+      mProfitEl.style.color = '#f87171';
+      var mProfitSubEl = document.getElementById('mProfitSub');
+      if (mProfitSubEl) {
+        mProfitSubEl.textContent = '적자';
+        mProfitSubEl.style.color = '#f87171';
+      }
+    } else {
+      var margin = monthlyRevenue > 0 ? Math.round(monthlyProfit / monthlyRevenue * 100) : 0;
+      var mProfitSubEl = document.getElementById('mProfitSub');
+      if (mProfitSubEl) {
+        mProfitSubEl.textContent = '마진율 ' + margin + '%';
+      }
+    }
+  }
+
+  var mBreakevenEl = document.getElementById('mBreakeven');
+  if (mBreakevenEl) {
+    mBreakevenEl.textContent = breakEvenDailySales + '잔/일';
+    var mBreakevenSubEl = document.getElementById('mBreakevenSub');
+    if (mBreakevenSubEl) {
+      mBreakevenSubEl.textContent = '이상 판매 시 흑자 전환';
+    }
+  }
 
   // Hardcut Warnings
   var warnings = [];
-  if (finance.paybackMonths >= 36) {
-    warnings.push({ type: 'danger', text: '투자 회수 기간이 ' + finance.paybackMonths + '개월로 36개월을 초과합니다. 구조적 재검토가 필요합니다.' });
+  if (finance.paybackMonths === null || finance.paybackMonths >= 36) {
+    var paybackText = finance.paybackMonths === null
+      ? '투자 회수가 불가능한 구조입니다. 구조적 재검토가 필요합니다.'
+      : '투자 회수 기간이 ' + finance.paybackMonths + '개월로 36개월을 초과합니다. 구조적 재검토가 필요합니다.';
+    warnings.push({ type: 'danger', text: paybackText });
   }
   if (finance.monthlyProfit <= 0) {
     warnings.push({ type: 'danger', text: '월 순이익이 적자(' + Utils.formatKRW(finance.monthlyProfit) + ')입니다. 비용 절감 또는 매출 증대가 시급합니다.' });
@@ -147,9 +238,9 @@
 
   // Sensitivity Chart
   var sensData = [
-    { label: '-10%', value: finance.sensitivity.minus10.monthlyProfit, months: finance.sensitivity.minus10.paybackMonths },
-    { label: '기준', value: finance.monthlyProfit, months: finance.paybackMonths },
-    { label: '+10%', value: finance.sensitivity.plus10.monthlyProfit, months: finance.sensitivity.plus10.paybackMonths }
+    { label: '-10%', value: finance.sensitivity.minus10.monthlyProfit, months: finance.sensitivity.minus10.paybackMonths === null ? 999 : finance.sensitivity.minus10.paybackMonths },
+    { label: '기준', value: finance.monthlyProfit, months: paybackMonths },
+    { label: '+10%', value: finance.sensitivity.plus10.monthlyProfit, months: finance.sensitivity.plus10.paybackMonths === null ? 999 : finance.sensitivity.plus10.paybackMonths }
   ];
 
   var maxVal = 0;
@@ -245,21 +336,48 @@
 
   // Scenario comparison chart
   var scenarios = ai.salesScenario;
-  var brand = MockData.getBrandById(result.brand.id);
-  var avgPrice = brand && brand.position === '프리미엄' ? 5500 : brand && brand.position === '표준' ? 4000 : 3000;
-
-  var scenRevs = [
-    { label: '보수적', daily: scenarios.conservative },
-    { label: '기대치', daily: scenarios.expected },
-    { label: '낙관적', daily: scenarios.optimistic }
-  ];
-
-  var maxRev = 0;
-  for (var sc = 0; sc < scenRevs.length; sc++) {
-    var rev = scenRevs[sc].daily * avgPrice * 30;
-    scenRevs[sc].revenue = rev;
-    if (rev > maxRev) maxRev = rev;
+  // result.brand에 이미 정보가 있거나, API에서 가져오기
+  var brand = result.brand;
+  var brandPosition = brand.position || (brand.id ? null : '스탠다드'); // 기본값
+  
+  // 브랜드 정보가 부족하면 API에서 가져오기
+  if (!brandPosition && brand.id) {
+    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 
+                     (window.location.protocol + '//' + window.location.hostname + ':3000');
+    fetch(apiBaseUrl + '/api/brands')
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        if (data.success && data.brands) {
+          var foundBrand = data.brands.find(function(b) { return b.id === brand.id; });
+          if (foundBrand) {
+            brandPosition = foundBrand.position;
+            updateScenarioChart(foundBrand.position);
+          }
+        }
+      })
+      .catch(function(error) {
+        console.warn('브랜드 정보를 가져올 수 없어 기본값 사용:', error);
+        updateScenarioChart('스탠다드');
+      });
+  } else {
+    updateScenarioChart(brandPosition || '스탠다드');
   }
+  
+  function updateScenarioChart(position) {
+    var avgPrice = position === '프리미엄' ? 5500 : position === '스탠다드' ? 4000 : 3000;
+
+    var scenRevs = [
+      { label: '보수적', daily: scenarios.conservative },
+      { label: '기대치', daily: scenarios.expected },
+      { label: '낙관적', daily: scenarios.optimistic }
+    ];
+
+    var maxRev = 0;
+    for (var sc = 0; sc < scenRevs.length; sc++) {
+      var rev = scenRevs[sc].daily * avgPrice * 30;
+      scenRevs[sc].revenue = rev;
+      if (rev > maxRev) maxRev = rev;
+    }
 
   var scenHtml = '';
   var scenColors = ['#94a3b8', 'var(--gold)', '#4ade80'];
@@ -273,6 +391,7 @@
       '</div>';
   }
   document.getElementById('scenarioChart').innerHTML = scenHtml;
+  } // end updateScenarioChart
 
   // ═══════════════════════════════════════════
   // Simulation Save / Load / Compare

@@ -21,11 +21,33 @@ const { generateConsulting } = require('../../ai/consulting');
  * @param {Function} updateAnalysis - 분석 결과 업데이트 함수 (DB 저장)
  */
 async function runAnalysis(analysisRequest, updateAnalysis) {
+  console.log('[runAnalysis] 함수 호출됨!', {
+    hasRequest: !!analysisRequest,
+    hasUpdateAnalysis: typeof updateAnalysis === 'function',
+    requestKeys: analysisRequest ? Object.keys(analysisRequest) : []
+  });
+  
   const { analysisId, brandId, location, radius, conditions, targetDailySales } = analysisRequest;
+  const startTime = Date.now();
+
+  console.log(`[${analysisId}] 🚀 분석 시작 준비...`, {
+    analysisId,
+    brandId,
+    hasLocation: !!location,
+    hasConditions: !!conditions,
+    targetDailySales
+  });
 
   try {
     // 분석 상태를 processing으로 변경
-    await updateAnalysis(analysisId, { status: 'processing' });
+    console.log(`[${analysisId}] 📝 상태를 processing으로 변경 중...`);
+    try {
+      const updateResult = await updateAnalysis(analysisId, { status: 'processing' });
+      console.log(`[${analysisId}] ✅ 상태 변경 완료:`, updateResult ? '성공' : '실패');
+    } catch (updateError) {
+      console.error(`[${analysisId}] ❌ 상태 변경 실패:`, updateError);
+      throw updateError;
+    }
 
     console.log(`[${analysisId}] 🚀 분석 시작...`);
 
@@ -77,17 +99,21 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     }
 
     // 1. 상권 분석
+    const step1Start = Date.now();
     console.log(`[${analysisId}] 📊 1/5 상권 분석 시작...`);
     let market;
     try {
       market = await analyzeMarket(location, radius, brandId);
-      console.log(`[${analysisId}] ✅ 상권 분석 완료`);
+      const step1Time = ((Date.now() - step1Start) / 1000).toFixed(2);
+      console.log(`[${analysisId}] ✅ 상권 분석 완료 (${step1Time}초)`);
     } catch (error) {
-      console.error(`[${analysisId}] ❌ 상권 분석 실패:`, error);
+      const step1Time = ((Date.now() - step1Start) / 1000).toFixed(2);
+      console.error(`[${analysisId}] ❌ 상권 분석 실패 (${step1Time}초):`, error);
       throw new Error(`상권 분석 실패: ${error.message}`);
     }
 
     // 2. 손익 계산
+    const step2Start = Date.now();
     console.log(`[${analysisId}] 💰 2/5 손익 계산 시작...`);
     let finance;
     try {
@@ -97,9 +123,11 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         market, // 상권 분석 결과 전달
         targetDailySales
       });
-      console.log(`[${analysisId}] ✅ 손익 계산 완료`);
+      const step2Time = ((Date.now() - step2Start) / 1000).toFixed(2);
+      console.log(`[${analysisId}] ✅ 손익 계산 완료 (${step2Time}초)`);
     } catch (error) {
-      console.error(`[${analysisId}] ❌ 손익 계산 실패:`, error);
+      const step2Time = ((Date.now() - step2Start) / 1000).toFixed(2);
+      console.error(`[${analysisId}] ❌ 손익 계산 실패 (${step2Time}초):`, error);
       throw new Error(`손익 계산 실패: ${error.message}`);
     }
 
@@ -108,6 +136,7 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     // 따라서 Google Street View Static API를 사용하여 로드뷰 이미지 URL을 가져온 후,
     // ai/roadview 모듈에 전달하여 Gemini Vision API로 분석합니다.
     // 프론트엔드에서는 카카오 로드뷰 JavaScript API로 사용자에게 로드뷰를 표시할 수 있습니다.
+    const step3Start = Date.now();
     console.log(`[${analysisId}] 🗺️ 3/5 로드뷰 분석 시작...`);
     let roadview;
     try {
@@ -124,10 +153,12 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
           imageUrl: roadviewInfo.imageUrl, // Google Street View 이미지 URL
           source: roadviewInfo.source // 'google' | 'naver' | 'kakao'
         });
-        console.log(`[${analysisId}] ✅ 로드뷰 분석 완료 (소스: ${roadviewInfo.source})`);
+        const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
+        console.log(`[${analysisId}] ✅ 로드뷰 분석 완료 (${step3Time}초, 소스: ${roadviewInfo.source})`);
       } catch (roadviewError) {
         // ai/roadview 모듈이 아직 구현되지 않았거나 오류 발생 시 기본값 사용
-        console.warn(`[${analysisId}] ⚠️  ai/roadview 모듈 호출 실패: ${roadviewError.message}`);
+        const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
+        console.warn(`[${analysisId}] ⚠️  ai/roadview 모듈 호출 실패 (${step3Time}초): ${roadviewError.message}`);
         console.warn(`[${analysisId}] ⚠️  기본값으로 대체합니다.`);
         roadview = {
           location: { lat: location.lat, lng: location.lng },
@@ -139,7 +170,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         };
       }
     } catch (error) {
-      console.error(`[${analysisId}] ❌ 로드뷰 이미지 URL 가져오기 실패:`, error);
+      const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
+      console.error(`[${analysisId}] ❌ 로드뷰 이미지 URL 가져오기 실패 (${step3Time}초):`, error);
       // 로드뷰 분석 실패 시에도 기본값으로 계속 진행
       roadview = {
         location: { lat: location.lat, lng: location.lng },
@@ -151,16 +183,26 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     }
 
     // 4. AI 컨설팅
+    const step4Start = Date.now();
     console.log(`[${analysisId}] 🤖 4/5 AI 컨설팅 생성 시작...`);
     let aiConsulting;
     try {
-      aiConsulting = await generateConsulting({
+      // AI 컨설팅에 타임아웃 설정 (30초)
+      const consultingPromise = generateConsulting({
         brand, location, conditions, targetDailySales,
         finance, market, roadview
       });
-      console.log(`[${analysisId}] ✅ AI 컨설팅 생성 완료`);
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('AI 컨설팅 타임아웃 (30초)')), 30000);
+      });
+      
+      aiConsulting = await Promise.race([consultingPromise, timeoutPromise]);
+      const step4Time = ((Date.now() - step4Start) / 1000).toFixed(2);
+      console.log(`[${analysisId}] ✅ AI 컨설팅 생성 완료 (${step4Time}초)`);
     } catch (error) {
-      console.error(`[${analysisId}] ❌ AI 컨설팅 생성 실패:`, error);
+      const step4Time = ((Date.now() - step4Start) / 1000).toFixed(2);
+      console.error(`[${analysisId}] ❌ AI 컨설팅 생성 실패 (${step4Time}초):`, error);
       // AI 컨설팅 실패 시 기본값 사용 (전체 분석 실패로 이어지지 않도록)
       aiConsulting = {
         salesScenario: { conservative: 200, expected: 250, optimistic: 300 },
@@ -173,6 +215,7 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     }
 
     // 5. 판단 계산
+    const step5Start = Date.now();
     console.log(`[${analysisId}] ⚖️ 5/5 판단 계산 시작...`);
     let decision;
     try {
@@ -184,9 +227,11 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         brand,      // 개선 시뮬레이션용
         targetDailySales // 개선 시뮬레이션용
       });
-      console.log(`[${analysisId}] ✅ 판단 계산 완료`);
+      const step5Time = ((Date.now() - step5Start) / 1000).toFixed(2);
+      console.log(`[${analysisId}] ✅ 판단 계산 완료 (${step5Time}초)`);
     } catch (error) {
-      console.error(`[${analysisId}] ❌ 판단 계산 실패:`, error);
+      const step5Time = ((Date.now() - step5Start) / 1000).toFixed(2);
+      console.error(`[${analysisId}] ❌ 판단 계산 실패 (${step5Time}초):`, error);
       throw new Error(`판단 계산 실패: ${error.message}`);
     }
 
@@ -222,7 +267,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
       result: finalResult
     });
 
-    console.log(`[${analysisId}] 🎉 분석 완료!`);
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(`[${analysisId}] 🎉 분석 완료! (총 ${totalTime}초 소요)`);
     return finalResult;
   } catch (error) {
     console.error(`[${analysisId}] ❌ 분석 실패:`, error);

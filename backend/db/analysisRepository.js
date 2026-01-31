@@ -17,29 +17,89 @@ async function createAnalysis(analysisData) {
     targetDailySales
   } = analysisData;
 
-  const result = await pool.query(
-    `INSERT INTO analyses (
-      id, brand_id, location_lat, location_lng, location_address, radius,
-      initial_investment, monthly_rent, area, owner_working, target_daily_sales, status
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-    RETURNING *`,
-    [
-      id,
-      brandId,
-      location.lat,
-      location.lng,
-      location.address || null,
-      radius,
-      conditions.initialInvestment,
-      conditions.monthlyRent,
-      conditions.area,
-      conditions.ownerWorking,
-      targetDailySales,
-      'pending'
-    ]
-  );
+  // 입력 데이터 검증 및 로깅
+  console.log('[createAnalysis] 입력 데이터:', {
+    hasId: !!id,
+    hasBrandId: !!brandId,
+    hasLocation: !!location,
+    locationType: typeof location,
+    locationKeys: location ? Object.keys(location) : null,
+    hasRadius: radius !== undefined,
+    hasConditions: !!conditions,
+    conditionsKeys: conditions ? Object.keys(conditions) : null,
+    hasTargetDailySales: targetDailySales !== undefined
+  });
 
-  return result.rows[0];
+  // location 객체 검증
+  if (!location || typeof location !== 'object') {
+    throw new Error('location은 객체여야 합니다.');
+  }
+  if (location.lat === undefined || location.lng === undefined) {
+    throw new Error('location에 lat과 lng가 필요합니다.');
+  }
+
+  // conditions 객체 검증
+  if (!conditions || typeof conditions !== 'object') {
+    throw new Error('conditions는 객체여야 합니다.');
+  }
+  if (conditions.initialInvestment === undefined || 
+      conditions.monthlyRent === undefined || 
+      conditions.area === undefined || 
+      conditions.ownerWorking === undefined) {
+    throw new Error('conditions에 initialInvestment, monthlyRent, area, ownerWorking이 필요합니다.');
+  }
+
+  try {
+    // 기존 분석이 있는지 확인 (같은 ID로)
+    const existingCheck = await pool.query(
+      'SELECT id, status, result FROM analyses WHERE id = $1',
+      [id]
+    );
+    
+    if (existingCheck.rows.length > 0) {
+      const existing = existingCheck.rows[0];
+      console.warn('[createAnalysis] ⚠️  이미 존재하는 분석 ID:', id, '상태:', existing.status, 'result 있음:', !!existing.result);
+      // 기존 분석이 완료되어 있으면 삭제하고 새로 생성
+      if (existing.status === 'completed' && existing.result) {
+        console.log('[createAnalysis] 기존 완료된 분석 삭제 후 재생성');
+        await pool.query('DELETE FROM analyses WHERE id = $1', [id]);
+      } else {
+        // 진행 중이면 기존 것 사용
+        console.log('[createAnalysis] 기존 분석 사용:', existing.status);
+        return existing;
+      }
+    }
+
+    const result = await pool.query(
+      `INSERT INTO analyses (
+        id, brand_id, location_lat, location_lng, location_address, radius,
+        initial_investment, monthly_rent, area, owner_working, target_daily_sales, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING *`,
+      [
+        id,
+        brandId,
+        parseFloat(location.lat),
+        parseFloat(location.lng),
+        location.address || null,
+        radius || 500,
+        parseInt(conditions.initialInvestment),
+        parseInt(conditions.monthlyRent),
+        parseInt(conditions.area),
+        Boolean(conditions.ownerWorking),
+        parseInt(targetDailySales),
+        'pending'
+      ]
+    );
+
+    console.log('[createAnalysis] DB 저장 성공:', result.rows[0].id, '상태:', result.rows[0].status);
+    return result.rows[0];
+  } catch (dbError) {
+    console.error('[createAnalysis] DB 쿼리 오류:', dbError);
+    console.error('[createAnalysis] DB 쿼리 오류 메시지:', dbError.message);
+    console.error('[createAnalysis] DB 쿼리 오류 코드:', dbError.code);
+    throw dbError;
+  }
 }
 
 /**

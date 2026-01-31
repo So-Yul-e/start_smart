@@ -362,10 +362,13 @@
 
     if (!brand || !brand.id) {
       console.error('[분석 실행] 브랜드가 선택되지 않았습니다.');
+      console.error('[분석 실행] brand 객체:', brand);
       alert('브랜드를 먼저 선택해주세요.');
       window.location.href = '../brand/';
       return;
     }
+    
+    console.log('[분석 실행] 사용할 브랜드 ID:', brand.id);
 
     if (!selectedLocation) {
       console.error('[분석 실행] 위치가 선택되지 않았습니다.');
@@ -469,7 +472,7 @@
 
   // ── 분석 결과 폴링 ──
   function pollAnalysisResult(analysisId, apiBaseUrl) {
-    var maxAttempts = 30; // 최대 30번 시도 (약 30초)
+    var maxAttempts = 120; // 최대 120번 시도 (약 2분)
     var attempt = 0;
     var pollInterval = 1000; // 1초마다 확인
 
@@ -485,12 +488,28 @@
           return response.json();
         })
         .then(function(data) {
+          console.log('[분석 실행] 응답 상태:', data.status, '결과 있음:', !!data.result);
+          
           if (data.status === 'completed' && data.result) {
             console.log('[분석 실행] 분석 완료!');
+            console.log('[분석 실행] 받은 결과 데이터:', data.result);
+            console.log('[분석 실행] 결과 데이터 구조:', {
+              hasId: !!data.result.id,
+              hasBrand: !!data.result.brand,
+              hasLocation: !!data.result.location,
+              hasFinance: !!data.result.finance,
+              hasDecision: !!data.result.decision,
+              hasAiConsulting: !!data.result.aiConsulting,
+              hasMarket: !!data.result.market,
+              hasRoadview: !!data.result.roadview,
+              resultKeys: Object.keys(data.result || {})
+            });
             
             // 결과 저장
             Utils.saveSession('analysisResult', data.result);
             Utils.saveSession('analysisId', analysisId);
+            
+            console.log('[분석 실행] 세션 저장 완료');
             
             // 대시보드로 이동
             setTimeout(function() {
@@ -503,7 +522,7 @@
             if (attempt < maxAttempts) {
               setTimeout(poll, pollInterval);
             } else {
-              throw new Error('분석 시간 초과 (30초)');
+              throw new Error('분석 시간 초과 (2분). 서버 로그를 확인하세요.');
             }
           }
         })
@@ -519,7 +538,8 @@
             errorMsg.className = 'error-message';
             errorMsg.style.cssText = 'text-align:center; color:#f87171; margin-top:2rem; padding:1rem; background:rgba(248,113,113,0.1); border-radius:8px;';
             errorMsg.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> 분석 결과를 가져오는 중 오류가 발생했습니다.<br>' + 
-                                 '<span style="font-size:0.85rem; margin-top:0.5rem; display:block;">' + error.message + '</span>';
+                                 '<span style="font-size:0.85rem; margin-top:0.5rem; display:block;">' + error.message + '</span>' +
+                                 '<span style="font-size:0.75rem; margin-top:0.5rem; display:block; color:var(--text-muted);">분석 ID: ' + analysisId + '</span>';
             
             var stepsContainer = document.getElementById('loadingSteps');
             stepsContainer.appendChild(errorMsg);
@@ -527,7 +547,7 @@
             setTimeout(function() {
               overlay.classList.remove('active');
               errorMsg.remove();
-            }, 3000);
+            }, 5000);
           }
         });
     }
