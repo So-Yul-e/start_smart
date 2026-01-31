@@ -19,23 +19,24 @@
       <i class="fa-solid fa-leaf text-gold"></i> StartSmart
     </a>
     <nav class="nav">
-      <a href="#home" class="active">Home</a>
-      <a href="#brands">Brands</a>
-      <a href="#how">How It Works</a>
+      <a href="#home" class="active">홈</a>
+      <a href="#brands">브랜드</a>
+      <a href="#how">이용 방법</a>
+      <a href="dashboard/?tab=compare"><i class="fa-solid fa-clock-rotate-left" style="margin-right:4px;"></i>히스토리</a>
     </nav>
   </header>
 
   <!-- Hero Section -->
   <section id="home" class="hero">
     <div class="hero-content">
-      <span class="badge-pill" data-aos="fade-down">AI-Powered Consulting</span>
-      <h1 data-aos="fade-up" data-aos-delay="100">The Future of<br>Cafe Franchise</h1>
+      <span class="badge-pill" data-aos="fade-down">AI 기반 컨설팅</span>
+      <h1 data-aos="fade-up" data-aos-delay="100">카페 창업의<br>미래</h1>
       <p data-aos="fade-up" data-aos-delay="200">
         빅데이터와 AI가 완벽하게 분석한 당신의 성공 창업.<br>
         감각적인 인사이트를 지금 경험해보세요.
       </p>
       <a href="brand/" class="btn-cta" data-aos="zoom-in" data-aos-delay="300">
-        Start Journey <i class="fa-solid fa-arrow-right" style="margin-left:10px;"></i>
+        시작하기 <i class="fa-solid fa-arrow-right" style="margin-left:10px;"></i>
       </a>
     </div>
   </section>
@@ -44,7 +45,7 @@
   <section id="brands" class="section">
     <div class="container">
       <div class="section-title" data-aos="fade-up">
-        <h2>Select Your Brand</h2>
+        <h2>지원 브랜드</h2>
         <p>12개 카페 프랜차이즈 브랜드를 지원합니다</p>
       </div>
 
@@ -62,7 +63,7 @@
   <section id="how" class="section" style="background:var(--bg-section);">
     <div class="container">
       <div class="section-title" data-aos="fade-up">
-        <h2>How It Works</h2>
+        <h2>이용 방법</h2>
         <p>4단계로 완성되는 AI 창업 분석</p>
       </div>
 
@@ -102,6 +103,28 @@
     </div>
   </section>
 
+  <!-- CTA Section -->
+  <section class="section" style="padding:6rem 0;">
+    <div class="container" style="text-align:center;">
+      <div data-aos="fade-up">
+        <i class="fa-solid fa-rocket" style="font-size:3rem; color:var(--gold); margin-bottom:1.5rem;"></i>
+        <h2 style="font-size:2rem; margin-bottom:1rem;">지금 바로 시작하세요</h2>
+        <p style="color:var(--text-muted); font-size:1.05rem; max-width:520px; margin:0 auto 2.5rem; line-height:1.7;">
+          데이터가 증명하는 창업 판단.<br>
+          AI가 분석하고, 당신이 결정합니다.
+        </p>
+      </div>
+      <div data-aos="zoom-in" data-aos-delay="150" style="display:flex; justify-content:center; gap:1rem; flex-wrap:wrap;">
+        <a href="brand/" class="btn-cta" style="font-size:1.1rem; padding:1rem 2.5rem;">
+          브랜드 선택하기 <i class="fa-solid fa-arrow-right" style="margin-left:10px;"></i>
+        </a>
+        <a href="dashboard/?tab=compare" class="btn-cta" style="font-size:1.1rem; padding:1rem 2.5rem; background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--text-main);">
+          <i class="fa-solid fa-clock-rotate-left" style="margin-right:8px;"></i> 이전 분석 보기
+        </a>
+      </div>
+    </div>
+  </section>
+
   <footer style="text-align: center; padding: 4rem 0; color: var(--text-muted); opacity: 0.5;">
     <p>&copy; 2024 StartSmart. Premium Intelligence.</p>
   </footer>
@@ -121,7 +144,7 @@
 
     // Render first 6 brands
     var brandGrid = document.getElementById('brandGrid');
-    var brandsToShow = MockData.brands.slice(0, 6);
+    var brandsToShow = MockData.brands.slice(0, 8);
 
     brandsToShow.forEach(function (brand, index) {
       var card = document.createElement('div');
