@@ -10,6 +10,7 @@
  */
 
 const axios = require('axios');
+const xml2js = require('xml2js');
 
 /**
  * 반경 내 카페 검색
@@ -21,23 +22,57 @@ async function searchNearbyCafes(location, radius) {
   try {
     // 소상공인시장진흥공단 API 우선 사용 (가장 정확한 상권 데이터)
     if (process.env.SMALL_BUSINESS_MARKET_API_KEY) {
-      return await searchWithSmallBusiness(location, radius);
+      try {
+        const result = await searchWithSmallBusiness(location, radius);
+        // 데이터가 있으면 반환, 없으면 다음 API 시도
+        if (result && result.length > 0) {
+          return result;
+        }
+        console.log('소상공인시장진흥공단 API에서 데이터를 찾지 못했습니다. 다음 API를 시도합니다...');
+      } catch (error) {
+        console.warn('소상공인시장진흥공단 API 오류, 다음 API를 시도합니다:', error.message);
+      }
     }
+    
     // Kakao Maps API
-    else if (process.env.KAKAO_REST_API_KEY) {
-      return await searchWithKakao(location, radius);
+    if (process.env.KAKAO_REST_API_KEY) {
+      try {
+        const result = await searchWithKakao(location, radius);
+        if (result && result.length > 0) {
+          return result;
+        }
+      } catch (error) {
+        console.warn('카카오맵 API 오류, 다음 API를 시도합니다:', error.message);
+      }
     }
+    
     // 네이버지도 API
-    else if (process.env.NAVER_MAP_CLIENT_ID) {
-      return await searchWithNaver(location, radius);
+    if (process.env.NAVER_MAP_CLIENT_ID) {
+      try {
+        const result = await searchWithNaver(location, radius);
+        if (result && result.length > 0) {
+          return result;
+        }
+      } catch (error) {
+        console.warn('네이버지도 API 오류, 다음 API를 시도합니다:', error.message);
+      }
     }
+    
     // Google Maps API
-    else if (process.env.GOOGLE_MAPS_API_KEY) {
-      return await searchWithGoogle(location, radius);
-    } else {
-      console.warn('지도 API 키가 설정되지 않았습니다. 임시 데이터를 반환합니다.');
-      return getMockCafes(location, radius);
+    if (process.env.GOOGLE_MAPS_API_KEY) {
+      try {
+        const result = await searchWithGoogle(location, radius);
+        if (result && result.length > 0) {
+          return result;
+        }
+      } catch (error) {
+        console.warn('구글맵 API 오류:', error.message);
+      }
     }
+    
+    // 모든 API가 실패한 경우
+    console.warn('모든 지도 API에서 데이터를 찾지 못했습니다. 임시 데이터를 반환합니다.');
+    return getMockCafes(location, radius);
   } catch (error) {
     console.error('지도 API 검색 오류:', error);
     // 오류 발생 시 임시 데이터 반환
@@ -69,13 +104,28 @@ async function searchWithSmallBusiness(location, radius) {
   try {
     const response = await axios.get(baseUrl, { params });
     
-    // XML 응답 파싱 (간단한 파싱, 실제로는 xml2js 등 사용 권장)
-    if (response.data.response?.body?.items?.item) {
-      const items = Array.isArray(response.data.response.body.items.item) 
-        ? response.data.response.body.items.item 
-        : [response.data.response.body.items.item];
+    // 응답 형식 확인 (XML 또는 JSON)
+    console.log('소상공인시장진흥공단 API 응답 타입:', typeof response.data);
+    console.log('응답 데이터 샘플:', JSON.stringify(response.data).substring(0, 500));
+    
+    // JSON 응답 처리
+    if (typeof response.data === 'object' && response.data.response) {
+      const body = response.data.response.body;
       
-      return items.map(store => ({
+      // 데이터가 없는 경우
+      if (!body || body.totalCount === 0 || !body.items) {
+        console.log('반경 내 카페가 없습니다.');
+        return [];
+      }
+      
+      const items = body.items.item;
+      if (!items) {
+        return [];
+      }
+      
+      const itemArray = Array.isArray(items) ? items : [items];
+      
+      return itemArray.map(store => ({
         name: store.bizesNm || store.bizNm || '카페',
         address: store.rdnmAdr || store.rdnm || store.adongNm || '',
         lat: parseFloat(store.lat) || location.lat,
@@ -86,11 +136,58 @@ async function searchWithSmallBusiness(location, radius) {
       }));
     }
     
+    // XML 응답인 경우 (문자열로 반환됨)
+    if (typeof response.data === 'string' && (response.data.includes('<?xml') || response.data.includes('<response>'))) {
+      try {
+        const parser = new xml2js.Parser();
+        const parsed = await parser.parseStringPromise(response.data);
+        
+        // 에러 체크
+        if (parsed.response?.header?.[0]?.resultCode?.[0] !== '00') {
+          const resultCode = parsed.response?.header?.[0]?.resultCode?.[0];
+          const resultMsg = parsed.response?.header?.[0]?.resultMsg?.[0];
+          console.warn(`소상공인시장진흥공단 API 오류: ${resultCode} - ${resultMsg}`);
+          
+          // NODATA_ERROR인 경우 빈 배열 반환
+          if (resultCode === '03') {
+            return [];
+          }
+        }
+        
+        // 데이터 파싱
+        const body = parsed.response?.body?.[0];
+        if (!body || !body.items || !body.items[0]?.item) {
+          return [];
+        }
+        
+        const items = body.items[0].item;
+        const itemArray = Array.isArray(items) ? items : [items];
+        
+        return itemArray.map(store => ({
+          name: store.bizesNm?.[0] || store.bizNm?.[0] || '카페',
+          address: store.rdnmAdr?.[0] || store.rdnm?.[0] || store.adongNm?.[0] || '',
+          lat: parseFloat(store.lat?.[0] || store.latitude?.[0] || location.lat),
+          lng: parseFloat(store.lon?.[0] || store.longitude?.[0] || location.lng),
+          distance: Math.round(parseFloat(store.dist?.[0] || 0)),
+          category: store.indsLclsNm?.[0] || '카페',
+          storeType: store.indsMclsNm?.[0] || ''
+        }));
+      } catch (xmlError) {
+        console.error('XML 파싱 오류:', xmlError);
+        return [];
+      }
+    }
+    
     // 데이터가 없거나 다른 형식인 경우
     console.warn('소상공인시장진흥공단 API 응답 형식이 예상과 다릅니다.');
+    console.log('전체 응답:', response.data);
     return [];
   } catch (error) {
     console.error('소상공인시장진흥공단 API 오류:', error.response?.data || error.message);
+    if (error.response) {
+      console.error('응답 상태:', error.response.status);
+      console.error('응답 헤더:', error.response.headers);
+    }
     throw error;
   }
 }
