@@ -673,32 +673,30 @@
 
   // ── Loading Animation & API Call ──
   function startLoading(input) {
+    // 지도 컨테이너 숨기기
+    document.getElementById('mapContainer').style.display = 'none';
+    // 입력 폼 섹션 숨기기
+    var pageWrapper = document.querySelector('.page-wrapper');
+    if (pageWrapper) pageWrapper.style.display = 'none';
+
+    // 로딩 오버레이 표시
     var overlay = document.getElementById('loadingOverlay');
     overlay.classList.add('active');
-
-    var steps = document.querySelectorAll('.loading-step');
-    var current = 0;
-    var delays = [800, 1200, 1000, 1500];
 
     // API Base URL 가져오기
     var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
 
-    function nextStep() {
-      if (current > 0) {
-        steps[current - 1].classList.remove('active');
-        steps[current - 1].classList.add('done');
-        steps[current - 1].querySelector('i').className = 'fa-solid fa-circle-check';
-      }
-      if (current < steps.length) {
-        steps[current].classList.add('active');
-        current++;
-        setTimeout(nextStep, delays[current - 1]);
-      } else {
-        // 실제 백엔드 API 호출
-        callAnalyzeAPI(input, apiBaseUrl);
-      }
+    // 더미 애니메이션 제거 - 바로 API 호출로 실제 진행 상태 추적
+    console.log('[분석 실행] 실시간 프로그레스 모드로 API 호출 시작');
+    
+    // 첫 번째 단계 활성화
+    var steps = document.querySelectorAll('.loading-step');
+    if (steps.length > 0) {
+      steps[0].classList.add('active');
     }
-    nextStep();
+    
+    // 실제 백엔드 API 호출
+    callAnalyzeAPI(input, apiBaseUrl);
   }
 
   // ── 실제 백엔드 API 호출 ──
@@ -826,6 +824,7 @@
     var maxAttempts = 120; // 최대 120번 시도 (약 2분)
     var attempt = 0;
     var pollInterval = 1000; // 1초마다 확인
+    var currentStep = 0; // 현재 표시 중인 단계
 
     function poll() {
       attempt++;
@@ -841,6 +840,35 @@
         .then(function(data) {
           console.log('[분석 실행] 응답 상태:', data.status, '결과 있음:', !!data.result);
           
+          // progress 정보가 있으면 로딩 단계 업데이트
+          if (data.progress && data.progress.step) {
+            var step = data.progress.step;
+            var message = data.progress.message || '';
+            
+            console.log('[분석 실행] Progress 업데이트:', step + '/' + data.progress.total, message);
+            
+            // 이전 단계들을 완료로 표시
+            var steps = document.querySelectorAll('.loading-step');
+            for (var i = 0; i < steps.length; i++) {
+              if (i < step - 1) {
+                steps[i].classList.remove('active');
+                steps[i].classList.add('done');
+                steps[i].querySelector('i').className = 'fa-solid fa-circle-check';
+              } else if (i === step - 1) {
+                steps[i].classList.add('active');
+                steps[i].classList.remove('done');
+                // 메시지 업데이트 (원래 텍스트 유지하거나 서버 메시지 사용)
+                var textNode = steps[i].childNodes[steps[i].childNodes.length - 1];
+                if (textNode && textNode.nodeType === Node.TEXT_NODE && message) {
+                  // 기존 텍스트를 서버 메시지로 대체하지 않고, 진행률만 표시
+                  // textNode.nodeValue = ' ' + message;
+                }
+              }
+            }
+            
+            currentStep = step;
+          }
+          
           if (data.status === 'completed' && data.result) {
             console.log('[분석 실행] 분석 완료!');
             console.log('[분석 실행] 받은 결과 데이터:', data.result);
@@ -855,6 +883,14 @@
               hasRoadview: !!data.result.roadview,
               resultKeys: Object.keys(data.result || {})
             });
+            
+            // 모든 단계를 완료로 표시
+            var steps = document.querySelectorAll('.loading-step');
+            for (var i = 0; i < steps.length; i++) {
+              steps[i].classList.remove('active');
+              steps[i].classList.add('done');
+              steps[i].querySelector('i').className = 'fa-solid fa-circle-check';
+            }
             
             // 결과 저장
             Utils.saveSession('analysisResult', data.result);

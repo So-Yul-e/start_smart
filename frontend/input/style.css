@@ -10,14 +10,19 @@
     position: relative;
 }
 
+.map-container.fallback-mode {
+    height: auto;
+    overflow: visible;
+}
+
 .map-fallback {
     width: 100%;
-    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
+    padding: 3rem 1.5rem;
 }
 
 .address-bar {

@@ -106,7 +106,7 @@ async function createAnalysis(analysisData) {
  * 분석 결과 업데이트
  */
 async function updateAnalysis(analysisId, updates) {
-  const { status, result, errorMessage } = updates;
+  const { status, result, errorMessage, progress } = updates;
   
   const updatesList = [];
   const values = [];
@@ -127,6 +127,12 @@ async function updateAnalysis(analysisId, updates) {
     values.push(errorMessage);
   }
 
+  // progress 필드 추가 (진행 단계 정보)
+  if (progress !== undefined) {
+    updatesList.push(`progress = $${paramIndex++}::jsonb`);
+    values.push(JSON.stringify(progress));
+  }
+
   updatesList.push(`updated_at = CURRENT_TIMESTAMP`);
   values.push(analysisId);
 
@@ -137,8 +143,19 @@ async function updateAnalysis(analysisId, updates) {
     RETURNING *
   `;
 
-  const dbResult = await pool.query(query, values);
-  return dbResult.rows[0];
+  try {
+    const dbResult = await pool.query(query, values);
+    return dbResult.rows[0];
+  } catch (error) {
+    // progress 컬럼이 없는 경우 무시하고 계속 진행
+    if (error.code === '42703' && progress !== undefined) {
+      console.warn('[updateAnalysis] progress 컬럼이 없습니다. 컬럼 없이 업데이트 재시도');
+      // progress 없이 재시도
+      const retryUpdates = { status, result, errorMessage };
+      return updateAnalysis(analysisId, retryUpdates);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -155,6 +172,7 @@ async function getAnalysis(analysisId) {
       monthly_rent as "monthlyRent", area, owner_working as "ownerWorking",
       target_daily_sales as "targetDailySales",
       status, result, error_message as "errorMessage",
+      progress,
       created_at as "createdAt", updated_at as "updatedAt"
     FROM analyses 
     WHERE id = $1`,
@@ -171,6 +189,15 @@ async function getAnalysis(analysisId) {
   if (row.result && typeof row.result === 'string') {
     try {
       row.result = JSON.parse(row.result);
+    } catch (e) {
+      // 이미 객체인 경우
+    }
+  }
+
+  // progress가 JSONB이면 파싱
+  if (row.progress && typeof row.progress === 'string') {
+    try {
+      row.progress = JSON.parse(row.progress);
     } catch (e) {
       // 이미 객체인 경우
     }
@@ -195,6 +222,7 @@ async function getAnalysis(analysisId) {
     targetDailySales: parseInt(row.targetDailySales),
     result: row.result,
     error: row.errorMessage,
+    progress: row.progress || null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   };

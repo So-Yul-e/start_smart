@@ -7,17 +7,17 @@ var MockData = (function () {
   // ── 12개 브랜드 목록 ──
   var brands = [
     { id: 'brand_1',  name: '메가커피',     position: '저가',     initialInvestment: 120000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 450, logo: 'megamgcoffee_BI.png' },
-    { id: 'brand_2',  name: '컴포즈커피',   position: '저가',     initialInvestment: 115000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 420, logo: null },
+    { id: 'brand_2',  name: '컴포즈커피',   position: '저가',     initialInvestment: 115000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 420, logo: 'compose.png' },
     { id: 'brand_3',  name: '빽다방',       position: '저가',     initialInvestment: 130000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 400, logo: 'paik.png' },
-    { id: 'brand_4',  name: '스타벅스',     position: '프리미엄', initialInvestment: 500000000, monthlyRoyalty: 5,  monthlyMarketing: 2, avgDailySales: 600, logo: 'Starbucks.png' },
+    { id: 'brand_4',  name: '스타벅스',     position: '프리미엄', initialInvestment: 500000000, monthlyRoyalty: 5,  monthlyMarketing: 2, avgDailySales: 600, logo: 'starbucks.svg' },
     { id: 'brand_5',  name: '이디야',       position: '스탠다드',     initialInvestment: 180000000, monthlyRoyalty: 3,  monthlyMarketing: 1, avgDailySales: 250, logo: 'EDIYA.png' },
-    { id: 'brand_6',  name: '투썸플레이스', position: '프리미엄', initialInvestment: 320000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 350, logo: 'atwosomeplace.png' },
-    { id: 'brand_7',  name: '더벤티',       position: '저가',     initialInvestment: 110000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 380, logo: null },
-    { id: 'brand_8',  name: '할리스',       position: '프리미엄', initialInvestment: 280000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 300, logo: null },
+    { id: 'brand_6',  name: '투썸플레이스', position: '프리미엄', initialInvestment: 320000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 350, logo: 'atwosomeplace.svg' },
+    { id: 'brand_7',  name: '더벤티',       position: '저가',     initialInvestment: 110000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 380, logo: 'theventi.png' },
+    { id: 'brand_8',  name: '할리스',       position: '프리미엄', initialInvestment: 280000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 300, logo: 'hollys.png' },
     { id: 'brand_9',  name: '블루보틀',     position: '프리미엄', initialInvestment: 500000000, monthlyRoyalty: 5,  monthlyMarketing: 3, avgDailySales: 200, logo: 'bluebottle.png' },
-    { id: 'brand_10', name: '커피빈',       position: '프리미엄', initialInvestment: 350000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 280, logo: null },
-    { id: 'brand_11', name: '탐앤탐스',     position: '스탠다드',     initialInvestment: 200000000, monthlyRoyalty: 3,  monthlyMarketing: 1, avgDailySales: 230, logo: null },
-    { id: 'brand_12', name: '폴바셋',       position: '프리미엄', initialInvestment: 400000000, monthlyRoyalty: 5,  monthlyMarketing: 2, avgDailySales: 180, logo: null }
+    { id: 'brand_10', name: '커피빈',       position: '프리미엄', initialInvestment: 350000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 280, logo: 'coffeebean.png' },
+    { id: 'brand_11', name: '탐앤탐스',     position: '스탠다드',     initialInvestment: 200000000, monthlyRoyalty: 3,  monthlyMarketing: 1, avgDailySales: 230, logo: 'tomntoms.png' },
+    { id: 'brand_12', name: '폴바셋',       position: '프리미엄', initialInvestment: 400000000, monthlyRoyalty: 5,  monthlyMarketing: 2, avgDailySales: 180, logo: 'paulbassett.png' }
   ];
 
   // ── 분석 결과 생성 함수 (입력 기반) ──
@@ -102,7 +102,8 @@ var MockData = (function () {
         signal: signal,
         survivalMonths: survivalMonths,
         riskLevel: score >= 70 ? 'low' : score >= 40 ? 'medium' : 'high',
-        riskFactors: buildRiskFactors(paybackMonths, monthlyProfit, dailySales, brand)
+        riskFactors: buildRiskFactors(paybackMonths, monthlyProfit, dailySales, brand),
+        recommendation: buildRecommendation(score, paybackMonths, monthlyProfit, brand)
       },
       aiConsulting: {
         salesScenario: { conservative: conservative, expected: expected, optimistic: optimistic },
@@ -118,11 +119,15 @@ var MockData = (function () {
       roadview: {
         location: input.location,
         risks: [
-          { type: 'signage_obstruction', level: 'medium', description: '주변 건물에 의해 간판이 부분적으로 가려질 수 있음' },
-          { type: 'steep_slope', level: 'low', description: '비교적 평탄한 지형으로 접근성 양호' },
-          { type: 'floor_level', level: 'ground', description: '1층 매장으로 가시성 확보' },
-          { type: 'visibility', level: 'high', description: '주요 보행 동선에 위치하여 시인성 우수' }
+          { type: 'signage_obstruction', label: '간판 가시성', icon: 'fa-sign-hanging', level: 'medium', description: '주변 건물에 의해 간판이 부분적으로 가려질 수 있음' },
+          { type: 'steep_slope', label: '지형/경사', icon: 'fa-mountain', level: 'low', description: '비교적 평탄한 지형으로 접근성 양호' },
+          { type: 'floor_level', label: '층 위치', icon: 'fa-building', level: 'ground', description: '1층 매장으로 가시성 확보' },
+          { type: 'visibility', label: '보행 가시성', icon: 'fa-eye', level: 'high', description: '주요 보행 동선에 위치하여 시인성 우수' }
         ],
+        highlight: {
+          strength: '1층 매장 + 주요 보행 동선 위치로 시인성 우수',
+          risk: '주변 건물에 의한 간판 가림 가능성 존재'
+        },
         overallRisk: 'medium',
         riskScore: 72
       },
@@ -180,6 +185,44 @@ var MockData = (function () {
         expectedImpact: '인건비 절감, 순이익 +15%'
       }
     ];
+  }
+
+  function buildRecommendation(score, paybackMonths, monthlyProfit, brand) {
+    var hasHardcut = paybackMonths >= 36 || monthlyProfit <= 0;
+    var recSignal, title, reason;
+    var conditions = [];
+
+    if (score < 40 || hasHardcut) {
+      recSignal = 'STOP';
+      title = '창업 재검토 권고';
+      reason = '현재 조건에서는 구조적 리스크가 높아 창업을 재검토해야 합니다.';
+      if (monthlyProfit <= 0) conditions.push('월 순이익이 적자 상태입니다');
+      if (paybackMonths >= 36) conditions.push('투자 회수 기간이 ' + paybackMonths + '개월로 36개월을 초과합니다');
+      if (score < 40) conditions.push('종합 점수가 ' + score + '점으로 기준 미달입니다');
+      conditions.push('비용 구조 개선 또는 입지 변경을 권장합니다');
+    } else if (score >= 60) {
+      recSignal = 'GO';
+      title = '조건부 진행 가능';
+      reason = '현재 조건에서 창업 진행이 가능하나, 아래 조건을 충족해야 합니다.';
+      conditions.push('목표 일 판매량 ' + brand.avgDailySales + '잔 이상 유지');
+      conditions.push('월세 및 고정비 현 수준 유지');
+      if (monthlyProfit > 0) conditions.push('월 순이익 ' + formatWon(monthlyProfit) + ' 수준 확보');
+      conditions.push('개점 초기 3개월 운영자금 확보 필수');
+    } else {
+      recSignal = 'CAUTION';
+      title = '신중한 검토 필요';
+      reason = '수익성은 확보되나 리스크 요인이 존재합니다. 조건 개선 후 재분석을 권장합니다.';
+      conditions.push('월세 협상 또는 평수 조정 검토');
+      conditions.push('판매량 목표 상향 가능성 확인');
+      conditions.push('경쟁 환경 변화에 대한 대비 필요');
+    }
+
+    return {
+      signal: recSignal,
+      title: title,
+      reason: reason,
+      conditions: conditions
+    };
   }
 
   function formatWon(n) {

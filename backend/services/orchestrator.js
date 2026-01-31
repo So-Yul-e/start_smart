@@ -101,6 +101,15 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     // 1. 상권 분석
     const step1Start = Date.now();
     console.log(`[${analysisId}] 📊 1/5 상권 분석 시작...`);
+    await updateAnalysis(analysisId, { 
+      progress: { 
+        step: 1, 
+        total: 5, 
+        message: '상권 데이터 수집 중...', 
+        timestamp: new Date().toISOString() 
+      } 
+    });
+    
     let market;
     try {
       market = await analyzeMarket(location, radius, brandId);
@@ -115,6 +124,15 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     // 2. 손익 계산
     const step2Start = Date.now();
     console.log(`[${analysisId}] 💰 2/5 손익 계산 시작...`);
+    await updateAnalysis(analysisId, { 
+      progress: { 
+        step: 2, 
+        total: 5, 
+        message: '손익 시뮬레이션 중...', 
+        timestamp: new Date().toISOString() 
+      } 
+    });
+    
     let finance;
     try {
       finance = calculateFinance({
@@ -137,6 +155,15 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     // 프론트엔드에서 전송한 roadviewAnalysis가 있으면 사용, 없으면 Google Street View 사용
     const step3Start = Date.now();
     console.log(`[${analysisId}] 🗺️ 3/5 로드뷰 분석 시작...`);
+    await updateAnalysis(analysisId, { 
+      progress: { 
+        step: 3, 
+        total: 5, 
+        message: 'AI 로드뷰 분석 중...', 
+        timestamp: new Date().toISOString() 
+      } 
+    });
+    
     let roadview;
     
     if (roadviewAnalysis && roadviewAnalysis.success && roadviewAnalysis.data) {
@@ -234,6 +261,15 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     // 4. AI 컨설팅
     const step4Start = Date.now();
     console.log(`[${analysisId}] 🤖 4/5 AI 컨설팅 생성 시작...`);
+    await updateAnalysis(analysisId, { 
+      progress: { 
+        step: 4, 
+        total: 5, 
+        message: 'AI 컨설팅 생성 중...', 
+        timestamp: new Date().toISOString() 
+      } 
+    });
+    
     let aiConsulting;
     try {
       // AI 컨설팅에 타임아웃 설정 (30초)
@@ -266,6 +302,15 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     // 5. 판단 계산
     const step5Start = Date.now();
     console.log(`[${analysisId}] ⚖️ 5/5 판단 계산 시작...`);
+    await updateAnalysis(analysisId, { 
+      progress: { 
+        step: 5, 
+        total: 5, 
+        message: '최종 판단 계산 중...', 
+        timestamp: new Date().toISOString() 
+      } 
+    });
+    
     let decision;
     try {
       decision = calculateDecision({
@@ -326,7 +371,14 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     // 결과 저장 (DB)
     await updateAnalysis(analysisId, {
       status: 'completed',
-      result: finalResult
+      result: finalResult,
+      progress: { 
+        step: 5, 
+        total: 5, 
+        message: '완료', 
+        timestamp: new Date().toISOString(),
+        completed: true
+      }
     });
 
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
