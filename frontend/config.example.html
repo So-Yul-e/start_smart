@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StartSmart - API 설정 예시</title>
+</head>
+<body>
+  <h1>프론트엔드 API 설정 방법</h1>
+  
+  <h2>방법 1: HTML에서 직접 설정 (권장)</h2>
+  <p>각 HTML 파일의 &lt;head&gt; 섹션에 다음 스크립트를 추가하세요:</p>
+  <pre><code>&lt;script&gt;
+  // 백엔드 담당자가 알려준 로컬 IP 주소 (환경변수로 관리)
+  window.API_BASE_URL = 'http://&lt;로컬IP&gt;:3000';
+&lt;/script&gt;
+&lt;script src="config.js"&gt;&lt;/script&gt;
+&lt;script src="your-app.js"&gt;&lt;/script&gt;</code></pre>
+
+  <h2>방법 2: 환경변수 파일 사용</h2>
+  <p>프로젝트 루트에 <code>.env.local</code> 파일을 만들고:</p>
+  <pre><code>REACT_APP_API_URL=http://&lt;로컬IP&gt;:3000</code></pre>
+  <p>빌드 도구에서 환경변수를 주입하도록 설정하세요.</p>
+
+  <h2>사용 예시</h2>
+  <pre><code>// config.js를 로드한 후
+fetch(API_ENDPOINTS.brands)
+  .then(res => res.json())
+  .then(data => {
+    console.log('브랜드 목록:', data.brands);
+  });</code></pre>
+
+  <script>
+    // 예시: API_BASE_URL 설정
+    window.API_BASE_URL = 'http://localhost:3000'; // 개발 시 로컬 IP로 변경
+  </script>
+  <script src="config.js"></script>
+  <script>
+    // 사용 예시
+    console.log('API Base URL:', window.API_CONFIG.API_BASE_URL);
+    console.log('Brands Endpoint:', window.API_CONFIG.API_ENDPOINTS.brands);
+  </script>
+</body>
+</html>

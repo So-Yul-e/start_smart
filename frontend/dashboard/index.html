@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>분석 대시보드 - StartSmart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header" id="header">
+    <a href="../" class="logo">
+      <i class="fa-solid fa-leaf text-gold"></i> StartSmart
+    </a>
+    <nav class="nav">
+      <a href="../dashboard/?tab=compare"><i class="fa-solid fa-clock-rotate-left" style="margin-right:4px;"></i>히스토리</a>
+    </nav>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="container">
+      <!-- Progress Stepper -->
+      <div class="progress-stepper">
+        <a href="../brand/" class="step-item done clickable"><span class="step-num"><i class="fa-solid fa-check" style="font-size:0.7rem;"></i></span><span class="step-label">브랜드 선택</span></a>
+        <div class="step-line done"></div>
+        <a href="../input/" class="step-item done clickable"><span class="step-num"><i class="fa-solid fa-check" style="font-size:0.7rem;"></i></span><span class="step-label">조건 입력</span></a>
+        <div class="step-line done"></div>
+        <div class="step-item active"><span class="step-num">3</span><span class="step-label">대시보드</span></div>
+      </div>
+
+      <!-- Page Top Bar -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+          <h1 style="font-size:2rem; margin-bottom:0.3rem;">분석 대시보드</h1>
+          <p id="subtitle" style="color:var(--text-muted); font-size:0.95rem;"></p>
+        </div>
+        <div style="display:flex; gap:0.75rem;">
+          <button id="btnSave" class="btn-outline" style="border-color:var(--primary-glow); color:var(--primary-glow);"><i class="fa-solid fa-bookmark" style="margin-right:0.5rem;"></i> 저장</button>
+          <a href="../input/" class="btn-outline"><i class="fa-solid fa-arrow-left" style="margin-right:0.5rem;"></i> 재분석</a>
+          <a href="../report/" class="btn-outline" style="border-color:var(--gold); color:var(--gold);"><i class="fa-solid fa-file-pdf" style="margin-right:0.5rem;"></i> PDF 리포트</a>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="summary">요약</button>
+        <button class="tab-btn" data-tab="detail">AI 상세분석</button>
+        <button class="tab-btn" data-tab="compare">시뮬레이션 비교</button>
+      </div>
+
+      <!-- ========== TAB 1: 요약 (IA 5) ========== -->
+      <div class="tab-content active" id="tab-summary">
+        <!-- Score + Metrics Row -->
+        <div class="dash-top-grid">
+          <!-- Score Circle -->
+          <div class="glass-card" id="scoreCard" style="text-align:center;">
+            <div class="score-circle-lg" id="scoreCircle">
+              <span class="score-num" id="scoreNum">--</span>
+              <span class="score-unit">SCORE</span>
+            </div>
+            <div id="signalBadge" style="margin-bottom:0.5rem;"></div>
+            <p id="signalDesc" style="color:var(--text-muted); font-size:0.9rem;"></p>
+          </div>
+
+          <!-- 4 Key Metrics -->
+          <div class="metric-grid" id="metricsGrid">
+            <div class="metric-card">
+              <div class="metric-label">예상 생존 개월</div>
+              <div class="metric-value" id="mSurvival">--</div>
+              <div class="metric-sub" id="mSurvivalSub"></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">투자 회수 기간</div>
+              <div class="metric-value" id="mPayback">--</div>
+              <div class="metric-sub" id="mPaybackSub"></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">월 순이익</div>
+              <div class="metric-value" id="mProfit">--</div>
+              <div class="metric-sub" id="mProfitSub"></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">손익분기 판매량</div>
+              <div class="metric-value" id="mBreakeven">--</div>
+              <div class="metric-sub" id="mBreakevenSub"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hardcut Warnings -->
+        <div id="hardcutWarnings"></div>
+
+        <!-- Cost Stack Chart -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-chart-bar" style="color:var(--gold); margin-right:0.5rem;"></i> 월 손익 구조</h3>
+          <div id="costStack" style="margin-top:1rem;"></div>
+        </div>
+
+        <!-- Sensitivity Chart -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-chart-line" style="color:var(--gold); margin-right:0.5rem;"></i> 민감도 분석 (판매량 &plusmn;10%)</h3>
+          <div class="bar-chart" id="sensitivityChart" style="margin-top:1rem;"></div>
+        </div>
+      </div>
+
+      <!-- ========== TAB 2: AI 상세분석 (IA 6) ========== -->
+      <div class="tab-content" id="tab-detail">
+        <!-- AI Risk Top 3 -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-triangle-exclamation" style="color:#f87171; margin-right:0.5rem;"></i> AI 리스크 Top 3</h3>
+          <div id="riskList" style="margin-top:1rem;"></div>
+        </div>
+
+        <!-- Improvements -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-lightbulb" style="color:var(--gold); margin-right:0.5rem;"></i> AI 개선 제안</h3>
+          <div id="improvementList" style="margin-top:1rem;"></div>
+        </div>
+
+        <!-- Competitive Analysis -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-users" style="color:var(--gold); margin-right:0.5rem;"></i> 경쟁 환경 해석</h3>
+          <div id="competitiveInfo" style="margin-top:1rem;"></div>
+        </div>
+      </div>
+
+      <!-- ========== TAB 3: 시뮬레이션 비교 (IA 7) ========== -->
+      <div class="tab-content" id="tab-compare">
+        <!-- Before/After -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-arrows-left-right" style="color:var(--gold); margin-right:0.5rem;"></i> Before / After 비교</h3>
+          <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">월세 10% 절감 시 예상 변화</p>
+          <div id="compareSection"></div>
+        </div>
+
+        <!-- Scenario Comparison -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-scale-balanced" style="color:var(--gold); margin-right:0.5rem;"></i> 판매량 시나리오 비교</h3>
+          <div class="bar-chart" id="scenarioChart" style="margin-top:1rem; height:250px;"></div>
+        </div>
+
+        <!-- Saved Simulations -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-clock-rotate-left" style="color:var(--gold); margin-right:0.5rem;"></i> 저장된 시뮬레이션</h3>
+          <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">이전 분석 결과를 현재와 비교합니다</p>
+          <div id="savedSimList"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Save Toast -->
+  <div id="saveToast" class="save-toast"><i class="fa-solid fa-check" style="margin-right:0.5rem;"></i> 시뮬레이션이 저장되었습니다</div>
+
+  <footer class="sub-footer">
+    <p>&copy; 2024 StartSmart. Premium Intelligence.</p>
+  </footer>
+
+  <script src="../config.js"></script>
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>

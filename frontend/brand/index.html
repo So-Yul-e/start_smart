@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>브랜드 선택 - StartSmart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header" id="header">
+    <a href="../" class="logo">
+      <i class="fa-solid fa-leaf text-gold"></i> StartSmart
+    </a>
+    <nav class="nav">
+      <a href="../dashboard/?tab=compare"><i class="fa-solid fa-clock-rotate-left" style="margin-right:4px;"></i>히스토리</a>
+    </nav>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="container">
+      <!-- Progress Stepper -->
+      <div class="progress-stepper">
+        <div class="step-item active"><span class="step-num">1</span><span class="step-label">브랜드 선택</span></div>
+        <div class="step-line"></div>
+        <div class="step-item"><span class="step-num">2</span><span class="step-label">조건 입력</span></div>
+        <div class="step-line"></div>
+        <div class="step-item"><span class="step-num">3</span><span class="step-label">대시보드</span></div>
+      </div>
+
+      <!-- Page Header -->
+      <div class="page-header" style="text-align:center; margin-bottom:3rem;">
+        <h1 style="margin-top:1rem;">브랜드 선택</h1>
+        <p>분석할 카페 프랜차이즈 브랜드를 선택하세요</p>
+      </div>
+
+      <!-- Filter -->
+      <div style="display:flex; justify-content:center; gap:0.5rem; margin-bottom:2.5rem;" id="filterWrap">
+        <button class="radius-btn active" data-filter="all">전체</button>
+        <button class="radius-btn" data-filter="저가">저가</button>
+        <button class="radius-btn" data-filter="스탠다드">스탠다드</button>
+        <button class="radius-btn" data-filter="프리미엄">프리미엄</button>
+      </div>
+
+      <!-- Brand Grid -->
+      <div class="brand-grid" id="brandGrid"></div>
+    </div>
+  </div>
+
+  <footer class="sub-footer">
+    <p>&copy; 2024 StartSmart. Premium Intelligence.</p>
+  </footer>
+
+  <script src="../config.js"></script>
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>

@@ -5,6 +5,7 @@
  * 토큰 비용 관리를 위해 프롬프트를 최적화하고 응답을 캐싱할 수 있습니다.
  */
 
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const Anthropic = require('@anthropic-ai/sdk');
 const {
   getSalesScenarioPrompt,

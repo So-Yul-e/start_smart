@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>조건 입력 - StartSmart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header" id="header">
+    <a href="../" class="logo">
+      <i class="fa-solid fa-leaf text-gold"></i> StartSmart
+    </a>
+    <nav class="nav">
+      <a href="../dashboard/?tab=compare"><i class="fa-solid fa-clock-rotate-left" style="margin-right:4px;"></i>히스토리</a>
+    </nav>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="container">
+      <!-- Progress Stepper -->
+      <div class="progress-stepper">
+        <a href="../brand/" class="step-item done clickable"><span class="step-num"><i class="fa-solid fa-check" style="font-size:0.7rem;"></i></span><span class="step-label">브랜드 선택</span></a>
+        <div class="step-line done"></div>
+        <div class="step-item active"><span class="step-num">2</span><span class="step-label">조건 입력</span></div>
+        <div class="step-line"></div>
+        <div class="step-item"><span class="step-num">3</span><span class="step-label">대시보드</span></div>
+      </div>
+      <div id="brandChip" style="text-align:center; margin-bottom:2rem;">
+        <span style="display:inline-flex; align-items:center; gap:0.5rem; background:rgba(255,255,255,0.06); padding:0.5rem 1.2rem; border-radius:50px; font-size:0.95rem;">
+          <i class="fa-solid fa-mug-hot" style="color:var(--gold);"></i>
+          <span id="brandNameDisplay">브랜드를 선택해주세요</span>
+          <a href="../brand/" style="color:var(--gold); font-size:0.8rem; margin-left:0.5rem;">변경</a>
+        </span>
+      </div>
+
+      <!-- ========== IA 2: 지도 섹션 ========== -->
+      <div class="glass-card">
+        <h3><i class="fa-solid fa-map-location-dot" style="color:var(--gold); margin-right:0.5rem;"></i> 입지 선택</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">지도를 클릭하여 매장 위치를 선택하세요</p>
+
+        <!-- Map Container -->
+        <div id="mapContainer" class="map-container">
+          <div id="map" style="width:100%; height:100%;"></div>
+          <div id="mapFallback" class="map-fallback" style="display:none;">
+            <i class="fa-solid fa-map" style="font-size:3rem; color:var(--text-muted); margin-bottom:1rem;"></i>
+            <p>지도를 불러올 수 없습니다</p>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">주소를 직접 입력하여 위치를 설정하세요</p>
+            <div style="display:flex; gap:0.5rem; width:100%; max-width:400px;">
+              <input type="text" id="manualAddress" class="field-input" placeholder="예: 서울시 강남구 역삼동 123" style="flex:1; margin:0;">
+              <button id="btnManualAddress" class="btn-outline" style="white-space:nowrap; border-color:var(--gold); color:var(--gold);">확인</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Address Display -->
+        <div id="addressBar" class="address-bar" style="display:none;">
+          <i class="fa-solid fa-location-dot" style="color:var(--primary-glow);"></i>
+          <span id="addressText"></span>
+        </div>
+
+        <!-- Radius Selection -->
+        <div style="margin-top:1rem;">
+          <span class="field-label" style="margin-bottom:0.5rem; display:block;">분석 반경</span>
+          <div class="radius-group">
+            <button class="radius-btn" data-radius="300">300m</button>
+            <button class="radius-btn active" data-radius="500">500m</button>
+            <button class="radius-btn" data-radius="1000">1km</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- IA 2: 상권 요약 (Mock) -->
+      <div id="marketSummary" class="glass-card" style="display:none;">
+        <h3><i class="fa-solid fa-store" style="color:var(--gold); margin-right:0.5rem;"></i> 상권 요약</h3>
+        <div class="two-col" style="margin-top:1rem;">
+          <div class="metric-card">
+            <div class="metric-label">반경 내 경쟁 카페</div>
+            <div class="metric-value" id="compCount">7개</div>
+            <div class="metric-sub">밀도: 높음</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">유동인구 (평일)</div>
+            <div class="metric-value">높음</div>
+            <div class="metric-sub">피크: 12:00~14:00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IA 2: AI 로드뷰 분석 (Mock) -->
+      <div id="roadviewCard" class="glass-card" style="display:none;">
+        <h3><i class="fa-solid fa-eye" style="color:var(--gold); margin-right:0.5rem;"></i> AI 로드뷰 분석</h3>
+        <!-- Roadview Image Preview -->
+        <div id="roadviewPreview" class="roadview-preview">
+          <div id="roadview" style="width:100%; height:100%;"></div>
+          <div id="roadviewFallback" class="roadview-fallback-msg" style="display:none;">
+            <i class="fa-solid fa-street-view" style="font-size:2rem; color:var(--text-muted);"></i>
+            <p style="margin:0.5rem 0 0; font-size:0.85rem; color:var(--text-muted);">해당 위치의 로드뷰를 불러올 수 없습니다</p>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.75rem; margin-top:1rem;" id="roadviewItems">
+        </div>
+      </div>
+
+      <!-- ========== IA 3: 조건 입력 ========== -->
+      <div class="glass-card">
+        <h3><i class="fa-solid fa-sliders" style="color:var(--gold); margin-right:0.5rem;"></i> 창업 조건 입력</h3>
+
+        <div class="two-col" style="margin-top:1rem;">
+          <div class="field-group">
+            <label class="field-label">초기 투자금 (만원)</label>
+            <input type="number" id="inputInvestment" class="field-input" placeholder="예: 12000">
+            <div class="field-hint" id="investHint"></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">월세 (만원)</label>
+            <input type="number" id="inputRent" class="field-input" placeholder="예: 300">
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="field-group">
+            <label class="field-label">매장 평수 (평)</label>
+            <input type="number" id="inputArea" class="field-input" placeholder="예: 15">
+          </div>
+          <div class="field-group">
+            <label class="field-label">점주 직접 근무</label>
+            <div class="toggle-wrap" style="margin-top:0.5rem;">
+              <label class="toggle">
+                <input type="checkbox" id="inputOwnerWork" checked>
+                <span class="toggle-slider"></span>
+              </label>
+              <span id="ownerWorkLabel" style="color:var(--primary-glow);">직접 근무 (인건비 절감)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IA 3: AI 판매량 제안 -->
+      <div id="scenarioSection" class="glass-card" style="display:none;">
+        <h3><i class="fa-solid fa-robot" style="color:var(--gold); margin-right:0.5rem;"></i> AI 판매량 제안</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;" id="scenarioReason"></p>
+        <div class="scenario-cards" id="scenarioCards"></div>
+      </div>
+
+      <!-- 목표 판매량 입력 -->
+      <div class="glass-card">
+        <h3><i class="fa-solid fa-bullseye" style="color:var(--gold); margin-right:0.5rem;"></i> 목표 일 판매량</h3>
+        <div class="field-group" style="margin-top:1rem;">
+          <input type="number" id="inputDailySales" class="field-input" placeholder="예: 300" style="font-size:2rem; text-align:center;">
+          <div class="field-hint" style="text-align:center;">잔/일 (AI 기대치 기준 입력 추천)</div>
+        </div>
+      </div>
+
+      <!-- Run Button -->
+      <div style="text-align:center; margin-top:2rem;">
+        <button id="btnAnalyze" class="btn-cta" disabled>
+          <i class="fa-solid fa-bolt" style="margin-right:0.5rem;"></i> 분석 실행
+        </button>
+        <p style="color:var(--text-muted); font-size:0.8rem; margin-top:0.75rem;">위치 선택 + 조건 입력을 완료하면 활성화됩니다</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-steps" id="loadingSteps">
+      <div class="loading-step" data-step="1"><i class="fa-solid fa-map-location-dot"></i> 상권 데이터 수집 중...</div>
+      <div class="loading-step" data-step="2"><i class="fa-solid fa-calculator"></i> 손익 시뮬레이션 중...</div>
+      <div class="loading-step" data-step="3"><i class="fa-solid fa-eye"></i> AI 로드뷰 분석 중...</div>
+      <div class="loading-step" data-step="4"><i class="fa-solid fa-robot"></i> AI 컨설팅 생성 중...</div>
+    </div>
+  </div>
+
+  <footer class="sub-footer">
+    <p>&copy; 2024 StartSmart. Premium Intelligence.</p>
+  </footer>
+
+  <!-- Kakao Map SDK (입지 선택용) -->
+  <script>
+    // 카카오맵 SDK 로드 상태 추적
+    window.kakaoMapLoaded = false;
+    window.kakaoMapLoadError = false;
+    
+    // SDK 로드 완료 콜백
+    window.onKakaoMapReady = function() {
+      console.log('[카카오맵] SDK 로드 완료, kakao 객체:', typeof kakao);
+      window.kakaoMapLoaded = true;
+      // script.js의 initMap이 대기 중이면 호출
+      if (window.initMapCallback) {
+        console.log('[카카오맵] initMapCallback 호출');
+        window.initMapCallback();
+        window.initMapCallback = null;
+      }
+    };
+    
+    // 스크립트 로드 핸들러
+    window.kakaoMapScriptOnLoad = function() {
+      console.log('[카카오맵] 스크립트 태그 onload 이벤트 발생');
+      setTimeout(function() {
+        if (typeof kakao !== 'undefined') {
+          window.onKakaoMapReady();
+        }
+      }, 100);
+    };
+    
+  </script>
+  <script>
+    // 카카오맵 SDK 동적 로드
+    (function() {
+      var sdkUrl = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=27b440fcdad2758673282f470834f270&autoload=false&libraries=services';
+      var script = document.createElement('script');
+      script.src = sdkUrl;
+      script.onload = function() {
+        console.log('[카카오맵] 스크립트 로드 성공');
+        if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.load) {
+          kakao.maps.load(function() {
+            console.log('[카카오맵] SDK 초기화 완료');
+            window.kakaoMapLoaded = true;
+            if (window.initMapCallback) {
+              window.initMapCallback();
+              window.initMapCallback = null;
+            }
+          });
+        }
+      };
+      script.onerror = function() {
+        console.error('[카카오맵] 스크립트 로드 실패');
+        console.error('[카카오맵] URL:', sdkUrl);
+        console.error('[카카오맵] 광고 차단기가 있다면 비활성화 후 다시 시도하세요');
+        window.kakaoMapLoadError = true;
+      };
+      document.head.appendChild(script);
+    })();
+  </script>
+  
+  <!-- Google Maps SDK (로드뷰용) - 동적으로 로드 -->
+  <script>
+    // 구글 지도 API 키를 백엔드에서 가져와서 동적으로 로드
+    (function() {
+      var apiBaseUrl = window.location.protocol + '//' + window.location.hostname + ':3000';
+      fetch(apiBaseUrl + '/api/config/google-maps-key')
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('API 키 요청 실패: ' + response.status);
+          }
+          return response.json();
+        })
+        .then(function(data) {
+          if (data.success && data.apiKey && data.apiKey !== 'xxxxx' && data.apiKey.trim() !== '') {
+            var script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key=' + data.apiKey + '&libraries=streetview&callback=initGoogleMaps';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+          } else {
+            console.warn('구글 지도 API 키를 가져올 수 없습니다. (환경변수 확인 필요)');
+          }
+        })
+        .catch(function(error) {
+          console.warn('구글 지도 API 키 로드 실패:', error);
+        });
+    })();
+    
+    // 구글 지도 로드 완료 콜백
+    window.initGoogleMaps = function() {
+      console.log('구글 지도 SDK 로드 완료');
+    };
+  </script>
+  <script src="../config.js"></script>
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>
