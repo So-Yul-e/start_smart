@@ -87,22 +87,48 @@ async function imageUrlToBase64(imageUrl, retries = MAX_RETRIES) {
 function buildAnalysisPrompt(context = {}) {
   const { 
     businessType = '카페/음식점',
-    analysisDepth = 'standard'  // 'quick' | 'standard' | 'detailed'
+    analysisDepth = 'standard',  // 'quick' | 'standard' | 'detailed'
+    imageType = 'roadview',      // 'roadview' | 'roadmap'
+    address = '',
+    metadata = {}
   } = context;
+
+  // 이미지 타입에 따른 설명
+  const imageTypeDescription = imageType === 'roadview' 
+    ? '거리뷰 이미지 (건물 외관 및 주변 환경)'
+    : '로드맵 이미지 (상권 구조 및 경쟁사 위치)';
+
+  // 메타데이터 정보 구성
+  let metadataInfo = '';
+  if (metadata && Object.keys(metadata).length > 0) {
+    metadataInfo = `
+<ADDITIONAL_CONTEXT>
+분석 대상 위치 정보:
+- 주소: ${address || '미제공'}
+${metadata.competitorCount100m !== undefined ? `- 100m 반경 경쟁사: ${metadata.competitorCount100m}개` : ''}
+${metadata.competitorCount300m !== undefined ? `- 300m 반경 경쟁사: ${metadata.competitorCount300m}개` : ''}
+${metadata.competitorCount500m !== undefined ? `- 500m 반경 경쟁사: ${metadata.competitorCount500m}개` : ''}
+${metadata.competitionPercentile !== undefined ? `- 경쟁 밀도 백분위: ${metadata.competitionPercentile}%` : ''}
+${metadata.competitionDensity ? `- 경쟁 밀도 등급: ${metadata.competitionDensity}` : ''}
+</ADDITIONAL_CONTEXT>
+`;
+  }
 
   return `
 <ROLE>
 당신은 15년 경력의 상권 분석 전문가이자 부동산 입지 컨설턴트입니다.
-로드뷰 이미지를 분석하여 상업 시설의 가시성과 접근성을 정밀 평가합니다.
+${imageType === 'roadview' ? '로드뷰 이미지를 분석하여 상업 시설의 가시성과 접근성을 정밀 평가합니다.' : '로드맵 이미지를 분석하여 상권 구조와 경쟁 환경을 평가합니다.'}
 분석적이고 객관적인 어조로, 근거 기반의 평가를 제공합니다.
 </ROLE>
 
 <TASK>
-제공된 로드뷰 이미지를 분석하여 ${businessType} 운영에 영향을 미치는 
-4가지 핵심 입지 요소를 평가하세요.
+제공된 ${imageTypeDescription}를 분석하여 ${businessType} 운영에 영향을 미치는 
+${imageType === 'roadview' ? '4가지 핵심 입지 요소를 평가하세요.' : '상권 구조와 경쟁 환경을 분석하세요.'}
 </TASK>
+${metadataInfo}
 
 <EVALUATION_CRITERIA>
+${imageType === 'roadview' ? `
 아래 4가지 항목을 각각 평가합니다:
 
 1. **간판 가림 (signage_obstruction)**
@@ -132,11 +158,43 @@ function buildAnalysisPrompt(context = {}) {
    - medium: 주의를 기울이면 발견 가능
    - high: 자연스럽게 시야에 들어옴 (주 동선 위치)
    - 판단 근거: 인도 위치, 시야각, 유동 인구 동선 예상
+` : `
+로드맵 이미지를 분석하여 다음 항목을 평가합니다:
+
+1. **상권 구조 (commercial_structure)**
+   - 평가 대상: 주변 상권의 밀도와 구조
+   - low: 상권이 희박하거나 단절됨
+   - medium: 보통 수준의 상권 밀도
+   - high: 활발한 상권 밀집 지역
+   - 판단 근거: 마커 밀도, 건물 분포, 도로 구조
+
+2. **접근성 (accessibility)**
+   - 평가 대상: 도로 접근성과 교통 흐름
+   - low: 접근이 어려운 위치 (골목, 단절된 도로)
+   - medium: 보통 수준의 접근성
+   - high: 주요 도로와 연결, 접근 용이
+   - 판단 근거: 도로 폭, 교차로 위치, 대중교통 근접도
+
+3. **경쟁 환경 (competition_environment)**
+   - 평가 대상: 주변 경쟁사 분포와 밀도
+   - low: 경쟁사가 적거나 멀리 떨어져 있음
+   - medium: 보통 수준의 경쟁 밀도
+   - high: 경쟁사가 밀집되어 있음
+   - 판단 근거: 경쟁사 마커 분포, 반경 내 밀도
+
+4. **입지 특성 (location_characteristics)**
+   - 평가 대상: 입지의 특수성과 장단점
+   - low: 입지 조건이 불리함
+   - medium: 보통 수준의 입지
+   - high: 입지 조건이 우수함
+   - 판단 근거: 주변 시설, 유동 인구 예상, 가시성
+`}
 </EVALUATION_CRITERIA>
 
 <OUTPUT_FORMAT>
 반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.
 
+${imageType === 'roadview' ? `
 {
   "analysis_result": {
     "signage_obstruction": {
@@ -175,6 +233,46 @@ function buildAnalysisPrompt(context = {}) {
     "issues": ["이미지 품질 문제가 있다면 기술"]
   }
 }
+` : `
+{
+  "analysis_result": {
+    "commercial_structure": {
+      "level": "low|medium|high",
+      "confidence": 0.0-1.0,
+      "description": "판단 근거 (2-3문장)",
+      "visual_evidence": ["발견한 시각적 증거 1", "증거 2"]
+    },
+    "accessibility": {
+      "level": "low|medium|high",
+      "confidence": 0.0-1.0,
+      "description": "판단 근거 (2-3문장)",
+      "visual_evidence": ["발견한 시각적 증거 1", "증거 2"]
+    },
+    "competition_environment": {
+      "level": "low|medium|high",
+      "confidence": 0.0-1.0,
+      "description": "판단 근거 (2-3문장)",
+      "visual_evidence": ["발견한 시각적 증거 1", "증거 2"]
+    },
+    "location_characteristics": {
+      "level": "low|medium|high",
+      "confidence": 0.0-1.0,
+      "description": "판단 근거 (2-3문장)",
+      "visual_evidence": ["발견한 시각적 증거 1", "증거 2"]
+    }
+  },
+  "overall_assessment": {
+    "location_score": 0-100,
+    "strengths": ["강점 1", "강점 2"],
+    "weaknesses": ["약점 1", "약점 2"],
+    "recommendation": "종합 의견 (1-2문장)"
+  },
+  "image_quality": {
+    "analyzable": true|false,
+    "issues": ["이미지 품질 문제가 있다면 기술"]
+  }
+}
+`}
 </OUTPUT_FORMAT>
 
 <ANALYSIS_INSTRUCTIONS>

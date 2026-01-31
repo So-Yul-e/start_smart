@@ -5,6 +5,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -12,7 +13,8 @@ const app = express();
 // 미들웨어 설정
 app.use(cors());
 app.use(express.json());
-app.use(express.static('frontend', {
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, '../frontend'), {
   etag: false,
   maxAge: 0,
   setHeaders: (res) => {
@@ -26,6 +28,13 @@ app.use('/api/analyze', require('./routes/analyze'));
 app.use('/api/result', require('./routes/result'));
 app.use('/api/report', require('./routes/report'));
 app.use('/api/config', require('./routes/config'));
+app.use('/api/competition', require('./routes/competition'));
+app.use('/api/roadview', require('./routes/roadview'));
+
+// 루트 경로
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
 
 // 헬스 체크
 app.get('/health', (req, res) => {
@@ -35,9 +44,17 @@ app.get('/health', (req, res) => {
 // 에러 핸들러
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({
+  res.status(err.status || 500).json({
     success: false,
     error: err.message || 'Internal server error'
+  });
+});
+
+// 404 핸들러
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: '요청한 리소스를 찾을 수 없습니다.'
   });
 });
 
@@ -53,6 +70,8 @@ app.listen(PORT, HOST, () => {
   const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
   console.log(`🚀 Server running on http://${displayHost}:${PORT}`);
   console.log(`📊 Health check: http://${displayHost}:${PORT}/health`);
+  console.log(`📊 경쟁 밀도 분석 API: POST /api/competition/analyze`);
+  console.log(`🖼️  거리뷰 이미지 분석 API: POST /api/roadview/analyze`);
   
   if (HOST === '0.0.0.0') {
     console.log(`⚠️  보안 경고: 모든 네트워크 인터페이스에서 접근 가능합니다.`);
