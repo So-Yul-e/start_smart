@@ -19,10 +19,36 @@ let pool;
 
 if (connectionString) {
   // 클라우드 DB (Vercel Postgres, Supabase 등)
+  // Supabase는 SSL 필수, 연결 문자열에 sslmode가 없으면 자동으로 SSL 적용
+  const isSupabase = connectionString.includes('supabase.com') || connectionString.includes('supabase.co');
+  const isVercel = process.env.VERCEL === '1' || connectionString.includes('vercel');
+  const requiresSSL = isSupabase || isVercel;
+  
+  // 연결 문자열에서 sslmode 파라미터 제거 (connection.js의 ssl 옵션이 우선 적용되도록)
+  // sslmode=require가 있으면 pg 라이브러리가 자동으로 SSL을 처리하려고 하는데,
+  // 이때 self-signed certificate 검증이 실패할 수 있음
+  let cleanConnectionString = connectionString;
+  if (requiresSSL && connectionString.includes('sslmode=')) {
+    // sslmode와 uselibpqcompat 파라미터 제거
+    cleanConnectionString = connectionString
+      .replace(/[?&]sslmode=[^&]*/g, '')  // sslmode=require 제거
+      .replace(/[?&]uselibpqcompat=[^&]*/g, '');  // uselibpqcompat 제거
+    
+    // ?가 남아있는데 다른 파라미터가 없으면 제거
+    if (cleanConnectionString.includes('?')) {
+      const parts = cleanConnectionString.split('?');
+      if (parts[1] === '' || !parts[1].includes('=')) {
+        cleanConnectionString = parts[0];
+      }
+    }
+  }
+  
+  // Supabase의 경우 self-signed certificate 문제 해결을 위해 rejectUnauthorized: false 필수
   pool = new Pool({
-    connectionString: connectionString,
-    // Vercel Postgres는 SSL 필수
-    ssl: process.env.VERCEL === '1' || process.env.DATABASE_URL?.includes('vercel') ? {
+    connectionString: cleanConnectionString,
+    // Supabase와 Vercel Postgres는 SSL 필수
+    // rejectUnauthorized: false는 self-signed certificate를 허용 (Supabase 사용 시 필요)
+    ssl: requiresSSL ? {
       rejectUnauthorized: false
     } : undefined,
     max: 20,
@@ -30,6 +56,9 @@ if (connectionString) {
     connectionTimeoutMillis: 2000,
   });
   console.log('📦 클라우드 데이터베이스 연결 설정 (DATABASE_URL 사용)');
+  if (isSupabase) {
+    console.log('🔒 Supabase SSL 연결 활성화 (self-signed certificate 허용)');
+  }
 } else {
   // 로컬 개발: 개별 환경변수 사용
   pool = new Pool({
