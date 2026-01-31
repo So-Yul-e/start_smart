@@ -236,8 +236,7 @@
     showTyping();
 
     // API 호출 (분석 데이터 포함)
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 
-                     (window.location.protocol + '//' + window.location.hostname + ':3000');
+    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
     
     fetch(apiBaseUrl + '/api/chatbot', {
       method: 'POST',
@@ -255,13 +254,19 @@
         if (data.success) {
           addMessage('ai', data.response, data.followups || null);
         } else {
-          addMessage('ai', '죄송합니다. 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'), null);
+          addMessage('ai', '<div class="chat-error-message">' +
+            '<i class="fa-solid fa-exclamation-circle"></i> ' +
+            '죄송합니다. 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류') +
+            '</div>', null);
         }
       })
       .catch(function (err) {
         hideTyping();
         console.error('챗봇 API 오류:', err);
-        addMessage('ai', '죄송합니다. 서버 연결에 문제가 발생했습니다.', null);
+        addMessage('ai', '<div class="chat-error-message">' +
+          '<i class="fa-solid fa-exclamation-triangle"></i> ' +
+          '죄송합니다. 서버 연결에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.' +
+          '</div>', null);
       });
   }
 
@@ -287,8 +292,7 @@
     var category = matchKeyword(text);
 
     // API 호출 (분석 데이터 포함)
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 
-                     (window.location.protocol + '//' + window.location.hostname + ':3000');
+    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
     
     fetch(apiBaseUrl + '/api/chatbot', {
       method: 'POST',
@@ -307,13 +311,19 @@
         if (data.success) {
           addMessage('ai', data.response, data.followups || null);
         } else {
-          addMessage('ai', '죄송합니다. 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'), null);
+          addMessage('ai', '<div class="chat-error-message">' +
+            '<i class="fa-solid fa-exclamation-circle"></i> ' +
+            '죄송합니다. 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류') +
+            '</div>', null);
         }
       })
       .catch(function (err) {
         hideTyping();
         console.error('챗봇 API 오류:', err);
-        addMessage('ai', '죄송합니다. 서버 연결에 문제가 발생했습니다.', null);
+        addMessage('ai', '<div class="chat-error-message">' +
+          '<i class="fa-solid fa-exclamation-triangle"></i> ' +
+          '죄송합니다. 서버 연결에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.' +
+          '</div>', null);
       });
   }
 
@@ -353,12 +363,34 @@
       ? '<i class="fa-solid fa-user"></i>'
       : '<i class="fa-solid fa-robot"></i>';
 
+    // 시간 표시
+    var now = new Date();
+    var timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+    // AI 메시지에 복사 버튼 추가
+    var copyButton = type === 'ai' 
+      ? '<button class="chat-message-copy" title="복사하기" onclick="copyMessage(this)"><i class="fa-solid fa-copy"></i></button>'
+      : '';
+
     messageEl.innerHTML =
       '<div class="chat-message-avatar">' + avatar + '</div>' +
-      '<div class="chat-message-content">' + content + '</div>';
+      '<div class="chat-message-content-wrapper">' +
+        '<div class="chat-message-content">' + content + '</div>' +
+        '<div class="chat-message-footer">' +
+          '<span class="chat-message-time">' + timeStr + '</span>' +
+          copyButton +
+        '</div>' +
+      '</div>';
 
     chatMessages.appendChild(messageEl);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // 부드러운 스크롤
+    setTimeout(function() {
+      chatMessages.scrollTo({
+        top: chatMessages.scrollHeight,
+        behavior: 'smooth'
+      });
+    }, 100);
 
     // 후속 CTA 버튼 및 텍스트 입력 표시
     if (type === 'ai') {
@@ -382,10 +414,63 @@
     }
   }
 
+  // 메시지 복사 함수 (전역으로 노출)
+  window.copyMessage = function(button) {
+    var messageContent = button.closest('.chat-message-content-wrapper')
+      .querySelector('.chat-message-content');
+    var text = messageContent.innerText || messageContent.textContent;
+    
+    // 클립보드에 복사
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        // 복사 성공 피드백
+        var icon = button.querySelector('i');
+        var originalClass = icon.className;
+        icon.className = 'fa-solid fa-check';
+        button.style.color = '#4ade80';
+        
+        setTimeout(function() {
+          icon.className = originalClass;
+          button.style.color = '';
+        }, 2000);
+      }).catch(function(err) {
+        console.error('복사 실패:', err);
+      });
+    } else {
+      // 폴백: 텍스트 영역 사용
+      var textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        var icon = button.querySelector('i');
+        var originalClass = icon.className;
+        icon.className = 'fa-solid fa-check';
+        button.style.color = '#4ade80';
+        
+        setTimeout(function() {
+          icon.className = originalClass;
+          button.style.color = '';
+        }, 2000);
+      } catch (err) {
+        console.error('복사 실패:', err);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   // 타이핑 인디케이터
   function showTyping() {
     typingIndicator.style.display = 'flex';
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    setTimeout(function() {
+      chatMessages.scrollTo({
+        top: chatMessages.scrollHeight,
+        behavior: 'smooth'
+      });
+    }, 100);
   }
 
   function hideTyping() {
@@ -435,6 +520,16 @@
         handleTextInput();
       }
     });
+
+    // 입력 필드 자동 포커스 (텍스트 입력 영역이 표시될 때)
+    var observer = new MutationObserver(function(mutations) {
+      if (textInputWrapper.style.display === 'flex') {
+        setTimeout(function() {
+          chatInput.focus();
+        }, 100);
+      }
+    });
+    observer.observe(textInputWrapper, { attributes: true, attributeFilter: ['style'] });
   }
 
   // 초기화 실행

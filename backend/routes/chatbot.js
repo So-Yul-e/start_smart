@@ -9,11 +9,19 @@ const { getAnalysis } = require('../db/analysisRepository');
 require('dotenv').config();
 
 // Gemini API 초기화
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// 모델명: 사용자 지정 모델 목록
-const MODEL_NAMES = ['gemini-3-pro-preview', 'gemini-3.0-flash', 'gemini-2.5-pro-preview'];
-const MODEL_NAME = MODEL_NAMES[0]; // gemini-3-pro-preview
-const FALLBACK_MODEL = MODEL_NAMES[1] || 'gemini-3.0-flash'; // 대체 모델
+if (!process.env.GEMINI_API_KEY) {
+  console.error('[챗봇] ⚠️  GEMINI_API_KEY 환경변수가 설정되지 않았습니다.');
+  console.error('[챗봇] ⚠️  .env 파일에 GEMINI_API_KEY를 추가해주세요.');
+} else {
+  console.log('[챗봇] ✅ GEMINI_API_KEY 설정됨 (길이:', process.env.GEMINI_API_KEY.length, ')');
+}
+
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+// 모델명: 실제 사용 가능한 Gemini 모델 목록
+// 참고: gemini-3-pro-preview, gemini-3.0-flash, gemini-2.5-pro-preview는 존재하지 않거나 할당량 초과
+const MODEL_NAMES = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+const MODEL_NAME = MODEL_NAMES[0]; // gemini-2.5-pro
+const FALLBACK_MODEL = MODEL_NAMES[1] || 'gemini-2.5-flash'; // 대체 모델
 
 const MAX_QUESTIONS = 10;
 
@@ -170,6 +178,35 @@ class GuardrailValidator {
 
 // 챗봇 프롬프트 생성
 function buildChatbotPrompt(analysisData, category, question) {
+  // analysisData 검증 및 정리
+  if (!analysisData || typeof analysisData !== 'object') {
+    console.error('[챗봇] analysisData 검증 실패:', {
+      hasAnalysisData: !!analysisData,
+      type: typeof analysisData,
+      isArray: Array.isArray(analysisData),
+      value: analysisData
+    });
+    throw new Error('analysisData가 유효하지 않습니다. 분석 데이터를 확인해주세요.');
+  }
+
+  // 순환 참조 방지를 위한 안전한 JSON 변환
+  let analysisDataStr;
+  try {
+    // 필요한 필드만 추출하여 안전하게 변환
+    const safeData = {
+      brand: analysisData.brand || {},
+      finance: analysisData.finance || {},
+      decision: analysisData.decision || {},
+      market: analysisData.market || {},
+      aiConsulting: analysisData.aiConsulting || {},
+      roadview: analysisData.roadview || {}
+    };
+    analysisDataStr = JSON.stringify(safeData, null, 2);
+  } catch (jsonError) {
+    console.error('[챗봇] JSON 변환 오류:', jsonError.message);
+    analysisDataStr = JSON.stringify({ error: '데이터 변환 실패' });
+  }
+
   const systemPrompt = `[SYSTEM ROLE]
 당신은 **"StartSmart AI 창업 컨설턴트"**입니다.
 
@@ -241,8 +278,6 @@ function buildChatbotPrompt(analysisData, category, question) {
 - 리스크 표현: high→높음, medium→보통, low→낮음
 - **카드 UI를 활용하여 정보를 구조화하세요. 메트릭은 카드 형식으로, 리스크나 개선안은 리스트 형식으로 작성하세요.**
 - **사용자가 한 번에 모든 정보를 이해할 수 있도록 충분히 상세하고 완전한 답변을 제공하세요.**`;
-
-  const analysisDataStr = JSON.stringify(analysisData, null, 2);
 
   let categoryPrompt = '';
   switch (category) {
@@ -408,6 +443,15 @@ ${categoryPrompt}
 
 // 챗봇 응답 생성 (Gemini API 사용 - 멀티턴 대화)
 async function generateChatbotResponse(analysisData, category, question, analysisId) {
+  try {
+    const prompt = buildChatbotPrompt(analysisData, category, question);
+  } catch (promptError) {
+    console.error('[챗봇] 프롬프트 생성 실패:', promptError.message);
+    console.error('[챗봇] analysisData 타입:', typeof analysisData);
+    console.error('[챗봇] analysisData 키:', analysisData ? Object.keys(analysisData).slice(0, 20) : 'null');
+    throw new Error('프롬프트 생성 중 오류: ' + promptError.message);
+  }
+  
   const prompt = buildChatbotPrompt(analysisData, category, question);
 
   // 대화 히스토리 가져오기 또는 초기화
@@ -428,8 +472,13 @@ async function generateChatbotResponse(analysisData, category, question, analysi
   // 사용자 메시지 생성
   const userMessage = prompt.user;
 
-  // 여러 모델명을 순차적으로 시도 (사용자 지정 모델 목록)
-  const modelsToTry = MODEL_NAMES.length > 0 ? MODEL_NAMES : ['gemini-3-pro-preview', 'gemini-3.0-flash', 'gemini-2.5-pro-preview'];
+  // API 키 확인
+  if (!genAI) {
+    throw new Error('GEMINI_API_KEY가 설정되지 않았습니다. .env 파일에 GEMINI_API_KEY를 추가해주세요.');
+  }
+
+  // 여러 모델명을 순차적으로 시도 (실제 사용 가능한 모델 목록)
+  const modelsToTry = MODEL_NAMES.length > 0 ? MODEL_NAMES : ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro'];
 
   let lastError = null;
 
@@ -996,6 +1045,14 @@ function buildFollowupCTAs(category) {
 // API 엔드포인트
 router.post('/', async (req, res) => {
   try {
+    console.log('[챗봇] 요청 받음:', {
+      hasAnalysisId: !!req.body.analysisId,
+      category: req.body.category,
+      hasQuestion: !!req.body.question,
+      questionCount: req.body.questionCount,
+      hasAnalysisData: !!req.body.analysisData
+    });
+    
     const { analysisId, category, question, questionCount } = req.body;
 
     // 입력 검증
@@ -1044,18 +1101,48 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // analysisData 검증 및 로깅
+    console.log('[챗봇] analysisData 구조 확인:', {
+      hasBrand: !!analysisData.brand,
+      hasFinance: !!analysisData.finance,
+      hasDecision: !!analysisData.decision,
+      hasMarket: !!analysisData.market,
+      hasAiConsulting: !!analysisData.aiConsulting,
+      hasRoadview: !!analysisData.roadview,
+      dataType: typeof analysisData,
+      isArray: Array.isArray(analysisData),
+      keys: Object.keys(analysisData || {}).slice(0, 10) // 처음 10개 키만
+    });
+
     // 가드레일 검증기 생성 (비활성화)
     // const validator = new GuardrailValidator(analysisData);
 
     // AI 응답 생성 (멀티턴 대화 - analysisId로 히스토리 관리)
     let aiResponse;
     try {
+      console.log('[챗봇] AI 응답 생성 시작:', {
+        category: category || 'general',
+        hasQuestion: !!question,
+        analysisId: analysisId,
+        hasAnalysisData: !!analysisData,
+        hasGenAI: !!genAI,
+        analysisDataType: typeof analysisData,
+        analysisDataIsArray: Array.isArray(analysisData)
+      });
+      
+      // analysisData가 유효한지 한 번 더 확인
+      if (!analysisData || typeof analysisData !== 'object' || Array.isArray(analysisData)) {
+        throw new Error('analysisData가 유효하지 않습니다. 객체여야 합니다.');
+      }
+      
       aiResponse = await generateChatbotResponse(
         analysisData,
         category || 'general',
         question,
         analysisId
       );
+      
+      console.log('[챗봇] AI 응답 생성 완료, 길이:', aiResponse?.length || 0);
 
       // 응답 검증
       if (!aiResponse || typeof aiResponse !== 'string' || aiResponse.trim().length === 0) {
@@ -1079,10 +1166,25 @@ router.post('/', async (req, res) => {
         }
       }
     } catch (error) {
-      console.error('[챗봇] AI 응답 생성 실패:', error.message);
+      console.error('[챗봇] ❌ AI 응답 생성 실패:', error.message);
+      console.error('[챗봇] ❌ 에러 스택:', error.stack);
+      
+      // 더 구체적인 에러 메시지
+      let errorMessage = 'AI 응답 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      
+      if (error.message.includes('GEMINI_API_KEY')) {
+        errorMessage = 'GEMINI_API_KEY가 설정되지 않았습니다. 서버 관리자에게 문의하세요.';
+      } else if (error.message.includes('모델') || error.message.includes('model')) {
+        errorMessage = 'AI 모델 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      } else if (error.message.includes('API') || error.message.includes('api')) {
+        errorMessage = 'AI API 호출에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       return res.status(500).json({
         success: false,
-        error: 'AI 응답 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+        error: errorMessage
       });
     }
 
@@ -1132,10 +1234,34 @@ router.post('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[챗봇] 오류:', error);
+    console.error('[챗봇] ❌ 최상위 오류:', error);
+    console.error('[챗봇] ❌ 오류 메시지:', error.message);
+    console.error('[챗봇] ❌ 오류 스택:', error.stack);
+    console.error('[챗봇] ❌ 오류 이름:', error.name);
+    console.error('[챗봇] ❌ 요청 본문 (일부):', JSON.stringify({
+      analysisId: req.body.analysisId,
+      category: req.body.category,
+      hasQuestion: !!req.body.question,
+      hasAnalysisData: !!req.body.analysisData
+    }, null, 2));
+    
+    // 더 자세한 에러 메시지 제공
+    let errorMessage = '챗봇 응답 생성 중 오류가 발생했습니다.';
+    
+    if (error.message.includes('GEMINI_API_KEY')) {
+      errorMessage = 'GEMINI_API_KEY가 설정되지 않았습니다. .env 파일에 GEMINI_API_KEY를 추가해주세요.';
+    } else if (error.message.includes('모델') || error.message.includes('model')) {
+      errorMessage = 'AI 모델 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.';
+    } else if (error.message.includes('JSON') || error.message.includes('json')) {
+      errorMessage = '데이터 변환 중 오류가 발생했습니다. 분석 데이터 형식을 확인해주세요.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     res.status(500).json({
       success: false,
-      error: error.message || '챗봇 응답 생성 중 오류가 발생했습니다.'
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
