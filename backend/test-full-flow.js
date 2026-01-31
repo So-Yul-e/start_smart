@@ -93,7 +93,7 @@ async function testAnalyzeAPI(brandId) {
   }
 }
 
-async function testResultAPI(analysisId, maxAttempts = 10) {
+async function testResultAPI(analysisId, maxAttempts = 30) {
   if (!analysisId) {
     logTest('4. 분석 결과 조회', false, new Error('분석 ID가 없습니다'));
     return null;
@@ -126,21 +126,19 @@ async function testResultAPI(analysisId, maxAttempts = 10) {
       }
 
       // completed 상태 - result 필드 확인
-      if (response.data.result) {
-        const resultData = response.data.result;
-        const status = resultData.status || (resultData.id ? 'completed' : null);
-        
-        if (status === 'completed' || resultData.id) {
-          result = resultData.result || resultData; // result.result 또는 result 자체
-          logTest('4. 분석 결과 조회', true);
-          console.log(`   시도 횟수: ${attempts}회`);
-          console.log(`   상태: completed`);
-          break;
-        }
+      if (response.data.status === 'completed' && response.data.result) {
+        result = response.data.result;
+        logTest('4. 분석 결과 조회', true);
+        console.log(`   시도 횟수: ${attempts}회`);
+        console.log(`   상태: completed`);
+        console.log(`   결과 ID: ${result.id || 'N/A'}`);
+        break;
       }
 
       // 응답 형식이 예상과 다를 경우
-      console.log(`   ⚠️  예상치 못한 응답 형식:`, JSON.stringify(response.data).substring(0, 100));
+      if (response.data.status && response.data.status !== 'pending' && response.data.status !== 'processing') {
+        console.log(`   ⚠️  예상치 못한 응답 형식:`, JSON.stringify(response.data).substring(0, 200));
+      }
       await new Promise(resolve => setTimeout(resolve, 2000)); // 2초 대기
     }
 
