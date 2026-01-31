@@ -246,6 +246,70 @@ const reportResponseExample = {
 };
 
 // ============================================
+// 9. 경쟁 밀도 분석 결과 (백엔드 → 프론트엔드)
+// POST /api/competition/analyze
+// ============================================
+const competitionAnalysisExample = {
+  summary: {
+    total_count: 47,
+    density_grade: "very_high",
+    density_label: "매우 높음",
+    density_icon: "🔴",
+    percentile: 92,
+    comparison: {
+      region_avg: 20.5,
+      ratio: 2.29,
+      description: "서울 평균 대비 2.29배"
+    }
+  },
+  breakdown: {
+    franchise: 32,
+    independent: 15,
+    top_brands: [
+      { name: "스타벅스", count: 5 },
+      { name: "투썸플레이스", count: 4 },
+      { name: "이디야", count: 3 }
+    ]
+  },
+  poi_list: [
+    {
+      name: "스타벅스 강남역점",
+      category: "cafe",
+      distance_meters: 50,
+      coordinates: [127.0281, 37.4982],
+      is_franchise: true,
+      brand_name: "스타벅스",
+      address: "서울시 강남구 테헤란로 123"
+    }
+    // ... 더 많은 POI
+  ],
+  map_bounds: {
+    center: [127.0276, 37.4979],
+    radius: 500
+  },
+  confidence: 0.95,
+  data_freshness: "2025-01-15",
+  location_info: {
+    address: "서울시 강남구 역삼동",
+    coordinates: [127.0276, 37.4979]
+  }
+};
+
+// 경쟁 밀도 분석 요청
+const competitionAnalysisRequestExample = {
+  location: {
+    type: "address", // "address" | "coordinates" | "place_name"
+    value: "서울시 강남구 역삼동 123"
+  },
+  category: "cafe", // "cafe" | "restaurant" | "convenience_store" | ...
+  radius_meters: 500, // 100 ~ 1000
+  options: {
+    include_closed: false,
+    franchise_only: false
+  }
+};
+
+// ============================================
 // Export
 // ============================================
 module.exports = {
@@ -260,6 +324,8 @@ module.exports = {
     marketAnalysis: marketAnalysisExample,
     finalResult: finalResultExample,
     resultResponse: resultResponseExample,
-    reportResponse: reportResponseExample
+    reportResponse: reportResponseExample,
+    competitionAnalysis: competitionAnalysisExample,
+    competitionAnalysisRequest: competitionAnalysisRequestExample
   }
 };
