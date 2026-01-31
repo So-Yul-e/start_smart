@@ -33,12 +33,30 @@ async function getAllBrands() {
 }
 
 /**
+ * 브랜드 이름으로 브랜드 정보 조회
+ * @param {String} brandName - 브랜드 이름 (예: "메가커피", "이디야커피")
+ * @returns {Promise<Object|null>} 브랜드 정보 또는 null
+ */
+async function getBrandByName(brandName) {
+  return await dbLoader.getBrandByName(brandName);
+}
+
+/**
  * 브랜드 정보를 엔진 입력 형식으로 변환
  * @param {String} brandId - 브랜드 ID
  * @returns {Promise<Object|null>} 엔진 입력 형식의 brand 객체
  */
 async function getBrandForEngine(brandId) {
   return await dbLoader.getBrandForEngine(brandId);
+}
+
+/**
+ * 브랜드 이름으로 엔진 입력 형식의 brand 객체 조회
+ * @param {String} brandName - 브랜드 이름
+ * @returns {Promise<Object|null>} 엔진 입력 형식의 brand 객체
+ */
+async function getBrandForEngineByName(brandName) {
+  return await dbLoader.getBrandForEngineByName(brandName);
 }
 
 /**
@@ -84,7 +102,9 @@ function validateBrandDefaults(brand) {
 module.exports = {
   loadBrandsData,
   getBrandById,
+  getBrandByName,
   getAllBrands,
   getBrandForEngine,
+  getBrandForEngineByName,
   validateBrandDefaults
 };

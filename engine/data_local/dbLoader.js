@@ -274,6 +274,34 @@ async function getAllBrands() {
 }
 
 /**
+ * 브랜드 이름으로 브랜드 정보 조회
+ * @param {String} brandName - 브랜드 이름 (예: "메가커피", "이디야커피")
+ * @returns {Promise<Object|null>} 브랜드 정보 또는 null
+ */
+async function getBrandByName(brandName) {
+  const data = await loadBrandsData();
+  
+  // 정확한 이름 매칭
+  let brand = data.brands.find(b => b.name === brandName);
+  
+  // 부분 매칭 시도 (예: "이디야" → "이디야커피")
+  if (!brand) {
+    const normalizedName = brandName.replace(/커피|프랜차이즈|카페/g, '').trim();
+    brand = data.brands.find(b => {
+      const normalizedBrandName = b.name.replace(/커피|프랜차이즈|카페/g, '').trim();
+      return normalizedBrandName === normalizedName || b.name.includes(brandName) || brandName.includes(b.name);
+    });
+  }
+  
+  if (!brand) {
+    console.warn(`브랜드를 찾을 수 없습니다: ${brandName}`);
+    return null;
+  }
+  
+  return brand;
+}
+
+/**
  * 브랜드 정보를 엔진 입력 형식으로 변환
  * @param {String} brandId - 브랜드 ID
  * @returns {Promise<Object|null>} 엔진 입력 형식의 brand 객체
@@ -292,10 +320,31 @@ async function getBrandForEngine(brandId) {
   };
 }
 
+/**
+ * 브랜드 이름으로 엔진 입력 형식의 brand 객체 조회
+ * @param {String} brandName - 브랜드 이름
+ * @returns {Promise<Object|null>} 엔진 입력 형식의 brand 객체
+ */
+async function getBrandForEngineByName(brandName) {
+  const brand = await getBrandByName(brandName);
+  
+  if (!brand) {
+    return null;
+  }
+  
+  return {
+    id: brand.id,
+    name: brand.name,
+    defaults: brand.defaults
+  };
+}
+
 module.exports = {
   loadBrandsData,
   getBrandById,
+  getBrandByName,
   getAllBrands,
   getBrandForEngine,
+  getBrandForEngineByName,
   connectDatabase
 };
