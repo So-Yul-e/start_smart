@@ -166,7 +166,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
           risks,
           overallRisk,
           riskScore,
-          source: 'kakao' // 카카오 로드뷰에서 캡처
+          source: 'kakao', // 카카오 로드뷰에서 캡처
+          _metadata: converted._metadata || null // 메타데이터 포함 (reportModel에서 사용)
         };
         
         const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
@@ -199,6 +200,10 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
             imageUrl: roadviewInfo.imageUrl, // Google Street View 이미지 URL
             source: roadviewInfo.source // 'google' | 'naver' | 'kakao'
           });
+          // analyzeRoadview는 _metadata를 포함하지 않으므로, convertToLegacyFormat을 다시 호출하여 메타데이터 추출
+          // 하지만 analyzeRoadview는 이미 최종 형식으로 반환하므로, Gemini 응답을 다시 가져올 수 없음
+          // 따라서 _metadata는 analyzeRoadview 내부에서 처리되어야 하지만, 현재는 포함되지 않음
+          // 이는 제한사항으로 남겨두고, 향후 개선 가능
           const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
           console.log(`[${analysisId}] ✅ 로드뷰 분석 완료 (${step3Time}초, 소스: ${roadviewInfo.source})`);
         } catch (roadviewError) {
@@ -297,6 +302,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         lng: location.lng,
         address: location.address || ''
       },
+      conditions,  // reportModel에서 사용
+      targetDailySales,  // reportModel에서 사용
       finance,
       decision,
       aiConsulting,
@@ -304,6 +311,17 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
       market,
       createdAt: new Date().toISOString()
     };
+
+    // reportModel 생성 (리포트 렌더링 최적화)
+    try {
+      const { buildReportModel } = require('../../shared/reportModel');
+      finalResult.reportModel = buildReportModel(finalResult);
+      console.log(`[${analysisId}] ✅ reportModel 생성 완료`);
+    } catch (error) {
+      console.error(`[${analysisId}] ❌ reportModel 생성 실패:`, error);
+      // 하위 호환성을 위해 에러를 finalResult에 포함 (전체 분석 실패로 이어지지 않도록)
+      finalResult.reportModelError = error.message;
+    }
 
     // 결과 저장 (DB)
     await updateAnalysis(analysisId, {

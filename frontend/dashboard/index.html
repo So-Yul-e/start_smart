@@ -49,6 +49,7 @@
       <div class="tabs">
         <button class="tab-btn active" data-tab="summary">요약</button>
         <button class="tab-btn" data-tab="detail">AI 상세분석</button>
+        <button class="tab-btn" data-tab="location">입지-상권분석</button>
         <button class="tab-btn" data-tab="compare">시뮬레이션 비교</button>
       </div>
 
@@ -128,7 +129,37 @@
         </div>
       </div>
 
-      <!-- ========== TAB 3: 시뮬레이션 비교 (IA 7) ========== -->
+      <!-- ========== TAB 3: 입지-상권분석 ========== -->
+      <div class="tab-content" id="tab-location">
+        <!-- 입지 분석 (Roadview) -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-map-location-dot" style="color:var(--gold); margin-right:0.5rem;"></i> 입지 분석</h3>
+          <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">로드뷰 기반 물리적 입지 리스크 평가</p>
+          
+          <!-- Roadview 리스크 카드 -->
+          <div id="roadviewRisks" style="margin-bottom:2rem;"></div>
+          
+          <!-- 종합 평가 -->
+          <div id="roadviewSummary" style="margin-top:1.5rem;"></div>
+        </div>
+
+        <!-- 상권 분석 (Market) -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-store" style="color:var(--gold); margin-right:0.5rem;"></i> 상권 분석</h3>
+          <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">반경 내 경쟁 환경 및 유동인구 분석</p>
+          
+          <!-- 경쟁 현황 -->
+          <div id="marketCompetitors" style="margin-bottom:2rem;"></div>
+          
+          <!-- 유동인구 정보 -->
+          <div id="marketFootTraffic" style="margin-bottom:2rem;"></div>
+          
+          <!-- 상권 점수 -->
+          <div id="marketScore" style="margin-top:1.5rem;"></div>
+        </div>
+      </div>
+
+      <!-- ========== TAB 4: 시뮬레이션 비교 (IA 7) ========== -->
       <div class="tab-content" id="tab-compare">
         <!-- Before/After -->
         <div class="glass-card">

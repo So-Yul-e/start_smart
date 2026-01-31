@@ -30,6 +30,7 @@ app.use('/api/report', require('./routes/report'));
 app.use('/api/config', require('./routes/config'));
 // app.use('/api/competition', require('./routes/competition')); // 파일이 없어서 주석 처리
 app.use('/api/roadview', require('./routes/roadview'));
+app.use('/api/consulting', require('./routes/consulting'));
 
 // 루트 경로
 app.get('/', (req, res) => {
@@ -72,6 +73,7 @@ app.listen(PORT, HOST, () => {
   console.log(`📊 Health check: http://${displayHost}:${PORT}/health`);
   // console.log(`📊 경쟁 밀도 분석 API: POST /api/competition/analyze`); // competition 라우트 비활성화
   console.log(`🖼️  거리뷰 이미지 분석 API: POST /api/roadview/analyze`);
+  console.log(`💬 리포트 Q&A API: POST /api/consulting/chat`);
   
   if (HOST === '0.0.0.0') {
     console.log(`⚠️  보안 경고: 모든 네트워크 인터페이스에서 접근 가능합니다.`);

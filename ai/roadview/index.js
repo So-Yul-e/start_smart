@@ -333,7 +333,8 @@ async function analyzeRoadview(input) {
       },
       risks,
       overallRisk,
-      riskScore
+      riskScore,
+      _metadata: converted._metadata || null // 메타데이터 포함 (reportModel에서 사용)
     };
   } catch (error) {
     // 에러 메시지 개선
