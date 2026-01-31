@@ -1,0 +1,158 @@
+/* Dashboard Page Styles */
+
+.dash-top-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+    .dash-top-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Intensity bar */
+.intensity-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.intensity-bar .fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s ease;
+}
+
+/* Competitive info grid */
+.comp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .comp-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.comp-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.comp-item .comp-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.comp-item .comp-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+/* Saved simulation row */
+.sim-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+    transition: border-color 0.3s;
+}
+
+.sim-row:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sim-row.current {
+    border-color: var(--gold);
+    background: rgba(212, 175, 55, 0.06);
+}
+
+.sim-row .sim-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.sim-row .sim-brand {
+    font-weight: 600;
+    color: var(--text-main);
+    min-width: 80px;
+}
+
+.sim-row .sim-metric {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.sim-row .sim-metric strong {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.sim-row .sim-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sim-btn-sm {
+    padding: 0.3rem 0.8rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+}
+
+.sim-btn-sm:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.sim-btn-sm.danger:hover {
+    border-color: #f87171;
+    color: #f87171;
+}
+
+/* Save toast */
+.save-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--primary);
+    color: white;
+    padding: 0.8rem 2rem;
+    border-radius: 50px;
+    font-size: 0.95rem;
+    z-index: 3000;
+    opacity: 0;
+    transition: all 0.4s ease;
+    pointer-events: none;
+}
+
+.save-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 리포트 - StartSmart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header no-print" id="header">
+    <a href="../" class="logo">
+      <i class="fa-solid fa-leaf text-gold"></i> StartSmart
+    </a>
+    <nav class="nav">
+      <a href="../dashboard/"><i class="fa-solid fa-arrow-left"></i> 대시보드로 돌아가기</a>
+    </nav>
+    <div style="display:flex; gap:0.5rem;">
+      <button id="btnPrint" class="btn-outline" onclick="window.print()">
+        <i class="fa-solid fa-print" style="margin-right:0.5rem;"></i> 인쇄
+      </button>
+      <button id="btnPDF" class="btn-outline" style="border-color:var(--gold); color:var(--gold);">
+        <i class="fa-solid fa-file-pdf" style="margin-right:0.5rem;"></i> PDF 다운로드
+      </button>
+    </div>
+  </header>
+
+  <main class="report-main">
+    <!-- ========== PAGE 1: Overview ========== -->
+    <div class="report-page" id="page1">
+      <div class="report-page-header">
+        <div>
+          <div class="report-logo">StartSmart</div>
+          <div class="report-title-text">창업 타당성 검증 리포트</div>
+        </div>
+        <div class="report-meta-box">
+          <div id="reportDate"></div>
+          <div id="reportId" style="font-size:0.8rem; color:#999;"></div>
+        </div>
+      </div>
+
+      <div class="report-stamp">대외비</div>
+
+      <div class="report-section">
+        <h2 class="report-h2">1. 분석 개요</h2>
+        <table class="report-table">
+          <tr><th>브랜드</th><td id="rBrand"></td></tr>
+          <tr><th>분석 위치</th><td id="rLocation"></td></tr>
+          <tr><th>매장 규모</th><td id="rArea"></td></tr>
+          <tr><th>초기 투자금</th><td id="rInvestment"></td></tr>
+          <tr><th>월세</th><td id="rRent"></td></tr>
+          <tr><th>점주 근무</th><td id="rOwner"></td></tr>
+          <tr><th>목표 판매량</th><td id="rTarget"></td></tr>
+        </table>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">2. 종합 평가</h2>
+        <div class="report-score-row">
+          <div class="report-score-circle" id="rScoreCircle">
+            <span class="report-score-num" id="rScoreNum"></span>
+            <span class="report-score-label">점</span>
+          </div>
+          <div class="report-score-detail">
+            <div id="rSignalText" style="font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;"></div>
+            <div id="rDecisionSummary" style="line-height:1.7;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 1</div>
+    </div>
+
+    <!-- ========== PAGE 2: Financial ========== -->
+    <div class="report-page" id="page2">
+      <div class="report-page-header compact">
+        <div class="report-logo small">StartSmart</div>
+        <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">3. 예상 수익성 분석</h2>
+        <table class="report-table" id="rFinanceTable">
+          <thead>
+            <tr>
+              <th>항목</th>
+              <th>금액 (월)</th>
+              <th>비율</th>
+            </tr>
+          </thead>
+          <tbody id="rFinanceBody"></tbody>
+        </table>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">4. 핵심 지표</h2>
+        <div class="report-kpi-grid" id="rKpiGrid"></div>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">5. 민감도 분석</h2>
+        <table class="report-table">
+          <thead>
+            <tr><th>시나리오</th><th>월 순이익</th><th>투자 회수 기간</th></tr>
+          </thead>
+          <tbody id="rSensBody"></tbody>
+        </table>
+      </div>
+
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 2</div>
+    </div>
+
+    <!-- ========== PAGE 3: AI Consulting ========== -->
+    <div class="report-page" id="page3">
+      <div class="report-page-header compact">
+        <div class="report-logo small">StartSmart</div>
+        <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">6. AI 리스크 분석</h2>
+        <div id="rRiskList"></div>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">7. AI 개선 제안</h2>
+        <div id="rImprovementList"></div>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">8. 경쟁 환경 요약</h2>
+        <div id="rCompetitive"></div>
+      </div>
+
+      <div class="report-disclaimer">
+        * 본 리포트는 AI 예측 모델에 기반한 시뮬레이션 결과로, 실제 결과와 다를 수 있습니다.<br>
+        * 투자 결정 시 추가적인 전문가 상담을 권장합니다.
+      </div>
+
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 3</div>
+    </div>
+  </main>
+
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>
