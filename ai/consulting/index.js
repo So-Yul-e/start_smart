@@ -11,6 +11,7 @@ const {
   getRiskAnalysisPrompt,
   getCompetitiveAnalysisPrompt
 } = require('./prompts');
+const { calculateDensity } = require('./utils');
 
 // Claude API 클라이언트 초기화
 const anthropic = new Anthropic({
@@ -322,6 +323,13 @@ async function generateConsulting(input) {
     // 입력 검증
     if (!input.brand || !input.location || !input.conditions || !input.finance || !input.market || !input.roadview) {
       throw new Error('필수 입력 데이터가 누락되었습니다.');
+    }
+
+    // 경쟁 밀도가 없으면 자동 계산
+    if (!input.market.competitors.density && input.market.competitors.total !== undefined) {
+      const radiusM = input.market.radiusM || input.market.location?.radius || 500;
+      input.market.competitors.density = calculateDensity(input.market.competitors.total, radiusM);
+      console.log(`[경쟁 밀도 자동 계산] 경쟁 카페 ${input.market.competitors.total}개, 반경 ${radiusM}m → density: "${input.market.competitors.density}"`);
     }
 
     // 병렬 처리로 API 호출 최적화 (토큰 비용은 동일하지만 응답 시간 단축)

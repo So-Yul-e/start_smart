@@ -228,9 +228,30 @@ const riskAnalysisPrompt = `
 다음 재무 분석 결과를 바탕으로 핵심 리스크 Top 3를 식별하고 개선 제안을 해주세요:
 
 재무 결과:
-- 월 순이익: ${finance.monthlyProfit}원
+- 월 매출: ${finance.monthlyRevenue}원
+  (계산식: 판매량(${targetDailySales}잔/일) × 아메리카노 판매금액 × 30일)
+- 총 지출 금액: ${totalMonthlyCosts}원
+  (계산식: 월세 + 인건비 + 원재료비 + 공과금 + 로열티 + 마케팅비 + 기타고정비)
+  - 월세 (rent): ${monthlyCosts.rent}원
+  - 인건비 (labor): ${monthlyCosts.labor}원
+  - 원재료비 (materials): ${monthlyCosts.materials}원
+  - 공과금 (utilities): ${monthlyCosts.utilities}원
+  - 로열티 (royalty): ${monthlyCosts.royalty}원
+  - 마케팅비 (marketing): ${monthlyCosts.marketing}원
+  - 기타 고정비 (etc): ${monthlyCosts.etc}원
+- 월 순수익: ${finance.monthlyProfit}원
+  (계산식: 월 매출 - 총 지출금액)
 - 회수 개월: ${finance.paybackMonths}개월
+  (계산식: 초기 투자비용 - (월순수익 × N) ≤ 0이 되는 최소 정수 N)
 - 목표 판매량: ${targetDailySales}잔/일
+  (계산식: 월 매출 - 총지출금액이 30% 이상인 수량)
+
+⚠️ 중요 계산식:
+1. 월 매출 = 판매량(잔/일) × 아메리카노 판매금액 × 30일
+2. 총 지출금액 = 월세 + 인건비 + 원재료비 + 공과금 + 로열티 + 마케팅비 + 기타고정비
+3. 월 순수익 = 월 매출 - 총 지출금액
+4. 회수 개월 = 초기 투자비용 - (월순수익 × N) ≤ 0이 되는 최소 정수 N
+5. 목표 판매량 = 월 매출 - 총지출금액이 30% 이상인 수량
 
 다음 형식으로 JSON을 반환해주세요:
 {
