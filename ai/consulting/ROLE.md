@@ -42,6 +42,34 @@ ai/consulting/
     monthlyProfit: 10000000,
     paybackMonths: 50
   },
+  decision: {
+    score: 65,
+    signal: "yellow",
+    survivalMonths: 24,
+    riskLevel: "medium",
+    finalJudgement: {
+      signal: "yellow",
+      label: "CONDITIONAL RISK",
+      summary: "조건부 리스크가 존재하여 신중한 검토가 필요합니다.",
+      nonNegotiable: false,
+      primaryReason: null
+    },
+    hardCutReasons: []
+  },
+  decision: {
+    score: 65,
+    signal: "yellow",
+    survivalMonths: 24,
+    riskLevel: "medium",
+    finalJudgement: {
+      signal: "yellow",
+      label: "CONDITIONAL RISK",
+      summary: "조건부 리스크가 존재하여 신중한 검토가 필요합니다.",
+      nonNegotiable: false,
+      primaryReason: null
+    },
+    hardCutReasons: []
+  },
   market: {
     competitors: { total: 5, density: "high" },
     footTraffic: { weekday: "high", weekend: "medium" }
@@ -154,6 +182,20 @@ async function test() {
       monthlyProfit: 10000000,
       paybackMonths: 50
     },
+    decision: {
+      score: 65,
+      signal: "yellow",
+      survivalMonths: 24,
+      riskLevel: "medium",
+      finalJudgement: {
+        signal: "yellow",
+        label: "CONDITIONAL RISK",
+        summary: "조건부 리스크가 존재하여 신중한 검토가 필요합니다.",
+        nonNegotiable: false,
+        primaryReason: null
+      },
+      hardCutReasons: []
+    },
     market: {
       competitors: { total: 5, density: "high" },
       footTraffic: { weekday: "high", weekend: "medium" }
@@ -226,6 +268,15 @@ const salesScenarioPrompt = `
 ```js
 const riskAnalysisPrompt = `
 다음 재무 분석 결과를 바탕으로 핵심 리스크 Top 3를 식별하고 개선 제안을 해주세요:
+
+【시스템 판정 결과 (반드시 참고)】
+- 신호등: ${decision.finalJudgement?.signal || decision.signal} (${decision.finalJudgement?.label || 'N/A'})
+- 판정 요약: ${decision.finalJudgement?.summary || 'N/A'}
+- 시스템 판정 (컨설팅으로 변경 불가): ${decision.finalJudgement?.nonNegotiable ? '예' : '아니오'}
+- 하드컷 판정 근거: ${decision.hardCutReasons?.length > 0 ? decision.hardCutReasons.join(', ') : '없음'}
+
+⚠️ 중요: 시스템 판정이 "HIGH RISK"이고 nonNegotiable이 true인 경우, 
+반드시 해당 판정을 존중하여 리스크 분석을 작성하세요.
 
 재무 결과:
 - 월 매출: ${finance.monthlyRevenue}원

@@ -58,13 +58,14 @@ function getSalesScenarioPrompt(data) {
  * 리스크 분석 및 개선 제안 프롬프트
  * @param {Object} data - 입력 데이터
  * @param {Object} data.finance - 재무 분석 결과
+ * @param {Object} data.decision - Decision 엔진 판정 결과
  * @param {number} data.targetDailySales - 목표 일 판매량
  * @param {Object} data.market - 상권 분석 결과
  * @param {Object} data.roadview - 로드뷰 분석 결과
  * @returns {string} 프롬프트 텍스트
  */
 function getRiskAnalysisPrompt(data) {
-  const { finance, targetDailySales, market, roadview, conditions, brand } = data;
+  const { finance, decision, targetDailySales, market, roadview, conditions, brand } = data;
   
   // 반경 정보 추출 (radiusM 또는 location.radius)
   const radiusM = market.radiusM || market.location?.radius || 500;
@@ -90,10 +91,57 @@ ${monthlyCosts.royalty ? `- 로열티 (royalty): ${(monthlyCosts.royalty / 10000
 ${monthlyCosts.marketing ? `- 마케팅비 (marketing): ${(monthlyCosts.marketing / 10000).toFixed(0)}만원` : ''}
 ${monthlyCosts.etc ? `- 기타 고정비 (etc): ${(monthlyCosts.etc / 10000).toFixed(0)}만원` : ''}` : '';
 
+  // Decision 엔진 판정 결과 추출 (선택적)
+  const decisionInfo = decision ? `
+【시스템 판정 결과 (반드시 참고)】
+- 신호등: ${decision.finalJudgement?.signal || decision.signal || 'N/A'} (${decision.finalJudgement?.label || 'N/A'})
+- 판정 요약: ${decision.finalJudgement?.summary || 'N/A'}
+- 시스템 판정 (컨설팅으로 변경 불가): ${decision.finalJudgement?.nonNegotiable ? '예' : '아니오'}
+- 하드컷 판정 근거: ${decision.hardCutReasons && decision.hardCutReasons.length > 0 ? decision.hardCutReasons.map(reason => {
+    const reasonMap = {
+      'NEGATIVE_PROFIT': '월 순이익이 0원 이하 (적자 위험)',
+      'DSCR_FAIL': 'DSCR이 1.0 미만 (대출 상환 불가)',
+      'PAYBACK_TOO_LONG': '회수 기간이 36개월 이상',
+      'SURVIVAL_LT_36': '예상 생존 기간이 36개월 미만'
+    };
+    return reasonMap[reason] || reason;
+  }).join(', ') : '없음'}
+- 종합 점수: ${decision.score || 'N/A'}점
+- 예상 생존 기간: ${decision.survivalMonths || 'N/A'}개월
+- 리스크 레벨: ${decision.riskLevel || 'N/A'}
+
+⚠️ 중요: 시스템 판정이 "HIGH RISK"이고 nonNegotiable이 true인 경우, 
+반드시 해당 판정을 존중하여 리스크 분석을 작성하세요.
+하드컷 판정이 있는 경우, 해당 리스크를 최우선으로 다뤄야 합니다.
+
+` : '';
+
+  // GAP 분석 정보 추출
+  const gapInfo = finance.expected ? `
+【상권 기대치 분석 (GAP 분석)】
+- 목표 일 판매량: ${targetDailySales}잔/일
+- 상권 기대 일 판매량: ${finance.expected.expectedDailySales || 'N/A'}잔/일
+- GAP 비율: ${finance.expected.gapPctVsTarget !== undefined ? (finance.expected.gapPctVsTarget * 100).toFixed(1) : 'N/A'}%
+- GAP 경고: ${finance.expected.gapWarning ? '예' : '아니오'}
+
+⚠️ GAP 비율이 15% 이상이면 목표 판매량 달성 난이도가 높습니다.
+
+` : '';
+
+  // 민감도 분석 정보 추출
+  const sensitivityInfo = finance.sensitivity ? `
+【민감도 분석 (매출 변동 시나리오)】
+- 매출 +10% 시: 월 순이익 ${(finance.sensitivity.plus10.monthlyProfit / 10000).toFixed(0)}만원, 회수 기간 ${finance.sensitivity.plus10.paybackMonths}개월
+- 매출 -10% 시: 월 순이익 ${(finance.sensitivity.minus10.monthlyProfit / 10000).toFixed(0)}만원, 회수 기간 ${finance.sensitivity.minus10.paybackMonths}개월
+
+⚠️ 매출 -10% 시나리오에서 월 순이익이 0원 이하가 되면 매우 위험합니다.
+
+` : '';
+
   return `당신은 프랜차이즈 카페 창업 컨설턴트입니다.
 다음 재무 분석 결과를 바탕으로 핵심 리스크 Top 3를 식별하고 개선 제안을 해주세요:
 
-재무 결과:
+${decisionInfo}${gapInfo}${sensitivityInfo}재무 결과:
 - 초기 투자비용: ${(initialInvestment / 100000000).toFixed(1)}억원
 - 평균 단가(아메리카노 판매금액): ${avgPrice}원/잔
 - 월 매출: ${finance.monthlyRevenue ? (finance.monthlyRevenue / 10000).toFixed(0) + '만원' : '정보 없음'}
