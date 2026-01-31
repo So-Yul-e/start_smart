@@ -13,13 +13,15 @@ body {
     width: 210mm;
     min-height: 297mm;
     background: #fff;
-    margin: 0 auto 2rem;
-    padding: 25mm 20mm;
+    margin: 0 auto 4rem;
+    padding: 20mm 20mm 40mm 20mm;
     box-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
     position: relative;
     color: #1a1a1a;
     font-family: 'Noto Sans KR', 'Outfit', sans-serif;
     box-sizing: border-box;
+    page-break-after: always;
+    break-after: page;
 }
 
 .report-page-header {
@@ -83,6 +85,8 @@ body {
 
 .report-section {
     margin-bottom: 2rem;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
 .report-h2 {
@@ -254,6 +258,7 @@ body {
     color: #bbb;
     border-top: 1px solid #eee;
     padding-top: 0.5rem;
+    z-index: 10;
 }
 
 /* Print */
@@ -277,10 +282,12 @@ body {
         padding: 15mm;
         box-shadow: none;
         page-break-after: always;
+        break-after: page;
     }
 
     .report-page:last-child {
         page-break-after: auto;
+        break-after: auto;
     }
 }
 
