@@ -8,6 +8,8 @@
 const { calculateScore, determineSignal, estimateSurvivalMonths, generateRiskFactors, generateHardCutReasons, HARD_CUT_REASONS } = require('./scorer');
 const { generateImprovementSimulations } = require('./simulations');
 const { validateDecisionOutputSimple } = require('./validator');
+const { computeExitPlan } = require('./exitPlan');
+const { DEFAULT_EXIT_DEFAULTS, DEFAULT_EXIT_INPUTS } = require('../../shared/constants');
 
 /**
  * 판단 메인 함수
@@ -80,6 +82,29 @@ function calculate(input) {
   // 판정 신뢰도 (Decision Confidence) 계산
   const decisionConfidence = calculateDecisionConfidence(finance, signal, scoreResult.score);
 
+  // Exit Plan 계산 (조건과 브랜드가 있는 경우)
+  let exitPlan = null;
+  if (conditions && brand) {
+    // 월별 순이익 시리즈 생성 (36개월)
+    // MVP: 현재 monthlyProfit을 상수로 사용 (향후 민감도 분석 기반 확장 가능)
+    const horizonMonths = 36;
+    const monthlyNetProfitSeries = Array(horizonMonths).fill(finance.monthlyProfit);
+    
+    // 브랜드 Exit 기본값 (없으면 DEFAULT 사용)
+    const brandExitDefaults = brand.exitDefaults || DEFAULT_EXIT_DEFAULTS;
+    
+    // 조건 Exit 입력값 (없으면 DEFAULT 사용)
+    const conditionsExitInputs = conditions.exitInputs || DEFAULT_EXIT_INPUTS;
+    
+    exitPlan = computeExitPlan({
+      horizonMonths,
+      initialInvestment: conditions.initialInvestment,
+      monthlyNetProfitSeries,
+      brandExitDefaults,
+      conditionsExitInputs
+    });
+  }
+
   const result = {
     score: scoreResult.score,
     successProbability: scoreResult.successProbability,
@@ -94,7 +119,9 @@ function calculate(input) {
     finalJudgement: finalJudgement,
     hardCutReasons: hardCutReasons,
     failureTriggers: failureTriggers,
-    decisionConfidence: decisionConfidence
+    decisionConfidence: decisionConfidence,
+    // 신규: Exit Plan
+    exitPlan: exitPlan
   };
 
   // 출력 형식 검증 (개발 환경에서만)

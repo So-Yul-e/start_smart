@@ -284,11 +284,11 @@ function validateDecisionOutput(result) {
   // ============================================
   
   // riskFactors와 riskCards 병행 확인
+  // 주의: riskFactors는 riskCards + survivalRiskSentences를 합친 것이므로 길이가 다를 수 있음
+  // 이는 정상적인 동작이므로 경고를 제거함
   if (result.riskFactors && result.riskCards) {
-    // riskFactors가 riskCards에서 생성되었는지 확인 (선택적)
-    if (result.riskFactors.length !== result.riskCards.length) {
-      warnings.push('riskFactors와 riskCards의 길이가 일치하지 않습니다.');
-    }
+    // riskFactors는 riskCards의 narrative/title + survivalRiskSentences로 구성됨
+    // 길이가 다를 수 있으므로 경고하지 않음
   }
   
   return {

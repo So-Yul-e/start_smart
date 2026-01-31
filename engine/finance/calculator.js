@@ -7,6 +7,8 @@
 
 const { amortizeLoans } = require('./loan/amortize');
 const { validateLoans } = require('./loan/validator');
+const { buildDemandMultiplier } = require('../market/buildDemandMultiplier');
+const { timeProfiles, dayTypeMultipliers, footTrafficIndexClamp } = require('../../shared/constants');
 
 /**
  * 손익 계산 핵심 로직
@@ -104,6 +106,24 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
     gapWarning = true;  // GAP=0%가 되는 경우 경고
   }
   
+  // [NEW] demand multiplier 적용 (dayType × footTraffic × optional timeFit)
+  // market.demandMultiplier가 이미 계산되어 있으면 사용, 없으면 여기서 계산
+  let demandMultiplier = market?.demandMultiplier;
+  if (demandMultiplier === undefined || demandMultiplier === null) {
+    // market 모듈에서 계산하지 않은 경우, 여기서 계산
+    const defaults = {
+      dayTypeMultipliers,
+      footTrafficIndexClamp
+    };
+    demandMultiplier = buildDemandMultiplier(market || {}, defaults);
+  }
+  
+  // 보정 전 원본 값 저장 (리포트/디버그용)
+  const expectedDailySalesRaw = expectedDailySales;
+  
+  // demandMultiplier 적용
+  expectedDailySales = expectedDailySales * demandMultiplier;
+  
   const expectedMonthlyRevenue = expectedDailySales * avgPrice * 30;
 
   // GAP 비율 계산: (target - adjustedExpectedDailySales) / adjustedExpectedDailySales
@@ -185,7 +205,8 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
   return {
     monthlyRevenue: Math.round(monthlyRevenue),
     expected: {
-      expectedDailySales: expectedDailySales,  // 최종 사용된 기대 판매량
+      expectedDailySales: Math.round(expectedDailySales * 10) / 10,  // 최종 사용된 기대 판매량 (demandMultiplier 적용 후)
+      expectedDailySalesRaw: Math.round(expectedDailySalesRaw * 10) / 10,  // 보정 전 원본 값
       expectedMonthlyRevenue: Math.round(expectedMonthlyRevenue),
       gapPctVsTarget: Math.round(gapPctVsTarget * 1000) / 1000,  // 소수점 셋째자리까지
       gapWarning: gapWarning,  // 최후 fallback 시 true (GAP=0% 경고)
@@ -193,7 +214,12 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
       rawExpectedDailySales: rawExpectedDailySales !== null ? Math.round(rawExpectedDailySales * 10) / 10 : null,
       adjustedExpectedDailySales: adjustedExpectedDailySales !== null ? Math.round(adjustedExpectedDailySales * 10) / 10 : null,
       revenueAdjustmentFactor: Math.round(revenueAdjustmentFactor * 1000) / 1000,
-      brandDeclineRate: Math.round(brandDeclineRate * 1000) / 1000
+      brandDeclineRate: Math.round(brandDeclineRate * 1000) / 1000,
+      // [NEW] demand multiplier 관련 추적 필드
+      demandMultiplier: Math.round(demandMultiplier * 1000) / 1000,  // 소수점 셋째자리까지
+      tradeAreaType: market?.tradeAreaType || null,
+      dayType: market?.dayType || null,
+      timeProfileKey: market?.timeProfileKey || null
     },
     monthlyCosts: {
       rent: Math.round(monthlyCosts.rent),
