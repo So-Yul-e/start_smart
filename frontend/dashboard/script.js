@@ -439,43 +439,98 @@
       '<div class="risk-body"><h4>' + Utils.escapeHtml(riskItem.title) + '</h4><p>' + Utils.escapeHtml(riskItem.description) + '</p></div>' +
       '</div>';
   }
+  
+  if (riskHtml === '') {
+    riskHtml = '<p style="color:var(--text-muted); text-align:center; padding:2rem;">AI 리스크 분석 데이터가 없습니다.</p>';
+  }
   document.getElementById('riskList').innerHTML = riskHtml;
 
   // Improvements (reportModel의 병합된 improvement cards 사용)
   var impHtml = '';
   var improvementsToShow = [];
   
+  console.log('[대시보드] improvement 데이터:', improvement);
+  console.log('[대시보드] ai.improvements:', ai?.improvements);
+  
   if (improvement && improvement.cards && improvement.cards.length > 0) {
     // reportModel의 병합된 improvement cards 사용
     improvementsToShow = improvement.cards.map(function(card) {
+      console.log('[대시보드] improvement card:', card);
       // engine과 ai가 모두 있으면 ai의 description을 우선 사용
       if (card.ai) {
-        return {
-          title: card.ai.title || card.engine?.title || '',
-          description: card.ai.description || card.engine?.description || '',
-          expectedImpact: card.ai.expectedImpact || ''
-        };
+        var title = card.ai.title || card.engine?.title || card.engine?.delta || '개선 제안';
+        var description = card.ai.description || card.engine?.description || card.engine?.narrative || '';
+        var expectedImpact = card.ai.expectedImpact || card.engine?.expectedImpact || '';
+        
+        // title이나 description이 있으면 표시
+        if (title || description) {
+          return {
+            title: title,
+            description: description,
+            expectedImpact: expectedImpact
+          };
+        }
       } else if (card.engine) {
-        return {
-          title: card.engine.title || '',
-          description: card.engine.description || '',
-          expectedImpact: ''
-        };
+        // engine만 있는 경우: improvementSimulations 데이터 구조 처리
+        var title = card.engine.title || card.engine.delta || '개선 제안';
+        var description = card.engine.description || card.engine.narrative || '';
+        
+        // improvementSimulations 구조인 경우 (delta, survivalMonths, signal만 있음)
+        if (!description && card.engine.delta && card.engine.survivalMonths !== undefined) {
+          var deltaText = card.engine.delta;
+          var signalText = card.engine.signal === 'green' ? '양호' : card.engine.signal === 'yellow' ? '주의' : '위험';
+          var signalColor = card.engine.signal === 'green' ? '#4ade80' : card.engine.signal === 'yellow' ? '#facc15' : '#f87171';
+          description = deltaText + ' 시나리오: 예상 생존 개월 ' + card.engine.survivalMonths + '개월, 신호등 ' + signalText;
+          
+          // title이 delta와 같으면 더 읽기 쉽게 변환
+          if (title === deltaText) {
+            if (deltaText.includes('rent') || deltaText.includes('월세')) {
+              title = '월세 조정';
+            } else if (deltaText.includes('sales') || deltaText.includes('target') || deltaText.includes('판매량')) {
+              title = '목표 판매량 조정';
+            } else if (deltaText.includes('investment') || deltaText.includes('투자')) {
+              title = '초기 투자금 조정';
+            } else {
+              title = '조건 변경 시나리오';
+            }
+          }
+        }
+        
+        // title이나 description이 있으면 표시
+        if (title || description) {
+          return {
+            title: title,
+            description: description,
+            expectedImpact: ''
+          };
+        }
       }
       return null;
-    }).filter(function(imp) { return imp !== null; });
+    }).filter(function(imp) { return imp !== null && (imp.title || imp.description); });
   } else if (ai && ai.improvements && ai.improvements.length > 0) {
     // fallback: 기존 ai.improvements 사용
-    improvementsToShow = ai.improvements;
+    improvementsToShow = ai.improvements.filter(function(imp) {
+      return imp && (imp.title || imp.description);
+    });
   }
+  
+  console.log('[대시보드] improvementsToShow:', improvementsToShow);
   
   for (var im = 0; im < improvementsToShow.length; im++) {
     var imp = improvementsToShow[im];
+    var title = imp.title || '개선 제안';
+    var description = imp.description || '';
+    
     impHtml += '<div class="risk-card">' +
       '<div class="risk-icon" style="background:rgba(74,222,128,0.15); color:#4ade80;"><i class="fa-solid fa-lightbulb"></i></div>' +
-      '<div class="risk-body"><h4>' + Utils.escapeHtml(imp.title) + '</h4><p>' + Utils.escapeHtml(imp.description) + '</p>' +
-      (imp.expectedImpact ? '<span style="font-size:0.8rem; color:var(--gold);">' + Utils.escapeHtml(imp.expectedImpact) + '</span>' : '') + '</div>' +
+      '<div class="risk-body"><h4>' + Utils.escapeHtml(title) + '</h4>' +
+      (description ? '<p>' + Utils.escapeHtml(description) + '</p>' : '') +
+      (imp.expectedImpact ? '<span style="font-size:0.8rem; color:var(--gold); margin-top:0.5rem; display:block;">기대 효과: ' + Utils.escapeHtml(imp.expectedImpact) + '</span>' : '') + '</div>' +
       '</div>';
+  }
+  
+  if (impHtml === '') {
+    impHtml = '<p style="color:var(--text-muted); text-align:center; padding:2rem;">AI 개선 제안 데이터가 없습니다.</p>';
   }
   document.getElementById('improvementList').innerHTML = impHtml;
 
@@ -735,8 +790,14 @@
 
   // Exit Plan 렌더링
   function renderExitPlan(exitPlan) {
+    var exitPlanSection = document.getElementById('exitPlanSection');
+    if (!exitPlanSection) {
+      console.warn('[대시보드] exitPlanSection 요소를 찾을 수 없습니다.');
+      return;
+    }
+    
     if (!exitPlan) {
-      document.getElementById('exitPlanSection').innerHTML =
+      exitPlanSection.innerHTML =
         '<p style="color:var(--text-muted); text-align:center; padding:2rem;">Exit Plan 데이터가 없습니다.</p>';
       return;
     }
@@ -828,7 +889,7 @@
       html += '</tbody></table></div>';
     }
 
-    document.getElementById('exitPlanSection').innerHTML = html || '<p style="color:var(--text-muted); text-align:center; padding:2rem;">Exit Plan 데이터가 없습니다.</p>';
+    exitPlanSection.innerHTML = html || '<p style="color:var(--text-muted); text-align:center; padding:2rem;">Exit Plan 데이터가 없습니다.</p>';
   }
 
   // Exit Plan 렌더링 실행
