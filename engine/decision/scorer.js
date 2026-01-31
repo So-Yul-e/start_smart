@@ -8,6 +8,22 @@
  */
 
 /**
+ * 하드컷 판정 근거 코드 (Hard Cut Reason Codes)
+ * 
+ * 판정 근거를 코드로 명시하여 리포트/대시보드/AI 설명에 공통 사용
+ */
+const HARD_CUT_REASONS = {
+  SURVIVAL_LT_36: "생존기간 36개월 미만",
+  PAYBACK_TOO_LONG: "회수 기간 과다 (36개월 이상)",
+  FIXED_COST_HIGH: "고정비 구조 취약 (35% 이상)",
+  SALES_GAP_HIGH: "목표 대비 매출 GAP 과다 (25% 이상)",
+  SENSITIVITY_FAIL: "매출 변동 민감도 과다 (-10% 시 적자 전환)",
+  NEGATIVE_PROFIT: "월 순이익 0 이하 (적자 상태)",
+  DSCR_FAIL: "대출 상환 능력 부족 (DSCR < 1.0)",
+  BRAND_DECLINE_HIGH: "브랜드 점포 감소율 과다 (30% 이상)"
+};
+
+/**
  * 점수 및 성공 확률 계산 (breakdown 포함)
  * @param {Object} finance - 손익 계산 결과
  * @param {Object} market - 상권 분석 결과
@@ -529,9 +545,70 @@ function generateRiskFactors(finance, market, roadview, targetDailySales, surviv
   return riskFactors;
 }
 
+/**
+ * 하드컷 판정 근거 코드 배열 생성
+ * 
+ * @param {Object} finance - 손익 계산 결과
+ * @param {Number} survivalMonths - 생존 개월 수
+ * @param {String} signal - 신호등 ("green" | "yellow" | "red")
+ * @returns {Array<String>} 하드컷 판정 근거 코드 배열
+ */
+function generateHardCutReasons(finance, survivalMonths, signal) {
+  const reasons = [];
+
+  // 생존 기간 36개월 미만
+  if (survivalMonths < 36) {
+    reasons.push("SURVIVAL_LT_36");
+  }
+
+  // 회수 기간 36개월 이상
+  if (finance.paybackMonths !== null && isFinite(finance.paybackMonths) && finance.paybackMonths >= 36) {
+    reasons.push("PAYBACK_TOO_LONG");
+  }
+
+  // 월 순이익 0 이하
+  if (finance.monthlyProfit <= 0) {
+    reasons.push("NEGATIVE_PROFIT");
+  }
+
+  // 고정비 비중 35% 이상
+  const fixedCostShare = (finance.monthlyCosts.rent + finance.monthlyCosts.labor) / finance.monthlyRevenue;
+  if (fixedCostShare >= 0.35) {
+    reasons.push("FIXED_COST_HIGH");
+  }
+
+  // 목표 대비 매출 GAP 25% 이상
+  const gap = finance.expected?.gapPctVsTarget || 0;
+  if (gap >= 0.25) {
+    reasons.push("SALES_GAP_HIGH");
+  }
+
+  // 매출 -10% 시 적자 전환
+  const minus10Profit = finance.sensitivity?.minus10?.monthlyProfit || finance.monthlyProfit;
+  if (minus10Profit <= 0) {
+    reasons.push("SENSITIVITY_FAIL");
+  }
+
+  // DSCR < 1.0
+  const dscr = finance.debt?.dscr;
+  if (dscr !== null && dscr !== undefined && dscr < 1.0) {
+    reasons.push("DSCR_FAIL");
+  }
+
+  // 브랜드 점포 감소율 30% 이상
+  const decline = finance.expected?.brandDeclineRate || 0;
+  if (decline >= 0.30) {
+    reasons.push("BRAND_DECLINE_HIGH");
+  }
+
+  return reasons;
+}
+
 module.exports = {
   calculateScore,
   determineSignal,
   estimateSurvivalMonths,
-  generateRiskFactors
+  generateRiskFactors,
+  generateHardCutReasons,
+  HARD_CUT_REASONS
 };

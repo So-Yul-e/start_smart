@@ -6,9 +6,36 @@
 engine/data_local/
 ├── brands.json              # 브랜드 기본값 데이터 (JSON)
 ├── brandLoader.js           # 브랜드 데이터 로더
+├── dbLoader.js              # 데이터베이스 로더 (DB → JSON fallback)
+├── db-schema.sql            # MySQL 스키마
+├── db-schema-postgresql.sql # PostgreSQL 스키마
 ├── README.md                # 본 문서
 └── *.pdf                    # 각 브랜드 정보공개서 PDF (12개)
 ```
+
+## 🔄 데이터 로드 순서
+
+1. **데이터베이스** (1차): `.env`에 정의된 DB에서 로드
+2. **brands.json** (2차): DB 에러 시 자동 fallback
+
+## ⚙️ 설정 방법
+
+### 데이터베이스 사용 (선택)
+
+`.env` 파일에 추가:
+```bash
+USE_DATABASE=true
+DB_TYPE=mysql  # 또는 postgresql
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=startsmart
+```
+
+### JSON 파일만 사용 (기본)
+
+`.env`에 `USE_DATABASE=false` 설정하거나 DB 정보를 제거하면 자동으로 `brands.json` 사용
 
 ## 📊 브랜드 데이터 구조
 
