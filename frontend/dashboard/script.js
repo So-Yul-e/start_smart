@@ -64,6 +64,10 @@
 
   // reportModel 사용 (있으면 reportModel, 없으면 기존 방식)
   var finance = reportModel ? reportModel.finance : result.finance;
+  // finance.debt가 없으면 result.finance.debt로 fallback
+  if (reportModel && (!finance.debt || finance.debt === null) && result.finance?.debt) {
+    finance.debt = result.finance.debt;
+  }
   var decision = reportModel ? { 
     score: reportModel.executive.score,
     signal: reportModel.executive.signal,
@@ -280,6 +284,12 @@
   // Cost Stack Chart
   var costs = finance.monthlyCosts;
   var totalRev = finance.monthlyRevenue;
+  
+  // 대출 정보 가져오기
+  var debt = finance.debt || null;
+  var debtInterest = debt?.monthlyInterest || 0;
+  var debtPrincipal = debt?.monthlyPrincipal || 0;
+  
   var costItems = [
     { label: '재료비', value: costs.materials, color: '#6366f1' },
     { label: '인건비', value: costs.labor, color: '#8b5cf6' },
@@ -288,6 +298,16 @@
     { label: '마케팅', value: costs.marketing, color: '#38bdf8' },
     { label: '기타', value: costs.utilities + costs.etc, color: '#94a3b8' }
   ];
+  
+  // 대출 이자와 원금 상환을 지출 항목에 추가
+  if (debtInterest > 0) {
+    costItems.push({ label: '대출 이자', value: debtInterest, color: '#ef4444' });
+  }
+  if (debtPrincipal > 0) {
+    costItems.push({ label: '대출 원금 상환', value: debtPrincipal, color: '#dc2626' });
+  }
+  
+  // 순이익은 이미 대출 상환액이 차감된 값 (finance.monthlyProfit)
   var profitItem = { label: '순이익', value: Math.max(0, finance.monthlyProfit), color: '#4ade80' };
 
   var stackHtml = '<div class="stacked-bar">';

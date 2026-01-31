@@ -663,16 +663,69 @@
       return;
     }
 
+    // 대출 정보를 API 형식으로 변환 (원 단위, apr는 0-1 범위)
+    var formattedLoans = [];
+    if (loans && loans.length > 0) {
+      formattedLoans = loans
+        .filter(function(loan) {
+          // 유효한 대출만 포함 (원금, 이자율, 기간이 모두 입력된 경우)
+          var principal = parseInt(loan.principal);
+          var apr = parseFloat(loan.apr);
+          var termMonths = parseInt(loan.termMonths);
+          return principal > 0 && apr > 0 && apr <= 100 && termMonths > 0;
+        })
+        .map(function(loan) {
+          return {
+            principal: parseInt(loan.principal) * 10000, // 만원 → 원
+            apr: parseFloat(loan.apr) / 100, // % → 0-1 범위
+            termMonths: parseInt(loan.termMonths),
+            repaymentType: loan.repaymentType || 'equal_payment'
+          };
+        });
+    }
+
+    // Exit Plan 입력값을 API 형식으로 변환 (원 단위)
+    var exitInputs = null;
+    if (exitPlanExpanded && inputKeyMoney && inputDemolitionBase && inputDemolitionPerPyeong) {
+      // 실제로 값이 입력되었는지 확인 (하나라도 입력되면 exitInputs 생성)
+      var hasKeyMoney = inputKeyMoney.value && parseInt(inputKeyMoney.value) > 0;
+      var hasDemolitionBase = inputDemolitionBase.value && parseInt(inputDemolitionBase.value) > 0;
+      var hasDemolitionPerPyeong = inputDemolitionPerPyeong.value && parseInt(inputDemolitionPerPyeong.value) > 0;
+      var hasWorkingCapital = inputWorkingCapital.value && parseInt(inputWorkingCapital.value) > 0;
+      
+      if (hasKeyMoney || hasDemolitionBase || hasDemolitionPerPyeong || hasWorkingCapital) {
+        exitInputs = {
+          keyMoney: (inputKeyMoney.value ? parseInt(inputKeyMoney.value) * 10000 : 0),
+          pyeong: parseInt(inputArea.value) || 10,
+          demolitionBase: (inputDemolitionBase.value ? parseInt(inputDemolitionBase.value) * 10000 : 15000000),
+          demolitionPerPyeong: (inputDemolitionPerPyeong.value ? parseInt(inputDemolitionPerPyeong.value) * 10000 : 1000000),
+          workingCapital: (inputWorkingCapital.value ? parseInt(inputWorkingCapital.value) * 10000 : 0)
+        };
+      }
+    }
+
+    var conditions = {
+      initialInvestment: parseInt(inputInvestment.value) * 10000,
+      monthlyRent: parseInt(inputRent.value) * 10000,
+      area: parseInt(inputArea.value),
+      ownerWorking: inputOwnerWork.checked
+    };
+
+    // 대출 정보가 있으면 conditions에 추가
+    if (formattedLoans.length > 0) {
+      conditions.loans = formattedLoans;
+    }
+
+    // Exit Plan 입력값이 있으면 conditions에 추가
+    if (exitInputs) {
+      conditions.exitInputs = exitInputs;
+    }
+
     var analysisInput = {
       brandId: brand.id,
       location: selectedLocation,
       radius: selectedRadius,
-      conditions: {
-        initialInvestment: parseInt(inputInvestment.value) * 10000,
-        monthlyRent: parseInt(inputRent.value) * 10000,
-        area: parseInt(inputArea.value),
-        ownerWorking: inputOwnerWork.checked
-      },
+      conditions: conditions,
       targetDailySales: parseInt(inputDailySales.value),
       mapImage: capturedMapImage || null,
       roadviewImage: capturedRoadviewImage || null

@@ -20,7 +20,23 @@
   }
 
   // reportModel 사용 (있으면 reportModel, 없으면 기존 방식)
+  // finance.debt, breakdownVisitors 등은 reportModel에 없을 수 있으므로 result.finance로 fallback
   var finance = reportModel ? reportModel.finance : result.finance;
+  // reportModel이 있지만 일부 필드가 없으면 result.finance에서 보완
+  if (reportModel && result.finance) {
+    if ((!finance.debt || finance.debt === null) && result.finance.debt) {
+      finance.debt = result.finance.debt;
+    }
+    if ((finance.breakdownVisitors === null || finance.breakdownVisitors === undefined) && result.finance.breakdownVisitors !== null && result.finance.breakdownVisitors !== undefined) {
+      finance.breakdownVisitors = result.finance.breakdownVisitors;
+    }
+    if ((finance.breakEvenDailyVisitors === null || finance.breakEvenDailyVisitors === undefined) && result.finance.breakEvenDailyVisitors !== null && result.finance.breakEvenDailyVisitors !== undefined) {
+      finance.breakEvenDailyVisitors = result.finance.breakEvenDailyVisitors;
+    }
+    if ((finance.operatingProfit === null || finance.operatingProfit === undefined) && result.finance.operatingProfit !== null && result.finance.operatingProfit !== undefined) {
+      finance.operatingProfit = result.finance.operatingProfit;
+    }
+  }
   var decision = reportModel ? {
     score: reportModel.executive.score,
     signal: reportModel.executive.signal,
@@ -41,7 +57,8 @@
   var breakdown = reportModel?.breakdown || null;
   var risk = reportModel?.risk || null;
   var improvement = reportModel?.improvement || null;
-  var exitPlan = reportModel?.exitPlan || null;
+  // Exit Plan 우선순위: reportModel.exitPlan > result.decision.exitPlan
+  var exitPlan = reportModel?.exitPlan || result?.decision?.exitPlan || null;
   var failureTriggers = reportModel?.failureTriggers || [];
   var competitive = reportModel?.competitive || null;
   var market = reportModel?.market || result.market || null;  // reportModel 우선 사용
@@ -60,6 +77,52 @@
   document.getElementById('rRent').textContent = Utils.formatKRWFull(finance.monthlyCosts.rent) + ' / 월';
   document.getElementById('rOwner').textContent = input && input.conditions.ownerWorking ? '직접 근무' : '고용 운영';
   document.getElementById('rTarget').textContent = (input ? input.targetDailySales : '-') + '잔/일';
+  
+  // 대출 정보 표시 (있는 경우)
+  var loansRow = document.getElementById('rLoansRow');
+  var loansCell = document.getElementById('rLoans');
+  // 우선순위: result.conditions > reportModel.inputConditions > input.conditions
+  var inputConditions = result?.conditions || reportModel?.inputConditions || input?.conditions || null;
+  if (inputConditions && inputConditions.loans && Array.isArray(inputConditions.loans) && inputConditions.loans.length > 0) {
+    var loansHtml = '';
+    for (var i = 0; i < inputConditions.loans.length; i++) {
+      var loan = inputConditions.loans[i];
+      var aprPercent = (loan.apr * 100).toFixed(2);
+      loansHtml += '<div style="margin-bottom:0.5rem; padding:0.5rem; background:rgba(255,255,255,0.03); border-radius:4px;">';
+      loansHtml += '<strong>대출 ' + (i + 1) + ':</strong> ';
+      loansHtml += Utils.formatKRW(loan.principal) + ' / ';
+      loansHtml += aprPercent + '% / ';
+      loansHtml += loan.termMonths + '개월 / ';
+      var repaymentTypeMap = {
+        'equal_payment': '원리금 균등',
+        'equal_principal': '원금 균등',
+        'interest_only': '이자만 상환'
+      };
+      loansHtml += repaymentTypeMap[loan.repaymentType] || loan.repaymentType;
+      loansHtml += '</div>';
+    }
+    loansCell.innerHTML = loansHtml;
+    loansRow.style.display = '';
+  } else {
+    loansRow.style.display = 'none';
+  }
+
+  // Exit Plan 입력값 표시 (있는 경우)
+  var exitInputsRow = document.getElementById('rExitInputsRow');
+  var exitInputsCell = document.getElementById('rExitInputs');
+  // 우선순위: result.conditions > reportModel.inputConditions > input.conditions
+  var exitInputs = (result?.conditions || reportModel?.inputConditions || input?.conditions || {})?.exitInputs;
+  if (exitInputs) {
+    var exitHtml = '';
+    if (exitInputs.keyMoney && exitInputs.keyMoney > 0) exitHtml += '권리금: ' + Utils.formatKRW(exitInputs.keyMoney) + ' / ';
+    if (exitInputs.demolitionBase && exitInputs.demolitionBase > 0) exitHtml += '철거 기본비: ' + Utils.formatKRW(exitInputs.demolitionBase) + ' / ';
+    if (exitInputs.demolitionPerPyeong && exitInputs.demolitionPerPyeong > 0) exitHtml += '평당 철거비: ' + Utils.formatKRW(exitInputs.demolitionPerPyeong) + ' / ';
+    if (exitInputs.workingCapital && exitInputs.workingCapital > 0) exitHtml += '운영자금: ' + Utils.formatKRW(exitInputs.workingCapital);
+    exitInputsCell.textContent = exitHtml || '없음';
+    exitInputsRow.style.display = '';
+  } else {
+    exitInputsRow.style.display = 'none';
+  }
   
   // 1일 방문객 수와 1인당 평균 구매비용 제거됨
 
@@ -91,6 +154,17 @@
     var breakEvenDailySales = executive?.breakEvenDailySales ?? finance?.breakEvenDailySales ?? 0;
     summaryParts.push('투자 회수 기간은 ' + (paybackMonths >= 999 ? '회수 불가' : paybackMonths + '개월') + '로 예상됩니다.');
     summaryParts.push('월 순이익은 ' + Utils.formatKRW(monthlyProfit) + '이며, 손익분기 판매량은 일 ' + breakEvenDailySales + '잔입니다.');
+    
+    // 대출 정보가 있으면 Summary에 추가
+    if (debtPayment > 0) {
+      var debtInfo = '월 대출 상환액은 ' + Utils.formatKRW(debtPayment);
+      if (debtInterest > 0 && debtPrincipal > 0) {
+        debtInfo += ' (이자 ' + Utils.formatKRW(debtInterest) + ', 원금 ' + Utils.formatKRW(debtPrincipal) + ')';
+      }
+      debtInfo += '입니다.';
+      summaryParts.push(debtInfo);
+    }
+    
     if (decision.riskFactors && decision.riskFactors.length > 0) {
       summaryParts.push(decision.riskFactors[0]);
     }
@@ -163,6 +237,25 @@
   var costs = finance.monthlyCosts;
   var rev = finance.monthlyRevenue;
 
+  // 대출 상환액 가져오기 (있는 경우)
+  // finance.debt가 없으면 result.finance.debt로 fallback
+  var debt = finance.debt || result.finance?.debt || null;
+  var debtPayment = debt?.monthlyPayment || 0;
+  var debtInterest = debt?.monthlyInterest || 0;
+  var debtPrincipal = debt?.monthlyPrincipal || 0;
+  
+  // 디버깅: 대출 정보 확인
+  console.log('[리포트] 대출 정보 확인:', {
+    hasFinanceDebt: !!finance.debt,
+    hasResultFinanceDebt: !!result.finance?.debt,
+    debt: debt,
+    debtPayment: debtPayment,
+    debtInterest: debtInterest,
+    debtPrincipal: debtPrincipal
+  });
+  
+  var operatingProfit = finance.operatingProfit || (rev - Object.values(costs).reduce(function(a, b) { return a + b; }, 0));
+
   var finRows = [
     ['월 매출', rev, '100%'],
     ['재료비', costs.materials, pct(costs.materials, rev)],
@@ -170,17 +263,55 @@
     ['임대료', costs.rent, pct(costs.rent, rev)],
     ['로열티', costs.royalty, pct(costs.royalty, rev)],
     ['마케팅비', costs.marketing, pct(costs.marketing, rev)],
-    ['공과금/기타', costs.utilities + costs.etc, pct(costs.utilities + costs.etc, rev)],
-    ['월 순이익', finance.monthlyProfit, pct(finance.monthlyProfit, rev)]
+    ['공과금/기타', costs.utilities + costs.etc, pct(costs.utilities + costs.etc, rev)]
   ];
+
+  // 대출 상환액이 있으면 지출 항목에 추가 (이자와 원금 분리 표시)
+  if (debtPayment > 0) {
+    if (debtInterest > 0) {
+      finRows.push(['대출 이자', -debtInterest, pct(debtInterest, rev)]);
+    }
+    if (debtPrincipal > 0) {
+      finRows.push(['대출 원금 상환', -debtPrincipal, pct(debtPrincipal, rev)]);
+    }
+    // 이자와 원금이 모두 0이면 총 상환액만 표시
+    if (debtInterest === 0 && debtPrincipal === 0) {
+      finRows.push(['대출 상환액', -debtPayment, pct(debtPayment, rev)]);
+    }
+  }
+
+  finRows.push(['영업 이익', operatingProfit, pct(operatingProfit, rev)]);
+  finRows.push(['월 순이익', finance.monthlyProfit, pct(finance.monthlyProfit, rev)]);
 
   var finHtml = '';
   for (var i = 0; i < finRows.length; i++) {
-    var isProfit = i === finRows.length - 1;
-    var isRevenue = i === 0;
-    var style = isProfit ? ' style="font-weight:700; background:#f0fdf4;"' : isRevenue ? ' style="font-weight:600; background:#f5f7ff;"' : '';
-    var valColor = isProfit && finRows[i][1] < 0 ? ' style="color:#dc2626; font-weight:700;"' : isProfit ? ' style="color:#166534; font-weight:700;"' : '';
-    finHtml += '<tr' + style + '><td>' + finRows[i][0] + '</td><td' + valColor + '>' + Utils.formatKRWFull(finRows[i][1]) + '</td><td>' + finRows[i][2] + '</td></tr>';
+    var row = finRows[i];
+    var isProfit = row[0] === '월 순이익';
+    var isOperatingProfit = row[0] === '영업 이익';
+    var isRevenue = row[0] === '월 매출';
+    var isDebt = row[0].indexOf('대출') !== -1;
+    
+    // 스타일 설정
+    var style = '';
+    if (isProfit) {
+      style = ' style="font-weight:700; background:#f0fdf4;"';
+    } else if (isOperatingProfit) {
+      style = ' style="font-weight:600; background:#f5f7ff;"';
+    } else if (isRevenue) {
+      style = ' style="font-weight:600; background:#f5f7ff;"';
+    } else if (isDebt) {
+      style = ' style="background:rgba(239,68,68,0.05);"';
+    }
+    
+    // 값 색상 설정
+    var valColor = '';
+    if (isProfit) {
+      valColor = row[1] < 0 ? ' style="color:#dc2626; font-weight:700;"' : ' style="color:#166534; font-weight:700;"';
+    } else if (isDebt) {
+      valColor = ' style="color:#dc2626;"';
+    }
+    
+    finHtml += '<tr' + style + '><td>' + row[0] + '</td><td' + valColor + '>' + Utils.formatKRWFull(row[1]) + '</td><td>' + row[2] + '</td></tr>';
   }
   document.getElementById('rFinanceBody').innerHTML = finHtml;
 
@@ -190,6 +321,9 @@
   var monthlyProfit = executive?.monthlyProfit ?? finance?.monthlyProfit ?? 0;
   var breakEvenDailySales = executive?.breakEvenDailySales ?? finance?.breakEvenDailySales ?? 0;
   
+  // 대출 정보 가져오기 (위에서 이미 가져옴, 재사용)
+  var dscr = debt?.dscr || null;
+
   var kpis = [
     { label: '생존 개월', value: survivalMonths + '개월', danger: survivalMonths < 24 },
     { label: '회수 기간', value: paybackMonths >= 999 ? '회수 불가' : paybackMonths + '개월', danger: paybackMonths > 36 },
@@ -197,12 +331,42 @@
     { label: '손익분기', value: breakEvenDailySales + '잔/일', danger: false }
   ];
 
+  // DSCR이 있으면 KPI에 추가
+  if (dscr !== null) {
+    kpis.push({ 
+      label: 'DSCR', 
+      value: dscr.toFixed(2), 
+      danger: dscr < 1.0  // DSCR < 1.0이면 위험
+    });
+  }
+
   var kpiHtml = '';
   for (var k = 0; k < kpis.length; k++) {
     kpiHtml += '<div class="report-kpi"><div class="kpi-label">' + kpis[k].label + '</div>' +
       '<div class="kpi-value' + (kpis[k].danger ? ' danger' : '') + '">' + kpis[k].value + '</div></div>';
   }
   document.getElementById('rKpiGrid').innerHTML = kpiHtml;
+
+  // 대출 상환 스케줄 표시 (있는 경우)
+  var debtScheduleSection = document.getElementById('rDebtScheduleSection');
+  var debtScheduleBody = document.getElementById('rDebtScheduleBody');
+  if (debt && debt.debtSchedulePreview && Array.isArray(debt.debtSchedulePreview) && debt.debtSchedulePreview.length > 0) {
+    var scheduleHtml = '';
+    for (var s = 0; s < debt.debtSchedulePreview.length; s++) {
+      var schedule = debt.debtSchedulePreview[s];
+      scheduleHtml += '<tr>' +
+        '<td>' + schedule.month + '개월</td>' +
+        '<td>' + Utils.formatKRW(schedule.payment) + '</td>' +
+        '<td>' + Utils.formatKRW(schedule.interest) + '</td>' +
+        '<td>' + Utils.formatKRW(schedule.principal) + '</td>' +
+        '<td>' + Utils.formatKRW(schedule.balance) + '</td>' +
+        '</tr>';
+    }
+    debtScheduleBody.innerHTML = scheduleHtml;
+    debtScheduleSection.style.display = 'block';
+  } else {
+    debtScheduleSection.style.display = 'none';
+  }
 
   // Sensitivity
   var sensRows = [
@@ -589,6 +753,121 @@
   } else {
     failureTriggersHtml = '<p style="color:var(--text-muted); text-align:center; padding:2rem;">실패 트리거가 없습니다.</p>';
   }
+  
+  // Exit Plan 기반 전략 조언 추가
+  if (exitPlan) {
+    // Exit Plan 구조 확인 (exitTiming 또는 직접 속성)
+    var exitTiming = exitPlan.exitTiming || exitPlan;
+    var exitScenario = exitPlan.exitScenario || {};
+    var optimalExitMonth = exitTiming.optimalExitMonth || exitPlan.optimalExitMonth;
+    var warningMonth = exitTiming.warningMonth || exitPlan.warningMonth;
+    var optimalExitTotalLoss = exitTiming.optimalExitTotalLoss || exitPlan.totalLossAtOptimal || exitPlan.optimalExitTotalLoss || 0;
+    var trapZoneStartMonth = exitTiming.trapZoneStartMonth || exitPlan.lossExplosionMonth;
+    var exitCostBreakdown = exitScenario.breakdown || exitPlan.exitCostBreakdown;
+    var totalLossAtWarning = exitPlan.totalLossAtWarning || 0;
+    var totalLossAtExplosion = exitPlan.totalLossAtExplosion || 0;
+    
+    // totalLossSeries에서 경고/폭증 시점의 손실 계산
+    if (exitTiming.totalLossSeries && Array.isArray(exitTiming.totalLossSeries)) {
+      if (warningMonth && !totalLossAtWarning) {
+        var warningData = exitTiming.totalLossSeries.find(function(r) { return r.month === warningMonth; });
+        if (warningData) totalLossAtWarning = warningData.totalLoss || 0;
+      }
+      if (trapZoneStartMonth && !totalLossAtExplosion) {
+        var explosionData = exitTiming.totalLossSeries.find(function(r) { return r.month === trapZoneStartMonth; });
+        if (explosionData) totalLossAtExplosion = explosionData.totalLoss || 0;
+      }
+    }
+    
+    var strategyHtml = '<div style="margin-top:2rem; padding:1.5rem; background:rgba(59,130,246,0.1); border-radius:var(--radius-sm); border-left:4px solid #3b82f6;">';
+    strategyHtml += '<h3 style="font-size:1.1rem; margin-bottom:1rem; color:var(--text-main);">📊 Exit 전략 조언 (엔진 계산 기반)</h3>';
+    
+    // 최적 손절 시점 조언
+    if (optimalExitMonth) {
+      var optimalLoss = optimalExitTotalLoss;
+      strategyHtml += '<div style="margin-bottom:1.5rem;">';
+      strategyHtml += '<h4 style="font-size:1rem; margin-bottom:0.5rem; color:#3b82f6;">✅ 최적 손절 시점</h4>';
+      strategyHtml += '<p style="margin-bottom:0.5rem;"><strong>' + optimalExitMonth + '개월</strong> 시점에 손절하면 총손실이 최소화됩니다.</p>';
+      strategyHtml += '<p style="color:var(--text-muted); font-size:0.9rem;">예상 총손실: <strong style="color:#f87171;">' + Utils.formatKRW(optimalLoss) + '</strong></p>';
+      
+      // Exit 비용 상세가 있으면 표시
+      if (exitCostBreakdown) {
+        var breakdown = exitCostBreakdown;
+        strategyHtml += '<div style="margin-top:0.75rem; padding:0.75rem; background:rgba(0,0,0,0.2); border-radius:4px; font-size:0.9rem;">';
+        strategyHtml += '<p style="margin-bottom:0.3rem;"><strong>Exit 비용 구성:</strong></p>';
+        if (breakdown.penaltyCost) {
+          strategyHtml += '<p style="margin-bottom:0.2rem;">• 가맹 위약금: ' + Utils.formatKRW(breakdown.penaltyCost) + '</p>';
+        }
+        if (breakdown.demolitionCost) {
+          strategyHtml += '<p style="margin-bottom:0.2rem;">• 철거/원상복구: ' + Utils.formatKRW(breakdown.demolitionCost) + '</p>';
+        }
+        if (breakdown.interiorLoss) {
+          strategyHtml += '<p style="margin-bottom:0.2rem;">• 인테리어/설비 손실: ' + Utils.formatKRW(breakdown.interiorLoss) + '</p>';
+        }
+        if (breakdown.goodwillRecovered && breakdown.goodwillRecovered > 0) {
+          strategyHtml += '<p style="margin-bottom:0.2rem; color:#4ade80;">• 권리금 회수: -' + Utils.formatKRW(breakdown.goodwillRecovered) + '</p>';
+        }
+        strategyHtml += '</div>';
+      }
+      strategyHtml += '</div>';
+    }
+    
+    // 경고 시점 조언
+    if (warningMonth) {
+      var warningLoss = totalLossAtWarning;
+      strategyHtml += '<div style="margin-bottom:1.5rem;">';
+      strategyHtml += '<h4 style="font-size:1rem; margin-bottom:0.5rem; color:#facc15;">⚠️ 경고 시점</h4>';
+      strategyHtml += '<p style="margin-bottom:0.5rem;"><strong>' + warningMonth + '개월</strong> 시점부터 손실이 급격히 증가하기 시작합니다.</p>';
+      if (warningLoss > 0) {
+        strategyHtml += '<p style="color:var(--text-muted); font-size:0.9rem;">예상 총손실: <strong style="color:#fb923c;">' + Utils.formatKRW(warningLoss) + '</strong></p>';
+      }
+      strategyHtml += '<p style="margin-top:0.5rem; color:var(--text-muted); font-size:0.85rem;">💡 이 시점 이전에 경영 개선 조치를 취하거나 Exit을 고려해야 합니다.</p>';
+      strategyHtml += '</div>';
+    }
+    
+    // 손실 폭증 시점 조언 (트랩존 시작)
+    if (trapZoneStartMonth) {
+      var explosionLoss = totalLossAtExplosion;
+      strategyHtml += '<div style="margin-bottom:1.5rem;">';
+      strategyHtml += '<h4 style="font-size:1rem; margin-bottom:0.5rem; color:#f87171;">🚨 손실 폭증 시점 (트랩존)</h4>';
+      strategyHtml += '<p style="margin-bottom:0.5rem;"><strong>' + trapZoneStartMonth + '개월</strong> 시점 이후에는 손실이 기하급수적으로 증가합니다.</p>';
+      if (explosionLoss > 0) {
+        strategyHtml += '<p style="color:var(--text-muted); font-size:0.9rem;">예상 총손실: <strong style="color:#dc2626;">' + Utils.formatKRW(explosionLoss) + '</strong></p>';
+      }
+      strategyHtml += '<p style="margin-top:0.5rem; color:var(--text-muted); font-size:0.85rem;">💡 이 시점 이후 Exit은 매우 비효율적입니다. 반드시 그 이전에 결정해야 합니다.</p>';
+      strategyHtml += '</div>';
+    }
+    
+    // 종합 조언
+    strategyHtml += '<div style="margin-top:1.5rem; padding:1rem; background:rgba(74,222,128,0.1); border-radius:4px; border-left:3px solid #4ade80;">';
+    strategyHtml += '<h4 style="font-size:1rem; margin-bottom:0.5rem; color:#4ade80;">💡 종합 전략 조언</h4>';
+    
+    if (optimalExitMonth && warningMonth) {
+      if (optimalExitMonth < warningMonth) {
+        strategyHtml += '<p style="margin-bottom:0.5rem;">최적 손절 시점(' + optimalExitMonth + '개월)이 경고 시점(' + warningMonth + '개월)보다 빠릅니다.</p>';
+        strategyHtml += '<p style="margin-bottom:0.5rem;"><strong>권장 전략:</strong> ' + optimalExitMonth + '개월 시점에 Exit을 결정하는 것이 손실을 최소화합니다.</p>';
+      } else {
+        strategyHtml += '<p style="margin-bottom:0.5rem;">경고 시점(' + warningMonth + '개월)까지 경영 개선을 시도하고, 개선되지 않으면 최적 손절 시점(' + optimalExitMonth + '개월)에 Exit을 결정하세요.</p>';
+      }
+    } else if (optimalExitMonth) {
+      strategyHtml += '<p style="margin-bottom:0.5rem;">최적 손절 시점은 <strong>' + optimalExitMonth + '개월</strong>입니다. 이 시점을 놓치면 손실이 급격히 증가합니다.</p>';
+    }
+    
+    if (trapZoneStartMonth) {
+      strategyHtml += '<p style="margin-top:0.5rem; color:#f87171; font-weight:600;">⚠️ ' + trapZoneStartMonth + '개월 이후에는 Exit을 절대 권장하지 않습니다.</p>';
+    }
+    
+    // 추가 손실 정보 (최적 손절 이후 6개월 더 버틸 때)
+    if (exitTiming.keepGoingDeltaLoss_6m && exitTiming.keepGoingDeltaLoss_6m > 0) {
+      strategyHtml += '<p style="margin-top:0.5rem; color:var(--text-muted); font-size:0.9rem;">💡 최적 손절 시점 이후 6개월 더 버틸 경우 추가 손실: <strong style="color:#f87171;">' + Utils.formatKRW(exitTiming.keepGoingDeltaLoss_6m) + '</strong></p>';
+    }
+    
+    strategyHtml += '</div>';
+    strategyHtml += '</div>';
+    
+    failureTriggersHtml += strategyHtml;
+  }
+  
   document.getElementById('rFailureTriggers').innerHTML = failureTriggersHtml;
 
   // Exit Plan 렌더링
@@ -599,36 +878,59 @@
       return;
     }
 
+    // Exit Plan 구조 확인 (exitTiming/exitScenario 또는 평탄화된 구조)
+    var exitTiming = exitPlan.exitTiming || exitPlan;
+    var exitScenario = exitPlan.exitScenario || {};
+    var optimalExitMonth = exitTiming.optimalExitMonth || exitPlan.optimalExitMonth;
+    var warningMonth = exitTiming.warningMonth || exitPlan.warningMonth;
+    var lossExplosionMonth = exitTiming.trapZoneStartMonth || exitPlan.lossExplosionMonth;
+    var optimalExitTotalLoss = exitTiming.optimalExitTotalLoss || exitPlan.totalLossAtOptimal || exitPlan.optimalExitTotalLoss || 0;
+    var exitCostBreakdown = exitScenario.breakdown || exitPlan.exitCostBreakdown;
+    var totalLossAtWarning = exitPlan.totalLossAtWarning || 0;
+    var totalLossAtExplosion = exitPlan.totalLossAtExplosion || 0;
+    
+    // totalLossSeries에서 경고/폭증 시점의 손실 계산
+    if (exitTiming.totalLossSeries && Array.isArray(exitTiming.totalLossSeries)) {
+      if (warningMonth && !totalLossAtWarning) {
+        var warningData = exitTiming.totalLossSeries.find(function(r) { return r.month === warningMonth; });
+        if (warningData) totalLossAtWarning = warningData.totalLoss || 0;
+      }
+      if (lossExplosionMonth && !totalLossAtExplosion) {
+        var explosionData = exitTiming.totalLossSeries.find(function(r) { return r.month === lossExplosionMonth; });
+        if (explosionData) totalLossAtExplosion = explosionData.totalLoss || 0;
+      }
+    }
+
     var html = '';
     
     // 손절 타이밍 테이블
-    if (exitPlan.optimalExitMonth || exitPlan.warningMonth) {
+    if (optimalExitMonth || warningMonth) {
       html += '<div style="margin-bottom:2rem;">' +
         '<h3 style="margin-bottom:1rem; font-size:1.1rem;">손절 타이밍 설계</h3>' +
         '<table class="report-table">' +
         '<thead><tr><th>구분</th><th>시점</th><th>총손실</th></tr></thead><tbody>';
 
-      if (exitPlan.warningMonth) {
+      if (warningMonth) {
         html += '<tr>' +
           '<td>경고 구간</td>' +
-          '<td>' + exitPlan.warningMonth + '개월</td>' +
-          '<td>' + Utils.formatKRW(exitPlan.totalLossAtWarning || 0) + '</td>' +
+          '<td>' + warningMonth + '개월</td>' +
+          '<td>' + Utils.formatKRW(totalLossAtWarning || 0) + '</td>' +
           '</tr>';
       }
 
-      if (exitPlan.optimalExitMonth) {
+      if (optimalExitMonth) {
         html += '<tr style="background:rgba(74,222,128,0.1);">' +
           '<td><strong>최적 손절</strong></td>' +
-          '<td><strong>' + exitPlan.optimalExitMonth + '개월</strong></td>' +
-          '<td><strong>' + Utils.formatKRW(exitPlan.totalLossAtOptimal || 0) + '</strong></td>' +
+          '<td><strong>' + optimalExitMonth + '개월</strong></td>' +
+          '<td><strong>' + Utils.formatKRW(optimalExitTotalLoss || 0) + '</strong></td>' +
           '</tr>';
       }
 
-      if (exitPlan.lossExplosionMonth) {
+      if (lossExplosionMonth) {
         html += '<tr>' +
           '<td>손실 폭증</td>' +
-          '<td>' + exitPlan.lossExplosionMonth + '개월</td>' +
-          '<td>' + Utils.formatKRW(exitPlan.totalLossAtExplosion || 0) + '</td>' +
+          '<td>' + lossExplosionMonth + '개월</td>' +
+          '<td>' + Utils.formatKRW(totalLossAtExplosion || 0) + '</td>' +
           '</tr>';
       }
 
@@ -636,10 +938,10 @@
     }
 
     // 폐업 비용 상세
-    if (exitPlan.exitCostBreakdown) {
-      var breakdown = exitPlan.exitCostBreakdown;
+    if (exitCostBreakdown) {
+      var breakdown = exitCostBreakdown;
       html += '<div>' +
-        '<h3 style="margin-bottom:1rem; font-size:1.1rem;">폐업 비용 상세 (' + (exitPlan.optimalExitMonth || 0) + '개월 기준)</h3>' +
+        '<h3 style="margin-bottom:1rem; font-size:1.1rem;">폐업 비용 상세 (' + (optimalExitMonth || 0) + '개월 기준)</h3>' +
         '<table class="report-table">' +
         '<thead><tr><th>항목</th><th>금액</th></tr></thead><tbody>';
 
@@ -655,19 +957,25 @@
       if (breakdown.goodwillRecovered !== undefined && breakdown.goodwillRecovered !== 0) {
         html += '<tr><td>권리금 회수(감액)</td><td style="color:#4ade80;">-' + Utils.formatKRW(Math.abs(breakdown.goodwillRecovered || 0)) + '</td></tr>';
       }
-      if (breakdown.exitCostTotal !== undefined) {
+      // Exit Cost 합계는 breakdown 또는 exitScenario에서 가져오기
+      var exitCostTotal = breakdown.exitCostTotal || exitScenario.exitCostTotal;
+      if (exitCostTotal !== undefined) {
         html += '<tr style="background:rgba(255,255,255,0.05);">' +
           '<td><strong>Exit Cost 합계</strong></td>' +
-          '<td><strong>' + Utils.formatKRW(breakdown.exitCostTotal || 0) + '</strong></td>' +
+          '<td><strong>' + Utils.formatKRW(exitCostTotal || 0) + '</strong></td>' +
           '</tr>';
       }
-      if (breakdown.cumOperatingLoss !== undefined) {
-        html += '<tr><td>운영손실 누적(폐업 시점까지)</td><td>' + Utils.formatKRW(breakdown.cumOperatingLoss || 0) + '</td></tr>';
+      // 운영손실 누적은 breakdown 또는 exitScenario에서 가져오기
+      var operatingLoss = breakdown.cumOperatingLoss || exitScenario.operatingLossUntilExit;
+      if (operatingLoss !== undefined) {
+        html += '<tr><td>운영손실 누적(폐업 시점까지)</td><td>' + Utils.formatKRW(operatingLoss || 0) + '</td></tr>';
       }
-      if (exitPlan.totalLossAtOptimal !== undefined) {
+      // 최종 총손실
+      var finalTotalLoss = optimalExitTotalLoss || exitScenario.finalTotalLoss;
+      if (finalTotalLoss !== undefined && finalTotalLoss > 0) {
         html += '<tr style="background:rgba(239,68,68,0.1);">' +
           '<td><strong>최종 총손실</strong></td>' +
-          '<td><strong style="color:#f87171;">' + Utils.formatKRW(exitPlan.totalLossAtOptimal) + '</strong></td>' +
+          '<td><strong style="color:#f87171;">' + Utils.formatKRW(finalTotalLoss) + '</strong></td>' +
           '</tr>';
       }
 
@@ -685,7 +993,8 @@
   // ═══════════════════════════════════════════
   
   // 손절 기준선 (Break-Down Line)
-  var breakdownVisitors = finance?.breakdownVisitors || null;
+  // finance.breakdownVisitors가 없으면 result.finance.breakdownVisitors로 fallback
+  var breakdownVisitors = finance?.breakdownVisitors || result.finance?.breakdownVisitors || null;
   var breakdownHtml = '';
   if (breakdownVisitors !== null && breakdownVisitors !== undefined) {
     breakdownHtml = '<div style="padding:1.5rem; background:rgba(239,68,68,0.1); border-radius:var(--radius-sm); border-left:4px solid #f87171;">' +
@@ -1225,9 +1534,6 @@
         marketBody.push(['평일 유동인구', tfMap[marketData.footTraffic.weekday] || '보통']);
         marketBody.push(['주말 유동인구', tfMap[marketData.footTraffic.weekend] || '보통']);
       }
-      if (marketData.marketScore !== null && marketData.marketScore !== undefined) {
-        marketBody.push(['상권 종합 점수', marketData.marketScore + '점']);
-      }
       if (marketBody.length > 0) {
         doc.autoTable({
           startY: y, head: [['항목', '값']], body: marketBody,
@@ -1237,6 +1543,40 @@
           theme: 'grid'
         });
         y = doc.lastAutoTable.finalY + 10;
+      }
+      
+      // 상권 종합 점수를 별도 박스로 표시
+      if (marketData.marketScore !== null && marketData.marketScore !== undefined) {
+        ensureSpace(30);
+        var pdfMarketScore = marketData.marketScore;
+        var pdfScoreLabel = pdfMarketScore >= 70 ? '양호' : pdfMarketScore >= 50 ? '보통' : '주의';
+        
+        // 검은색 배경 박스
+        var boxW = contentW;
+        var boxH = 25;
+        var boxX = margin;
+        var boxY = y;
+        
+        // 검은색 배경
+        doc.setFillColor(0, 0, 0); // 검은색
+        doc.rect(boxX, boxY, boxW, boxH, 'F');
+        
+        // 제목 (검은색 배경 위에 흰색 글자)
+        addText('상권 종합 점수', margin + 5, y + 5, { size: 10, bold: true, color: [255, 255, 255] });
+        
+        // 점수 (큰 글자, 흰색) - 중앙 정렬
+        var scoreText = pdfMarketScore + '점';
+        doc.setFontSize(20);
+        doc.setFont(koreanFontLoaded ? 'NotoSansKR' : 'helvetica', 'bold');
+        doc.setTextColor(255, 255, 255); // 흰색
+        var scoreWidth = doc.getTextWidth(scoreText);
+        var scoreX = margin + (boxW - scoreWidth) / 2;
+        doc.text(scoreText, scoreX, y + 18);
+        
+        // 평가 라벨 (검은색 배경 아래에 검은색 글자)
+        y += boxH + 3;
+        addText(pdfScoreLabel, margin, y, { size: 10, color: [0, 0, 0] });
+        y += 8;
       }
     }
 
@@ -1359,7 +1699,8 @@
     nextSection('Exit Plan & 손절 판단');
 
     // 손절 기준선 (Break-Down Line)
-    var pdfBreakdownVisitors = finance?.breakdownVisitors || null;
+    // finance.breakdownVisitors가 없으면 result.finance.breakdownVisitors로 fallback
+    var pdfBreakdownVisitors = finance?.breakdownVisitors || result.finance?.breakdownVisitors || null;
     if (pdfBreakdownVisitors !== null && pdfBreakdownVisitors !== undefined) {
       ensureSpace(25);
       addText('손절 기준선 (Break-Down Line)', margin, y, { size: 11, bold: true });
@@ -1377,11 +1718,17 @@
     }
 
     // 적자 지속 시 생존 개월 수
-    var pdfMonthlyProfit = executive?.monthlyProfit ?? finance?.monthlyProfit ?? 0;
+    var pdfMonthlyProfit = executive?.monthlyProfit ?? finance?.monthlyProfit ?? result.finance?.monthlyProfit ?? 0;
     var pdfMonthlyLoss = pdfMonthlyProfit < 0 ? Math.abs(pdfMonthlyProfit) : 0;
     var pdfAvailableCash = input ? input.conditions.initialInvestment : 0;
-    if (exitPlan && exitPlan.exitCostBreakdown) {
-      pdfAvailableCash -= (exitPlan.exitCostBreakdown.exitCostTotal || exitPlan.exitCostBreakdown.totalLoss || 0);
+    
+    // exitPlan 구조 확인 (exitScenario.breakdown 또는 exitCostBreakdown)
+    if (exitPlan) {
+      var pdfExitScenario = exitPlan.exitScenario || {};
+      var pdfExitCostBreakdown = pdfExitScenario.breakdown || exitPlan.exitCostBreakdown;
+      if (pdfExitCostBreakdown) {
+        pdfAvailableCash -= (pdfExitCostBreakdown.exitCostTotal || pdfExitCostBreakdown.totalLoss || 0);
+      }
     }
     var pdfSurvivalMonthsOnLoss = pdfMonthlyLoss > 0 && pdfAvailableCash > 0 ? Math.floor(pdfAvailableCash / pdfMonthlyLoss) : null;
     
@@ -1398,49 +1745,75 @@
     }
 
     // 폐업 시 회수 구조 (Exit Plan)
-    if (exitPlan && (exitPlan.optimalExitMonth || exitPlan.warningMonth || exitPlan.exitCostBreakdown)) {
-      ensureSpace(30);
-      addText('폐업 시 회수 구조', margin, y, { size: 11, bold: true });
-      y += 6;
-
-      if (exitPlan.optimalExitMonth || exitPlan.warningMonth) {
-        var exitTimingData = [];
-        if (exitPlan.warningMonth) exitTimingData.push(['Warning', exitPlan.warningMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtWarning || 0)]);
-        if (exitPlan.optimalExitMonth) exitTimingData.push(['Optimal Exit', exitPlan.optimalExitMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtOptimal || 0)]);
-        if (exitPlan.lossExplosionMonth) exitTimingData.push(['Loss Explosion', exitPlan.lossExplosionMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtExplosion || 0)]);
-        if (exitTimingData.length > 0) {
-          doc.autoTable({
-            startY: y, head: [['구분', '시점', '총손실']], body: exitTimingData,
-            margin: { left: margin, right: margin },
-            styles: { fontSize: 8, cellPadding: 2.5, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
-            headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
-            theme: 'grid'
-          });
-          y = doc.lastAutoTable.finalY + 8;
+    // exitPlan 구조 확인 (exitTiming/exitScenario 또는 평탄화된 구조)
+    if (exitPlan) {
+      var pdfExitTiming = exitPlan.exitTiming || exitPlan;
+      var pdfExitScenario = exitPlan.exitScenario || {};
+      var pdfOptimalExitMonth = pdfExitTiming.optimalExitMonth || exitPlan.optimalExitMonth;
+      var pdfWarningMonth = pdfExitTiming.warningMonth || exitPlan.warningMonth;
+      var pdfLossExplosionMonth = pdfExitTiming.trapZoneStartMonth || exitPlan.lossExplosionMonth;
+      var pdfOptimalExitTotalLoss = pdfExitTiming.optimalExitTotalLoss || exitPlan.totalLossAtOptimal || exitPlan.optimalExitTotalLoss || 0;
+      var pdfExitCostBreakdown = pdfExitScenario.breakdown || exitPlan.exitCostBreakdown;
+      var pdfTotalLossAtWarning = exitPlan.totalLossAtWarning || 0;
+      var pdfTotalLossAtExplosion = exitPlan.totalLossAtExplosion || 0;
+      
+      // totalLossSeries에서 경고/폭증 시점의 손실 계산
+      if (pdfExitTiming.totalLossSeries && Array.isArray(pdfExitTiming.totalLossSeries)) {
+        if (pdfWarningMonth && !pdfTotalLossAtWarning) {
+          var warningData = pdfExitTiming.totalLossSeries.find(function(r) { return r.month === pdfWarningMonth; });
+          if (warningData) pdfTotalLossAtWarning = warningData.totalLoss || 0;
+        }
+        if (pdfLossExplosionMonth && !pdfTotalLossAtExplosion) {
+          var explosionData = pdfExitTiming.totalLossSeries.find(function(r) { return r.month === pdfLossExplosionMonth; });
+          if (explosionData) pdfTotalLossAtExplosion = explosionData.totalLoss || 0;
         }
       }
-
-      if (exitPlan.exitCostBreakdown) {
+      
+      if (pdfOptimalExitMonth || pdfWarningMonth || pdfExitCostBreakdown) {
         ensureSpace(30);
-        var eb = exitPlan.exitCostBreakdown;
-        addText('Exit Cost Breakdown', margin, y, { size: 11, bold: true });
+        addText('폐업 시 회수 구조', margin, y, { size: 11, bold: true });
         y += 6;
-        var exitCostData = [];
-        if (eb.penaltyCost !== undefined) exitCostData.push(['Penalty', Utils.formatKRW(eb.penaltyCost || 0)]);
-        if (eb.demolitionCost !== undefined) exitCostData.push(['Demolition', Utils.formatKRW(eb.demolitionCost || 0)]);
-        if (eb.interiorLoss !== undefined) exitCostData.push(['Interior Loss', Utils.formatKRW(eb.interiorLoss || 0)]);
-        if (eb.goodwillRecovered && eb.goodwillRecovered !== 0) exitCostData.push(['Goodwill Recovery', '-' + Utils.formatKRW(Math.abs(eb.goodwillRecovered))]);
-        if (eb.exitCostTotal !== undefined) exitCostData.push(['Exit Cost Total', Utils.formatKRW(eb.exitCostTotal || 0)]);
-        if (exitPlan.totalLossAtOptimal !== undefined) exitCostData.push(['Final Total Loss', Utils.formatKRW(exitPlan.totalLossAtOptimal)]);
-        if (exitCostData.length > 0) {
-          doc.autoTable({
-            startY: y, head: [['항목', '금액']], body: exitCostData,
-            margin: { left: margin, right: margin },
-            styles: { fontSize: 8, cellPadding: 2.5, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
-            headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
-            theme: 'grid'
-          });
-          y = doc.lastAutoTable.finalY + 10;
+
+        if (pdfOptimalExitMonth || pdfWarningMonth) {
+          var exitTimingData = [];
+          if (pdfWarningMonth) exitTimingData.push(['경고 구간', pdfWarningMonth + '개월', Utils.formatKRW(pdfTotalLossAtWarning || 0)]);
+          if (pdfOptimalExitMonth) exitTimingData.push(['최적 손절', pdfOptimalExitMonth + '개월', Utils.formatKRW(pdfOptimalExitTotalLoss || 0)]);
+          if (pdfLossExplosionMonth) exitTimingData.push(['손실 폭증', pdfLossExplosionMonth + '개월', Utils.formatKRW(pdfTotalLossAtExplosion || 0)]);
+          if (exitTimingData.length > 0) {
+            doc.autoTable({
+              startY: y, head: [['구분', '시점', '총손실']], body: exitTimingData,
+              margin: { left: margin, right: margin },
+              styles: { fontSize: 8, cellPadding: 2.5, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+              headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+              theme: 'grid'
+            });
+            y = doc.lastAutoTable.finalY + 8;
+          }
+        }
+
+        if (pdfExitCostBreakdown) {
+          ensureSpace(30);
+          var eb = pdfExitCostBreakdown;
+          addText('폐업 비용 상세', margin, y, { size: 11, bold: true });
+          y += 6;
+          var exitCostData = [];
+          if (eb.penaltyCost !== undefined) exitCostData.push(['가맹 위약금', Utils.formatKRW(eb.penaltyCost || 0)]);
+          if (eb.demolitionCost !== undefined) exitCostData.push(['철거/원상복구', Utils.formatKRW(eb.demolitionCost || 0)]);
+          if (eb.interiorLoss !== undefined) exitCostData.push(['인테리어/설비 손실', Utils.formatKRW(eb.interiorLoss || 0)]);
+          if (eb.goodwillRecovered && eb.goodwillRecovered !== 0) exitCostData.push(['권리금 회수', '-' + Utils.formatKRW(Math.abs(eb.goodwillRecovered))]);
+          if (eb.exitCostTotal !== undefined) exitCostData.push(['Exit Cost 합계', Utils.formatKRW(eb.exitCostTotal || 0)]);
+          if (eb.cumOperatingLoss !== undefined) exitCostData.push(['운영손실 누적', Utils.formatKRW(eb.cumOperatingLoss || 0)]);
+          if (pdfOptimalExitTotalLoss > 0) exitCostData.push(['최종 총손실', Utils.formatKRW(pdfOptimalExitTotalLoss)]);
+          if (exitCostData.length > 0) {
+            doc.autoTable({
+              startY: y, head: [['항목', '금액']], body: exitCostData,
+              margin: { left: margin, right: margin },
+              styles: { fontSize: 8, cellPadding: 2.5, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+              headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+              theme: 'grid'
+            });
+            y = doc.lastAutoTable.finalY + 10;
+          }
         }
       }
     }
