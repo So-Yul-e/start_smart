@@ -778,6 +778,33 @@ a {
     background: rgba(212, 175, 55, 0.08);
 }
 
+.scenario-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.scenario-card.selected {
+    border-color: var(--primary-glow) !important;
+    background: rgba(74, 222, 128, 0.12) !important;
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.2);
+}
+
+.scenario-card.selected .value,
+.scenario-card.selected .label {
+    color: var(--primary-glow) !important;
+}
+
+.scenario-card.selected.highlight {
+    border-color: var(--primary-glow) !important;
+    background: rgba(74, 222, 128, 0.12) !important;
+}
+
+.scenario-card.selected.highlight .value,
+.scenario-card.selected.highlight .label {
+    color: var(--primary-glow) !important;
+}
+
 .scenario-card .label {
     font-size: 0.8rem;
     color: var(--text-muted);

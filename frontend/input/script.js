@@ -32,6 +32,8 @@
     brandDisplay.textContent = brand.name;
     investHint.textContent = '브랜드 기준 초기투자: ' + Utils.formatKRW(brand.initialInvestment);
     inputInvestment.placeholder = Math.round(brand.initialInvestment / 10000);
+    // 브랜드가 있으면 AI 판매량 제안 표시
+    showScenario();
   }
 
   // ── Pre-fill from previous analysis ──
@@ -53,9 +55,8 @@
         updateOwnerLabel();
       }
     }
-    if (prevInput.targetDailySales) {
-      inputDailySales.value = prevInput.targetDailySales;
-    }
+    // 이전 분석의 목표 판매량은 showScenario에서 처리 (기본값은 기대치)
+    // prevInput.targetDailySales는 showScenario에서 확인하여 일치하는 카드 선택
     if (prevInput.radius) {
       selectedRadius = prevInput.radius;
       var radiusBtns = document.querySelectorAll('.radius-btn[data-radius]');
@@ -359,26 +360,86 @@
       brand.name + ' 브랜드의 평균 판매량과 상권 유동인구, 경쟁 밀도를 종합 분석한 AI 추정치입니다.';
 
     document.getElementById('scenarioCards').innerHTML =
-      '<div class="scenario-card">' +
+      '<div class="scenario-card" data-value="' + conservative + '" style="cursor:pointer;">' +
       '<div class="label">보수적</div>' +
       '<div class="value">' + conservative + '</div>' +
       '<div class="unit">잔/일</div>' +
       '</div>' +
-      '<div class="scenario-card highlight">' +
-      '<div class="label" style="color:var(--gold);">기대치</div>' +
-      '<div class="value" style="color:var(--gold);">' + expected + '</div>' +
+      '<div class="scenario-card" data-value="' + expected + '" style="cursor:pointer;">' +
+      '<div class="label">기대치</div>' +
+      '<div class="value">' + expected + '</div>' +
       '<div class="unit">잔/일</div>' +
       '</div>' +
-      '<div class="scenario-card">' +
+      '<div class="scenario-card" data-value="' + optimistic + '" style="cursor:pointer;">' +
       '<div class="label">낙관적</div>' +
       '<div class="value">' + optimistic + '</div>' +
       '<div class="unit">잔/일</div>' +
       '</div>';
 
-    // Only set daily sales if not already pre-filled
-    if (!inputDailySales.value || parseInt(inputDailySales.value) === 0) {
-      inputDailySales.value = expected;
-    }
+    // 카드 클릭 이벤트 추가 (DOM 업데이트 후 실행)
+    setTimeout(function() {
+      var cards = document.querySelectorAll('.scenario-card');
+      for (var i = 0; i < cards.length; i++) {
+        cards[i].addEventListener('click', function() {
+          var value = this.getAttribute('data-value');
+          inputDailySales.value = value;
+          validateForm();
+          
+          // 선택된 카드 하이라이트
+          for (var j = 0; j < cards.length; j++) {
+            cards[j].classList.remove('selected');
+          }
+          this.classList.add('selected');
+        });
+      }
+
+      // 이전 분석의 목표 판매량 확인
+      var prevTargetSales = prevInput && prevInput.targetDailySales ? prevInput.targetDailySales : null;
+      
+      // 기본값 설정: 이전 값이 없거나 0이면 기대치로 설정
+      var currentValue = parseInt(inputDailySales.value) || 0;
+      
+      // 이전 분석 값이 있고, 카드 값 중 하나와 일치하면 사용, 아니면 기대치 사용
+      if (prevTargetSales && prevTargetSales > 0) {
+        // 이전 값이 카드 값 중 하나와 일치하는지 확인
+        var matchesCard = false;
+        for (var m = 0; m < cards.length; m++) {
+          if (parseInt(cards[m].getAttribute('data-value')) === prevTargetSales) {
+            matchesCard = true;
+            break;
+          }
+        }
+        if (matchesCard) {
+          currentValue = prevTargetSales;
+          inputDailySales.value = prevTargetSales;
+        } else {
+          // 이전 값이 카드 값과 일치하지 않으면 기대치 사용
+          currentValue = expected;
+          inputDailySales.value = expected;
+        }
+      } else {
+        // 이전 값이 없으면 기대치 사용
+        currentValue = expected;
+        inputDailySales.value = expected;
+      }
+      
+      // 입력값과 일치하는 카드를 기본 선택으로 표시
+      var matched = false;
+      for (var k = 0; k < cards.length; k++) {
+        var cardValue = parseInt(cards[k].getAttribute('data-value'));
+        if (cardValue === currentValue) {
+          cards[k].classList.add('selected');
+          matched = true;
+          break;
+        }
+      }
+      
+      // 일치하는 카드가 없으면 기대치 카드(인덱스 1)를 기본 선택
+      if (!matched && cards.length >= 2) {
+        cards[1].classList.add('selected');
+        inputDailySales.value = expected;
+      }
+    }, 0);
     // 값이 설정된 후 검증 실행 (약간의 지연을 두어 DOM 업데이트 반영)
     setTimeout(validateForm, 100);
   }
