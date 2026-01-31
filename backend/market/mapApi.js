@@ -35,6 +35,9 @@ async function searchNearbyCafes(location, radius) {
     }
     
     // Kakao Maps API
+    // 주의: 카카오맵 API는 서버 사이드 호출 시 도메인 등록이 필요합니다.
+    // 카카오 개발자 콘솔에서 "플랫폼 설정" → "Web 플랫폼"에 서버 도메인을 등록해야 합니다.
+    // 로컬 개발 환경에서는 도메인 불일치로 인해 실패할 수 있습니다.
     if (process.env.KAKAO_REST_API_KEY) {
       try {
         const result = await searchWithKakao(location, radius);
@@ -42,6 +45,10 @@ async function searchNearbyCafes(location, radius) {
           return result;
         }
       } catch (error) {
+        // 도메인 불일치 오류는 개발 환경에서 흔한 문제입니다.
+        if (error.response?.data?.errorType === 'AccessDeniedError') {
+          console.warn('카카오맵 API: 도메인 등록이 필요합니다. 카카오 개발자 콘솔에서 서버 도메인을 등록하세요.');
+        }
         console.warn('카카오맵 API 오류, 다음 API를 시도합니다:', error.message);
       }
     }
@@ -207,9 +214,13 @@ async function searchWithKakao(location, radius) {
   };
 
   try {
+    // 카카오맵 API는 서버 사이드 호출 시 도메인 등록이 필요합니다.
+    // 로컬 개발 환경에서는 도메인 불일치로 실패할 수 있으므로,
+    // User-Agent 헤더를 추가하여 서버 사이드 호출임을 명시합니다.
     const response = await axios.get(url, {
       headers: {
-        'Authorization': `KakaoAK ${apiKey}`
+        'Authorization': `KakaoAK ${apiKey}`,
+        'User-Agent': 'Node.js Server'
       },
       params: params
     });

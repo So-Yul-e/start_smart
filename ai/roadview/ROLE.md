@@ -25,9 +25,13 @@ ai/roadview/
   location: {
     lat: 37.5665,
     lng: 126.9780
-  }
+  },
+  imageUrl: "https://maps.googleapis.com/maps/api/streetview?size=640x640&location=37.5665,126.9780&key=...", // Google Street View 이미지 URL
+  source: "google" // 'google' | 'naver' | 'kakao'
 }
 ```
+
+> **참고**: 카카오 로드뷰는 서버 사이드에서 직접 호출 불가하므로, 백엔드(`orchestrator.js`)에서 Google Street View API로 이미지 URL을 가져온 후, 이 모듈에 전달합니다.
 
 **출력**:
 ```js
@@ -143,15 +147,22 @@ node ai/roadview/test.js
 
 ## 구현 가이드
 
-### 1. 로드뷰 이미지 가져오기
-Kakao Maps 또는 Google Maps API를 사용하여 로드뷰 이미지 URL 생성:
+### 1. 로드뷰 이미지 다운로드
+백엔드에서 전달받은 `imageUrl`에서 이미지를 다운로드:
 
 ```js
-// Kakao Maps 로드뷰 URL 예시
-const roadviewUrl = `https://dapi.kakao.com/v2/local/geo/roadview.json?x=${lng}&y=${lat}`;
-// 또는 Google Street View Static API
-const roadviewUrl = `https://maps.googleapis.com/maps/api/streetview?size=640x640&location=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
+const axios = require('axios');
+const fs = require('fs');
+
+async function downloadImage(imageUrl) {
+  const response = await axios.get(imageUrl, {
+    responseType: 'arraybuffer'
+  });
+  return Buffer.from(response.data, 'binary');
+}
 ```
+
+> **참고**: 이미지 URL은 백엔드(`orchestrator.js`)에서 Google Street View API로 생성하여 전달됩니다. 이 모듈은 이미지 URL을 받아서 다운로드하고 분석하는 역할만 수행합니다.
 
 ### 2. Gemini Vision API 호출
 ```js
