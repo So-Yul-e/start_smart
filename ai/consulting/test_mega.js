@@ -95,8 +95,8 @@ async function test() {
       radiusM: 500,                  // 반경 500m
       marketScore: 70,                // Decision 엔진 입력값 기준
       competitors: {
-        total: 5,
-        density: "high"
+        total: 5
+        // density는 자동 계산됨 (제거하여 테스트)
       },
       footTraffic: {
         weekday: "high",
