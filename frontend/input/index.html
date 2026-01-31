@@ -17,17 +17,19 @@
       <i class="fa-solid fa-leaf text-gold"></i> StartSmart
     </a>
     <nav class="nav">
-      <a href="../brand/">브랜드 선택</a>
-      <a href="../input/" class="active">조건 입력</a>
-      <a href="../dashboard/">대시보드</a>
+      <a href="../dashboard/?tab=compare"><i class="fa-solid fa-clock-rotate-left" style="margin-right:4px;"></i>히스토리</a>
     </nav>
   </header>
 
   <div class="page-wrapper">
     <div class="container">
-      <!-- Brand Chip -->
-      <div style="text-align:center; margin-bottom:1rem;">
-        <span class="badge-pill">Step 2</span>
+      <!-- Progress Stepper -->
+      <div class="progress-stepper">
+        <a href="../brand/" class="step-item done clickable"><span class="step-num"><i class="fa-solid fa-check" style="font-size:0.7rem;"></i></span><span class="step-label">브랜드 선택</span></a>
+        <div class="step-line done"></div>
+        <div class="step-item active"><span class="step-num">2</span><span class="step-label">조건 입력</span></div>
+        <div class="step-line"></div>
+        <div class="step-item"><span class="step-num">3</span><span class="step-label">대시보드</span></div>
       </div>
       <div id="brandChip" style="text-align:center; margin-bottom:2rem;">
         <span style="display:inline-flex; align-items:center; gap:0.5rem; background:rgba(255,255,255,0.06); padding:0.5rem 1.2rem; border-radius:50px; font-size:0.95rem;">
@@ -47,8 +49,12 @@
           <div id="map" style="width:100%; height:100%;"></div>
           <div id="mapFallback" class="map-fallback" style="display:none;">
             <i class="fa-solid fa-map" style="font-size:3rem; color:var(--text-muted); margin-bottom:1rem;"></i>
-            <p>카카오맵 로딩 실패</p>
-            <p style="font-size:0.85rem; color:var(--text-muted);">아래에 주소를 직접 입력해주세요</p>
+            <p>카카오맵을 불러올 수 없습니다</p>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">주소를 직접 입력하여 위치를 설정하세요</p>
+            <div style="display:flex; gap:0.5rem; width:100%; max-width:400px;">
+              <input type="text" id="manualAddress" class="field-input" placeholder="예: 서울시 강남구 역삼동 123" style="flex:1; margin:0;">
+              <button id="btnManualAddress" class="btn-outline" style="white-space:nowrap; border-color:var(--gold); color:var(--gold);">확인</button>
+            </div>
           </div>
         </div>
 
@@ -177,7 +183,7 @@
   </footer>
 
   <!-- Kakao Map SDK -->
-  <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=58425d97fda2e7cbd509e06465e80b19&libraries=services"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2ff501fa54ad54b13eb7914e077ac876&libraries=services"></script>
   <script src="../js/mock-data.js"></script>
   <script src="../js/utils.js"></script>
   <script src="script.js"></script>

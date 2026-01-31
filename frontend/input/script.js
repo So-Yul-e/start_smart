@@ -376,6 +376,25 @@
     else header.classList.remove('scrolled');
   });
 
+  // ── Manual Address Input (fallback) ──
+  var btnManual = document.getElementById('btnManualAddress');
+  var inputManual = document.getElementById('manualAddress');
+  if (btnManual) {
+    function applyManualAddress() {
+      var addr = inputManual.value.trim();
+      if (!addr) return;
+      selectedLocation = { lat: 37.5665, lng: 126.9780, address: addr };
+      document.getElementById('addressText').textContent = addr;
+      document.getElementById('addressBar').style.display = 'flex';
+      showMockCards();
+      validateForm();
+    }
+    btnManual.addEventListener('click', applyManualAddress);
+    inputManual.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') applyManualAddress();
+    });
+  }
+
   // ── Init ──
   prefillFromPrevious();
   initMap();

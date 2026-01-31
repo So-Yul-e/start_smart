@@ -27,15 +27,26 @@
   // ── Tabs ──
   var tabBtns = document.querySelectorAll('.tab-btn');
   var tabContents = document.querySelectorAll('.tab-content');
+
+  function switchTab(tabName) {
+    for (var j = 0; j < tabBtns.length; j++) tabBtns[j].classList.remove('active');
+    for (var j = 0; j < tabContents.length; j++) tabContents[j].classList.remove('active');
+    var targetBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+    if (targetBtn) targetBtn.classList.add('active');
+    var targetContent = document.getElementById('tab-' + tabName);
+    if (targetContent) targetContent.classList.add('active');
+  }
+
   for (var i = 0; i < tabBtns.length; i++) {
     tabBtns[i].addEventListener('click', function () {
-      var target = this.getAttribute('data-tab');
-      for (var j = 0; j < tabBtns.length; j++) tabBtns[j].classList.remove('active');
-      for (var j = 0; j < tabContents.length; j++) tabContents[j].classList.remove('active');
-      this.classList.add('active');
-      document.getElementById('tab-' + target).classList.add('active');
+      switchTab(this.getAttribute('data-tab'));
     });
   }
+
+  // URL 파라미터로 탭 자동 선택 (?tab=compare)
+  var urlParams = new URLSearchParams(window.location.search);
+  var tabParam = urlParams.get('tab');
+  if (tabParam) switchTab(tabParam);
 
   // ═══════════════════════════════════════════
   // TAB 1: Summary
