@@ -133,3 +133,9 @@ router.get('/', (req, res) => {
 });
 
 module.exports = router;
+
+// 브랜드 데이터를 다른 모듈에서도 사용할 수 있도록 export
+module.exports.brands = brands;
+module.exports.getBrandById = (brandId) => {
+  return brands.find(b => b.id === brandId) || null;
+};

@@ -6,33 +6,12 @@
  */
 
 const { analyzeMarket } = require('../market');
+const { getBrandById } = require('../routes/brands');
 // TODO: 다른 모듈들이 구현되면 주석 해제
 // const { calculateFinance } = require('../../engine/finance');
 // const { analyzeRoadview } = require('../../ai/roadview');
 // const { generateConsulting } = require('../../ai/consulting');
 // const { calculateDecision } = require('../../engine/decision');
-
-// 브랜드 정보 가져오기
-function getBrandById(brandId) {
-  const brands = require('../routes/brands');
-  // brands.js에서 brands 배열을 export해야 함
-  // 임시로 여기서 직접 정의
-  const brandList = [
-    { id: "brand_1", name: "스타벅스" },
-    { id: "brand_2", name: "이디야커피" },
-    { id: "brand_3", name: "투썸플레이스" },
-    { id: "brand_4", name: "컴포즈커피" },
-    { id: "brand_5", name: "메가커피" },
-    { id: "brand_6", name: "할리스커피" },
-    { id: "brand_7", name: "카페베네" },
-    { id: "brand_8", name: "빽다방" },
-    { id: "brand_9", name: "탐앤탐스" },
-    { id: "brand_10", name: "카페드롭탑" },
-    { id: "brand_11", name: "엔젤리너스" },
-    { id: "brand_12", name: "더벤티" }
-  ];
-  return brandList.find(b => b.id === brandId) || { id: brandId, name: '알 수 없음' };
-}
 
 /**
  * 분석 실행 함수
@@ -54,6 +33,9 @@ async function runAnalysis(analysisRequest, analysisStore) {
 
     // 브랜드 정보 가져오기
     const brand = getBrandById(brandId);
+    if (!brand) {
+      throw new Error(`브랜드를 찾을 수 없습니다: ${brandId}`);
+    }
 
     // 1. 상권 분석
     console.log(`[${analysisId}] 📊 1/5 상권 분석 시작...`);
@@ -166,7 +148,12 @@ async function runAnalysis(analysisRequest, analysisStore) {
       status: 'completed',
       brand: {
         id: brand.id,
-        name: brand.name
+        name: brand.name,
+        position: brand.position,
+        initialInvestment: brand.initialInvestment,
+        monthlyRoyalty: brand.monthlyRoyalty,
+        monthlyMarketing: brand.monthlyMarketing,
+        avgDailySales: brand.avgDailySales
       },
       location: {
         lat: location.lat,
