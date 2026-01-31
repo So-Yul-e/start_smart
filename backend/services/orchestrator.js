@@ -7,11 +7,12 @@
 
 const { analyzeMarket } = require('../market');
 const { getBrandById } = require('../routes/brands');
+// Engine 모듈 (병합 완료)
+const { calculateFinance } = require('../../engine/finance');
+const { calculate: calculateDecision } = require('../../engine/decision');
 // TODO: 다른 모듈들이 구현되면 주석 해제
-// const { calculateFinance } = require('../../engine/finance');
 // const { analyzeRoadview } = require('../../ai/roadview');
 // const { generateConsulting } = require('../../ai/consulting');
-// const { calculateDecision } = require('../../engine/decision');
 
 /**
  * 분석 실행 함수
@@ -48,28 +49,12 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     console.log(`[${analysisId}] 💰 2/5 손익 계산 시작...`);
     let finance;
     try {
-      // const { calculateFinance } = require('../../engine/finance');
-      // finance = calculateFinance({ brand, conditions, targetDailySales });
-      // TODO: 실제 구현 후 주석 해제
-      finance = {
-        monthlyRevenue: 27000000,
-        monthlyCosts: {
-          rent: conditions.monthlyRent || 3000000,
-          labor: 5000000,
-          materials: 8100000,
-          utilities: 500000,
-          royalty: 1350000,
-          marketing: 540000,
-          etc: 500000
-        },
-        monthlyProfit: 10000000,
-        paybackMonths: 50,
-        breakEvenDailySales: 200,
-        sensitivity: {
-          plus10: { monthlyProfit: 12000000, paybackMonths: 42 },
-          minus10: { monthlyProfit: 8000000, paybackMonths: 63 }
-        }
-      };
+      finance = calculateFinance({
+        brand,
+        conditions,
+        market, // 상권 분석 결과 전달
+        targetDailySales
+      });
       console.log(`[${analysisId}] ✅ 손익 계산 완료`);
     } catch (error) {
       console.error(`[${analysisId}] ❌ 손익 계산 실패:`, error);
@@ -122,16 +107,14 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     console.log(`[${analysisId}] ⚖️ 5/5 판단 계산 시작...`);
     let decision;
     try {
-      // const { calculateDecision } = require('../../engine/decision');
-      // decision = calculateDecision({ finance, market, roadview });
-      // TODO: 실제 구현 후 주석 해제
-      decision = {
-        score: 65,
-        signal: 'yellow',
-        survivalMonths: 24,
-        riskLevel: 'medium',
-        riskFactors: []
-      };
+      decision = calculateDecision({
+        finance,
+        market,
+        roadview,
+        conditions, // 개선 시뮬레이션용
+        brand,      // 개선 시뮬레이션용
+        targetDailySales // 개선 시뮬레이션용
+      });
       console.log(`[${analysisId}] ✅ 판단 계산 완료`);
     } catch (error) {
       console.error(`[${analysisId}] ❌ 판단 계산 실패:`, error);
