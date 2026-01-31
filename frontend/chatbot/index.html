@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 상담 - StartSmart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header" id="header">
+    <a href="../" class="logo">
+      <i class="fa-solid fa-leaf text-gold"></i> StartSmart
+    </a>
+    <nav class="nav">
+      <a href="../dashboard/"><i class="fa-solid fa-arrow-left" style="margin-right:4px;"></i> 대시보드로 돌아가기</a>
+      <a href="../dashboard/?tab=compare"><i class="fa-solid fa-clock-rotate-left" style="margin-right:4px;"></i>히스토리</a>
+    </nav>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="container chatbot-container">
+      <!-- Page Title -->
+      <div style="margin-bottom:2rem;">
+        <h1 style="font-size:2rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.75rem;">
+          <i class="fa-solid fa-robot" style="color:var(--gold);"></i>
+          AI 창업 컨설팅
+        </h1>
+        <p style="color:var(--text-muted); font-size:0.95rem;">분석 결과를 기반으로 상세한 상담을 받아보세요</p>
+      </div>
+
+      <!-- 핵심 의사결정 정보 -->
+      <div class="glass-card decision-panel">
+        <h3 style="margin-bottom:1rem; font-size:1.1rem;">
+          <i class="fa-solid fa-chart-line" style="color:var(--gold); margin-right:0.5rem;"></i>
+          핵심 의사결정 정보
+        </h3>
+        <div class="decision-grid" id="decisionGrid">
+          <!-- JavaScript로 동적 생성 -->
+        </div>
+      </div>
+
+      <!-- 챗봇 패널 -->
+      <div class="glass-card chatbot-panel">
+        <div class="chat-header">
+          <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
+            <i class="fa-solid fa-comments" style="color:var(--gold);"></i>
+            AI 상담
+          </h3>
+          <div style="display:flex; align-items:center; gap:1rem; font-size:0.85rem; color:var(--text-muted);">
+            <span id="questionCount">질문: 0</span>
+            <span id="remainingCount">남은 질문: 10</span>
+          </div>
+        </div>
+        <div id="questionWarning" style="display:none; padding:0.75rem; background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); border-radius:8px; margin:1rem 0; color:#f87171; font-size:0.85rem;">
+          <i class="fa-solid fa-exclamation-triangle" style="margin-right:0.5rem;"></i>
+          질문 횟수가 거의 소진되었습니다.
+        </div>
+
+        <!-- 채팅 메시지 영역 -->
+        <div class="chat-messages" id="chatMessages">
+          <!-- JavaScript로 동적 생성 -->
+        </div>
+
+        <!-- 타이핑 인디케이터 -->
+        <div class="typing-indicator" id="typingIndicator" style="display:none;">
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <span style="margin-left:0.5rem; color:var(--text-muted); font-size:0.85rem;">AI가 답변을 작성하고 있습니다...</span>
+        </div>
+
+        <!-- CTA 버튼 영역 -->
+        <div class="cta-buttons" id="ctaButtons">
+          <!-- JavaScript로 동적 생성 -->
+        </div>
+
+        <!-- 입력 영역 -->
+        <div class="chat-input-wrapper" id="textInputWrapper">
+          <div class="chat-input-container">
+            <input 
+              type="text" 
+              id="chatInput" 
+              class="chat-input" 
+              placeholder="질문을 입력하세요..."
+              autocomplete="off"
+            />
+            <button id="sendButton" class="send-button">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../config.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>

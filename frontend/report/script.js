@@ -620,7 +620,7 @@
 
     var scoreHtml = '<div style="padding:1.5rem; background:#f5f7ff; border-radius:var(--radius-sm); text-align:center;">' +
       '<h4 style="margin:0; margin-bottom:1rem;">상권 종합 점수</h4>' +
-      '<div style="font-size:2.5rem; font-weight:700; color:var(--text-main); margin-bottom:0.5rem;">' + marketScore + '점</div>' +
+      '<div style="font-size:2.5rem; font-weight:700; color:#212121; margin-bottom:0.5rem;">' + marketScore + '점</div>' +
       '<div style="font-size:1rem; color:var(--text-muted);">' + scoreLabel + '</div>' +
       '</div>';
 
