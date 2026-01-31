@@ -16,23 +16,19 @@ const { getBrandById } = require('../routes/brands');
 /**
  * 분석 실행 함수
  * @param {Object} analysisRequest - 분석 요청 데이터
- * @param {Map} analysisStore - 분석 결과 저장소
+ * @param {Function} updateAnalysis - 분석 결과 업데이트 함수 (DB 저장)
  */
-async function runAnalysis(analysisRequest, analysisStore) {
+async function runAnalysis(analysisRequest, updateAnalysis) {
   const { analysisId, brandId, location, radius, conditions, targetDailySales } = analysisRequest;
 
   try {
     // 분석 상태를 processing으로 변경
-    const stored = analysisStore.get(analysisId);
-    if (stored) {
-      stored.status = 'processing';
-      analysisStore.set(analysisId, stored);
-    }
+    await updateAnalysis(analysisId, { status: 'processing' });
 
     console.log(`[${analysisId}] 🚀 분석 시작...`);
 
-    // 브랜드 정보 가져오기
-    const brand = getBrandById(brandId);
+    // 브랜드 정보 가져오기 (비동기 처리)
+    const brand = await getBrandById(brandId);
     if (!brand) {
       throw new Error(`브랜드를 찾을 수 없습니다: ${brandId}`);
     }
@@ -41,7 +37,7 @@ async function runAnalysis(analysisRequest, analysisStore) {
     console.log(`[${analysisId}] 📊 1/5 상권 분석 시작...`);
     let market;
     try {
-      market = await analyzeMarket(location, radius);
+      market = await analyzeMarket(location, radius, brandId);
       console.log(`[${analysisId}] ✅ 상권 분석 완료`);
     } catch (error) {
       console.error(`[${analysisId}] ❌ 상권 분석 실패:`, error);
@@ -168,21 +164,22 @@ async function runAnalysis(analysisRequest, analysisStore) {
       createdAt: new Date().toISOString()
     };
 
-    // 결과 저장
-    analysisStore.set(analysisId, finalResult);
+    // 결과 저장 (DB)
+    await updateAnalysis(analysisId, {
+      status: 'completed',
+      result: finalResult
+    });
 
     console.log(`[${analysisId}] 🎉 분석 완료!`);
     return finalResult;
   } catch (error) {
     console.error(`[${analysisId}] ❌ 분석 실패:`, error);
     
-    // 실패 상태 저장
-    const stored = analysisStore.get(analysisId);
-    if (stored) {
-      stored.status = 'failed';
-      stored.error = error.message;
-      analysisStore.set(analysisId, stored);
-    }
+    // 실패 상태 저장 (DB)
+    await updateAnalysis(analysisId, {
+      status: 'failed',
+      errorMessage: error.message
+    });
     
     throw error;
   }

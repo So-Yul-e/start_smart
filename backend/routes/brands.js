@@ -4,9 +4,27 @@
  */
 
 const router = require('express').Router();
+const pool = require('../db/connection');
 
-// 브랜드 목록 (임시 데이터 - 추후 DB 연동)
-const brands = [
+// 브랜드 목록 (DB에서 조회)
+async function getAllBrands() {
+  const result = await pool.query(
+    'SELECT id, name, position, initial_investment as "initialInvestment", monthly_royalty as "monthlyRoyalty", monthly_marketing as "monthlyMarketing", avg_daily_sales as "avgDailySales" FROM brands ORDER BY id'
+  );
+  return result.rows;
+}
+
+// 브랜드 ID로 조회
+async function getBrandById(brandId) {
+  const result = await pool.query(
+    'SELECT id, name, position, initial_investment as "initialInvestment", monthly_royalty as "monthlyRoyalty", monthly_marketing as "monthlyMarketing", avg_daily_sales as "avgDailySales" FROM brands WHERE id = $1',
+    [brandId]
+  );
+  return result.rows[0] || null;
+}
+
+// 하위 호환성을 위한 임시 데이터 (DB 연결 실패 시 사용)
+const fallbackBrands = [
   {
     id: "brand_1",
     name: "스타벅스",
@@ -117,25 +135,27 @@ const brands = [
   }
 ];
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
+    const brands = await getAllBrands();
     res.json({
       success: true,
       brands: brands
     });
   } catch (error) {
     console.error('브랜드 목록 조회 오류:', error);
-    res.status(500).json({
-      success: false,
-      error: '브랜드 목록을 불러오는 중 오류가 발생했습니다.'
+    // DB 연결 실패 시 fallback 데이터 사용
+    res.json({
+      success: true,
+      brands: fallbackBrands,
+      warning: '데이터베이스 연결 실패로 임시 데이터를 사용합니다.'
     });
   }
 });
 
-module.exports = router;
-
 // 브랜드 데이터를 다른 모듈에서도 사용할 수 있도록 export
-module.exports.brands = brands;
-module.exports.getBrandById = (brandId) => {
-  return brands.find(b => b.id === brandId) || null;
-};
+module.exports = router;
+module.exports.getBrandById = getBrandById;
+module.exports.getAllBrands = getAllBrands;
+// 하위 호환성을 위한 fallback
+module.exports.brands = fallbackBrands;

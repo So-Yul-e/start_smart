@@ -5,9 +5,7 @@
 
 const router = require('express').Router();
 const { runAnalysis } = require('../services/orchestrator');
-
-// 분석 결과 임시 저장 (실제로는 DB 사용)
-const analysisStore = new Map();
+const { createAnalysis, updateAnalysis } = require('../db/analysisRepository');
 
 router.post('/', async (req, res) => {
   try {
@@ -24,11 +22,14 @@ router.post('/', async (req, res) => {
     // 분석 ID 생성
     const analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // 분석 상태를 pending으로 저장
-    analysisStore.set(analysisId, {
+    // DB에 분석 요청 저장
+    await createAnalysis({
       id: analysisId,
-      status: 'pending',
-      createdAt: new Date().toISOString()
+      brandId,
+      location,
+      radius: radius || 500,
+      conditions,
+      targetDailySales
     });
 
     // 비동기로 분석 실행 (응답은 즉시 반환)
@@ -39,14 +40,12 @@ router.post('/', async (req, res) => {
       radius: radius || 500,
       conditions,
       targetDailySales
-    }, analysisStore).catch(err => {
+    }, updateAnalysis).catch(async (err) => {
       console.error(`[${analysisId}] 분석 실행 오류:`, err);
-      const stored = analysisStore.get(analysisId);
-      if (stored) {
-        stored.status = 'failed';
-        stored.error = err.message;
-        analysisStore.set(analysisId, stored);
-      }
+      await updateAnalysis(analysisId, {
+        status: 'failed',
+        errorMessage: err.message
+      });
     });
 
     res.json({
@@ -63,6 +62,4 @@ router.post('/', async (req, res) => {
   }
 });
 
-// 분석 스토어를 result.js에서 사용할 수 있도록 export
 module.exports = router;
-module.exports.analysisStore = analysisStore;
