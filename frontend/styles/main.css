@@ -154,6 +154,21 @@ a {
     width: 100%;
 }
 
+/* Hamburger Menu Toggle */
+.nav-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-main);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    margin-left: auto;
+    -webkit-tap-highlight-color: transparent;
+}
+
 /* --- Progress Stepper --- */
 .progress-stepper {
     display: flex;
@@ -1160,9 +1175,55 @@ a {
 /* ===========================================
    RESPONSIVE
    =========================================== */
+
+/* --- Tablet / Large Mobile --- */
 @media (max-width: 768px) {
+    /* Hamburger dropdown (active only when toggle exists) */
+    .nav-toggle {
+        display: flex;
+    }
+
+    .nav-toggle ~ .nav {
+        display: none;
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        left: 0;
+        right: 0;
+        background: rgba(15, 17, 16, 0.97);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: var(--glass-border);
+        border-radius: var(--radius-md);
+        padding: 0.5rem;
+        flex-direction: column;
+        gap: 0;
+        box-shadow: var(--glass-shadow);
+    }
+
+    .nav-toggle ~ .nav.open {
+        display: flex;
+    }
+
+    .nav-toggle ~ .nav a {
+        padding: 0.8rem 1rem;
+        border-radius: var(--radius-sm);
+    }
+
+    .nav-toggle ~ .nav a:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-toggle ~ .nav a::after {
+        display: none;
+    }
+
+    /* Layout */
     .hero h1 {
         font-size: 3rem;
+    }
+
+    .hero-content {
+        padding: 0 1.5rem;
     }
 
     .input-container {
@@ -1192,19 +1253,52 @@ a {
 
     .tabs {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .section {
+        padding: 5rem 0;
+    }
+
+    .section-title {
+        margin-bottom: 3rem;
+    }
+
+    .brand-card {
+        padding: 1.5rem;
+    }
+
+    .brand-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .dash-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .dash-actions .btn-outline {
+        flex: 1;
+        min-width: 0;
+        justify-content: center;
+        padding: 0.6rem 0.8rem;
+        font-size: 0.8rem;
+        white-space: nowrap;
     }
 }
 
-/* ===========================================
-   SMALL MOBILE (480px)
-   =========================================== */
+/* --- Small Mobile (≤480px) --- */
 @media (max-width: 480px) {
+    /* Base */
     .container {
         padding: 0 1rem;
     }
 
+    /* Header */
     .header {
         padding: 0.6rem 1rem;
+        width: 95%;
+        top: 10px;
     }
 
     .header.scrolled {
@@ -1212,80 +1306,144 @@ a {
     }
 
     .logo {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
     }
 
     .nav {
-        gap: 1.2rem;
+        gap: 1rem;
     }
 
     .nav a {
         font-size: 0.8rem;
     }
 
+    /* Hero */
+    .hero-content {
+        padding: 0 0.5rem;
+    }
+
     .hero h1 {
-        font-size: 2rem;
+        font-size: 2.2rem;
+        margin-bottom: 1rem;
     }
 
     .hero p {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         line-height: 1.6;
+        margin-bottom: 2rem;
     }
 
+    .badge-pill {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Buttons */
     .btn-cta {
-        padding: 0.9rem 1.8rem;
-        font-size: 0.95rem;
+        padding: 0.85rem 1.6rem;
+        font-size: 0.9rem;
     }
 
+    /* Sections */
     .section {
-        padding: 3.5rem 0;
+        padding: 3rem 0;
     }
 
     .section-title {
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
 
     .section-title h2 {
         font-size: 1.5rem;
     }
 
-    .brand-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    .section-title p {
+        font-size: 0.9rem;
     }
 
+    /* Brand Grid — 2 columns, compact */
+    .brand-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .brand-card {
+        padding: 1rem;
+    }
+
+    .brand-icon {
+        margin-bottom: 0.75rem;
+    }
+
+    .brand-name {
+        font-size: 0.95rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .brand-tag {
+        font-size: 0.7rem;
+        margin-bottom: 1rem;
+    }
+
+    .brand-stats {
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .stat-item span {
+        font-size: 0.65rem;
+    }
+
+    .stat-item strong {
+        font-size: 0.85rem;
+    }
+
+    /* Glass Card */
     .glass-card {
         padding: 1.2rem;
     }
 
+    .glass-card h3 {
+        font-size: 1rem;
+    }
+
+    /* Score */
     .score-circle-lg {
-        width: 130px;
-        height: 130px;
+        width: 120px;
+        height: 120px;
     }
 
     .score-circle-lg .score-num {
-        font-size: 2.8rem;
+        font-size: 2.5rem;
     }
 
+    /* Cards */
     .scenario-cards {
         grid-template-columns: 1fr;
     }
 
-    .tab-btn {
-        padding: 0.6rem 1rem;
-        font-size: 0.85rem;
+    .scenario-card .value {
+        font-size: 1.4rem;
     }
 
+    /* Tabs */
+    .tab-btn {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    /* Page */
     .page-wrapper {
-        padding-top: 80px;
+        padding-top: 70px;
+        padding-bottom: 2rem;
     }
 
     .page-header h1 {
-        font-size: 1.8rem;
-    }
-
-    .badge-pill {
-        font-size: 0.75rem;
-        padding: 0.4rem 1rem;
+        font-size: 1.5rem;
     }
 
     .input-container {
@@ -1293,22 +1451,144 @@ a {
     }
 
     .dashboard-modal {
-        padding: 2rem 1rem;
+        padding: 1.5rem 1rem;
     }
 
     .result-card {
         padding: 1.5rem;
     }
 
+    /* Named elements */
     .cta-heading {
-        font-size: 1.5rem;
+        font-size: 1.4rem !important;
     }
 
     .dash-title {
-        font-size: 1.5rem;
+        font-size: 1.4rem !important;
     }
 
     .roadview-grid {
         grid-template-columns: 1fr;
+    }
+
+    /* Metrics */
+    .metric-card {
+        padding: 1rem;
+    }
+
+    .metric-card .metric-value {
+        font-size: 1.3rem;
+    }
+
+    /* Charts */
+    .bar-chart {
+        height: 160px;
+    }
+
+    .bar-label {
+        font-size: 0.65rem;
+    }
+
+    /* Risk cards */
+    .risk-card {
+        padding: 1rem;
+        gap: 0.75rem;
+    }
+
+    /* Form fields — compact */
+    .field-group {
+        margin-bottom: 1rem;
+    }
+
+    .field-label {
+        font-size: 0.8rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .field-input {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.9rem;
+    }
+
+    .field-hint {
+        font-size: 0.7rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .toggle-wrap {
+        gap: 0.6rem;
+    }
+
+    .toggle-wrap > span {
+        font-size: 0.85rem;
+    }
+
+    .toggle {
+        width: 44px;
+        height: 24px;
+    }
+
+    .toggle-slider::before {
+        width: 18px;
+        height: 18px;
+    }
+
+    .toggle input:checked + .toggle-slider::before {
+        transform: translateX(20px);
+    }
+
+    .two-col {
+        gap: 1rem;
+    }
+
+    .progress-stepper {
+        margin-bottom: 1.5rem;
+        padding: 0.8rem;
+    }
+
+    .radius-btn {
+        padding: 0.4rem 0.9rem;
+        font-size: 0.8rem;
+    }
+
+    .loading-step {
+        font-size: 0.85rem;
+    }
+
+    .btn-outline {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .sub-footer {
+        padding: 2rem 0;
+        font-size: 0.75rem;
+    }
+
+    /* CTA buttons — stack vertically */
+    .cta-buttons {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+        padding: 0 1rem;
+    }
+
+    .cta-buttons .btn-cta {
+        justify-content: center;
+        font-size: 0.9rem !important;
+        padding: 0.85rem 1.5rem !important;
+    }
+
+    /* Dashboard actions — compact row */
+    .dash-actions {
+        gap: 0.5rem !important;
+    }
+
+    .dash-actions .btn-outline {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.75rem;
     }
 }

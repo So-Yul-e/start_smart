@@ -18,7 +18,10 @@
     <a href="#" class="logo">
       <i class="fa-solid fa-leaf text-gold"></i> StartSmart
     </a>
-    <nav class="nav">
+    <button class="nav-toggle" id="navToggle" aria-label="메뉴">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <nav class="nav" id="mainNav">
       <a href="#home" class="active">홈</a>
       <a href="#brands">브랜드</a>
       <a href="#how">이용 방법</a>
@@ -114,7 +117,7 @@
           AI가 분석하고, 당신이 결정합니다.
         </p>
       </div>
-      <div data-aos="zoom-in" data-aos-delay="150" style="display:flex; justify-content:center; gap:1rem; flex-wrap:wrap;">
+      <div class="cta-buttons" data-aos="zoom-in" data-aos-delay="150" style="display:flex; justify-content:center; gap:1rem; flex-wrap:wrap;">
         <a href="brand/" class="btn-cta" style="font-size:1.1rem; padding:1rem 2.5rem;">
           브랜드 선택하기 <i class="fa-solid fa-arrow-right" style="margin-left:10px;"></i>
         </a>
@@ -134,6 +137,31 @@
   <script>
     // Initialize AOS
     AOS.init({ duration: 1000, once: true });
+
+    // Hamburger Menu Toggle
+    (function() {
+      var toggle = document.getElementById('navToggle');
+      var nav = document.getElementById('mainNav');
+      if (!toggle || !nav) return;
+      toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        nav.classList.toggle('open');
+        toggle.querySelector('i').className = nav.classList.contains('open')
+          ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
+      });
+      nav.querySelectorAll('a').forEach(function(a) {
+        a.addEventListener('click', function() {
+          nav.classList.remove('open');
+          toggle.querySelector('i').className = 'fa-solid fa-bars';
+        });
+      });
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.header')) {
+          nav.classList.remove('open');
+          toggle.querySelector('i').className = 'fa-solid fa-bars';
+        }
+      });
+    })();
 
     // Header Scroll Effect
     window.addEventListener('scroll', function () {
