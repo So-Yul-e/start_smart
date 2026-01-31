@@ -42,14 +42,12 @@
       '할리스커피': 'hollys.png',
       '컴포즈': 'compose.png',
       '컴포즈커피': 'compose.png',
-      // MockData 브랜드 → 실제 파일
-      '스타벅스': 'Starbucks.png',
-      '더벤티': 'theventi.png',
-      '카페베네': 'coffeebean.png',
-      '커피빈': 'coffeebean.png',
-      '블루보틀': 'bluebottle.png',
-      '폴바셋': 'paulbassett.png'
-      // 로고 파일 없음: 던킨도너츠, 뚜레쥬르, 만렙커피, 바나프레소, 파리바게트
+      // 새로 추가된 로고
+      '던킨도너츠': 'dunkin.png',
+      '뚜레쥬르': 'tous.jpg',
+      '만렙커피': '10000.png',
+      '바나프레소': 'bana.jpg',
+      '파리바게트': 'paris.png'
     };
     
     // 1. 원본 이름으로 정확한 매칭
