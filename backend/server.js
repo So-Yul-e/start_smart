@@ -31,6 +31,7 @@ app.use('/api/config', require('./routes/config'));
 // app.use('/api/competition', require('./routes/competition')); // 파일이 없어서 주석 처리
 app.use('/api/roadview', require('./routes/roadview'));
 app.use('/api/consulting', require('./routes/consulting'));
+app.use('/api/chatbot', require('./routes/chatbot'));
 
 // 루트 경로
 app.get('/', (req, res) => {
