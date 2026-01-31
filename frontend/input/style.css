@@ -182,3 +182,37 @@
         gap: 0.4rem !important;
     }
 }
+
+/* 대출 정보 스타일 */
+.loan-item {
+    transition: all 0.3s ease;
+}
+
+.loan-item:hover {
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.btn-remove-loan {
+    transition: all 0.2s ease;
+}
+
+.btn-remove-loan:hover {
+    background: rgba(248, 113, 113, 0.2) !important;
+    border-color: rgba(248, 113, 113, 0.5) !important;
+}
+
+/* Exit Plan 섹션 스타일 */
+#exitPlanContainer {
+    transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .loan-item {
+        padding: 0.75rem !important;
+    }
+    
+    .loan-item .two-col {
+        grid-template-columns: 1fr !important;
+    }
+}

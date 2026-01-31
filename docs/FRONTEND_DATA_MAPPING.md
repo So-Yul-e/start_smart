@@ -111,8 +111,8 @@ var decision = reportModel ? {
 #### 3.3 경쟁 환경 해석
 | 화면 표시 | 데이터 소스 | 경로 |
 |---------|-----------|------|
-| 경쟁 강도 | `competitive?.intensity` | reportModel.competitive → result.aiConsulting.competitiveAnalysis |
-| 차별화 가능성 | `competitive?.differentiation` | |
+| 경쟁 강도 | `competitive?.intensity` | |
+| 차별화 가능성 | `competitive?.differentiation` | 
 | 가격 전략 | `competitive?.priceStrategy` | |
 | 경쟁점 수 | `market?.competitors?.total` | reportModel.market.competitors.total → result.market.competitors.total |
 

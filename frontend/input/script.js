@@ -26,6 +26,20 @@
   var inputOwnerWork = document.getElementById('inputOwnerWork');
   var inputDailySales = document.getElementById('inputDailySales');
   var investHint = document.getElementById('investHint');
+  
+  // 선택 입력 필드
+  var btnAddLoan = document.getElementById('btnAddLoan');
+  var loansContainer = document.getElementById('loansContainer');
+  var loansEmpty = document.getElementById('loansEmpty');
+  var btnToggleExitPlan = document.getElementById('btnToggleExitPlan');
+  var exitPlanContainer = document.getElementById('exitPlanContainer');
+  var inputKeyMoney = document.getElementById('inputKeyMoney');
+  var inputDemolitionBase = document.getElementById('inputDemolitionBase');
+  var inputDemolitionPerPyeong = document.getElementById('inputDemolitionPerPyeong');
+  var inputWorkingCapital = document.getElementById('inputWorkingCapital');
+  
+  var loans = []; // 대출 정보 배열
+  var exitPlanExpanded = false; // Exit Plan 섹션 펼침 상태
 
   // ── Brand Check ──
   if (!brand) {
@@ -56,6 +70,34 @@
       if (prevInput.conditions.ownerWorking !== undefined) {
         inputOwnerWork.checked = prevInput.conditions.ownerWorking;
         updateOwnerLabel();
+      }
+      
+      // 대출 정보 복원
+      if (prevInput.conditions.loans && Array.isArray(prevInput.conditions.loans)) {
+        loans = prevInput.conditions.loans.map(function(loan, index) {
+          return {
+            id: 'loan_' + Date.now() + '_' + index,
+            principal: Math.round(loan.principal / 10000).toString(),
+            apr: (loan.apr * 100).toString(),
+            termMonths: loan.termMonths.toString(),
+            repaymentType: loan.repaymentType || 'equal_payment'
+          };
+        });
+        renderLoans();
+      }
+      
+      // Exit Plan 정보 복원
+      if (prevInput.conditions.exitInputs) {
+        var exit = prevInput.conditions.exitInputs;
+        if (exit.keyMoney) inputKeyMoney.value = Math.round(exit.keyMoney / 10000);
+        if (exit.demolitionBase) inputDemolitionBase.value = Math.round(exit.demolitionBase / 10000);
+        if (exit.demolitionPerPyeong) inputDemolitionPerPyeong.value = Math.round(exit.demolitionPerPyeong / 10000);
+        if (exit.workingCapital) inputWorkingCapital.value = Math.round(exit.workingCapital / 10000);
+        if (exit.pyeong) inputArea.value = exit.pyeong;
+        // Exit Plan이 있으면 자동으로 펼치기
+        exitPlanExpanded = true;
+        exitPlanContainer.style.display = 'block';
+        btnToggleExitPlan.innerHTML = '<i class="fa-solid fa-chevron-up" style="margin-right:0.3rem;"></i> 접기';
       }
     }
     // 이전 분석의 목표 판매량은 showScenario에서 처리 (기본값은 기대치)
@@ -207,7 +249,7 @@
           document.getElementById('addressText').textContent = selectedLocation.address;
           document.getElementById('addressBar').style.display = 'flex';
         }
-        showMockCards();
+        // showMockCards(); // 목업 데이터 제거
         showRoadview(prevLatlng);
         validateForm();
       }
@@ -230,7 +272,7 @@
           document.getElementById('addressText').textContent = selectedLocation.address;
           document.getElementById('addressBar').style.display = 'flex';
         }
-        showMockCards();
+        // showMockCards(); // 목업 데이터 제거
         validateForm();
       }
     }
@@ -263,7 +305,8 @@
     console.log('[위치 설정] selectedLocation:', selectedLocation);
 
     captureMapImage();
-    showMockCards();
+    // showMockCards(); // 목업 데이터 제거
+    showScenario(); // 시나리오만 표시
     validateForm();
   }
 
@@ -445,36 +488,11 @@
     });
   }
 
-  // ── Mock Cards (상권 요약 + 로드뷰) ──
+  // ── Mock Cards (로드뷰) ──
+  // 목업 데이터 제거: 실제 로드뷰 분석은 백엔드에서 처리되며, 결과는 대시보드에서 표시됨
   function showMockCards() {
-    document.getElementById('marketSummary').style.display = 'block';
-
-    var roadviewCard = document.getElementById('roadviewCard');
-    roadviewCard.style.display = 'block';
-
-    var items = [
-      { icon: 'fa-sign-hanging', title: '간판 가시성', desc: '주변 건물에 의해 부분적으로 가려짐', level: 'medium' },
-      { icon: 'fa-mountain', title: '지형/경사', desc: '평탄한 지형으로 접근성 양호', level: 'low' },
-      { icon: 'fa-building', title: '층 위치', desc: '1층 매장 — 가시성 확보', level: 'ground' },
-      { icon: 'fa-eye', title: '보행 가시성', desc: '주요 동선에 위치하여 우수', level: 'high' }
-    ];
-
-    var levelColors = {
-      high: { bg: 'rgba(74,222,128,0.15)', color: '#4ade80', text: '양호' },
-      medium: { bg: 'rgba(250,204,21,0.15)', color: '#facc15', text: '보통' },
-      low: { bg: 'rgba(74,222,128,0.15)', color: '#4ade80', text: '양호' },
-      ground: { bg: 'rgba(74,222,128,0.15)', color: '#4ade80', text: '1층' }
-    };
-
-    document.getElementById('roadviewItems').innerHTML = items.map(function (it) {
-      var lc = levelColors[it.level] || levelColors.medium;
-      return '<div class="roadview-item">' +
-        '<div class="rv-icon" style="background:' + lc.bg + '; color:' + lc.color + ';"><i class="fa-solid ' + it.icon + '"></i></div>' +
-        '<div class="rv-text"><div class="rv-title">' + it.title + '</div><div class="rv-desc">' + it.desc + '</div></div>' +
-        '<span class="rv-badge" style="background:' + lc.bg + '; color:' + lc.color + ';">' + lc.text + '</span>' +
-        '</div>';
-    }).join('');
-
+    // 목업 데이터 표시 비활성화
+    // 실제 로드뷰 분석 결과는 대시보드에서 표시됨
     showScenario();
   }
 
@@ -959,7 +977,8 @@
       selectedLocation = { lat: 37.5665, lng: 126.9780, address: addr };
       document.getElementById('addressText').textContent = addr;
       document.getElementById('addressBar').style.display = 'flex';
-      showMockCards();
+      // showMockCards(); // 목업 데이터 제거
+      showScenario(); // 시나리오만 표시
       validateForm();
     }
     btnManual.addEventListener('click', applyManualAddress);
@@ -967,6 +986,118 @@
       if (e.key === 'Enter') applyManualAddress();
     });
   }
+
+  // ── 대출 정보 관리 ──
+  function addLoanItem() {
+    var loanId = 'loan_' + Date.now();
+    var loanItem = {
+      id: loanId,
+      principal: '',
+      apr: '',
+      termMonths: '',
+      repaymentType: 'equal_payment'
+    };
+    loans.push(loanItem);
+    renderLoans();
+  }
+
+  function removeLoanItem(loanId) {
+    loans = loans.filter(function(loan) {
+      return loan.id !== loanId;
+    });
+    renderLoans();
+  }
+
+  function renderLoans() {
+    if (loans.length === 0) {
+      loansContainer.style.display = 'none';
+      loansEmpty.style.display = 'block';
+      return;
+    }
+
+    loansContainer.style.display = 'block';
+    loansEmpty.style.display = 'none';
+
+    var html = '';
+    for (var i = 0; i < loans.length; i++) {
+      var loan = loans[i];
+      html += '<div class="loan-item" data-loan-id="' + loan.id + '" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:var(--radius-sm); padding:1rem; margin-bottom:1rem;">' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">' +
+        '<h4 style="margin:0; font-size:0.95rem; color:var(--text-main);">대출 ' + (i + 1) + '</h4>' +
+        '<button type="button" class="btn-remove-loan" data-loan-id="' + loan.id + '" style="background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); color:#f87171; padding:0.3rem 0.6rem; border-radius:4px; font-size:0.8rem; cursor:pointer;">' +
+        '<i class="fa-solid fa-trash" style="margin-right:0.3rem;"></i>삭제</button>' +
+        '</div>' +
+        '<div class="two-col">' +
+        '<div class="field-group">' +
+        '<label class="field-label">대출 원금 (만원)</label>' +
+        '<input type="number" class="loan-principal field-input" data-loan-id="' + loan.id + '" placeholder="예: 20000" value="' + (loan.principal || '') + '">' +
+        '</div>' +
+        '<div class="field-group">' +
+        '<label class="field-label">연 이자율 (%)</label>' +
+        '<input type="number" class="loan-apr field-input" data-loan-id="' + loan.id + '" placeholder="예: 5" step="0.1" value="' + (loan.apr || '') + '">' +
+        '</div>' +
+        '</div>' +
+        '<div class="two-col">' +
+        '<div class="field-group">' +
+        '<label class="field-label">대출 기간 (개월)</label>' +
+        '<input type="number" class="loan-term field-input" data-loan-id="' + loan.id + '" placeholder="예: 60" value="' + (loan.termMonths || '') + '">' +
+        '</div>' +
+        '<div class="field-group">' +
+        '<label class="field-label">상환 방식</label>' +
+        '<select class="loan-repayment field-input" data-loan-id="' + loan.id + '">' +
+        '<option value="equal_payment"' + (loan.repaymentType === 'equal_payment' ? ' selected' : '') + '>원리금 균등 상환</option>' +
+        '<option value="equal_principal"' + (loan.repaymentType === 'equal_principal' ? ' selected' : '') + '>원금 균등 상환</option>' +
+        '<option value="interest_only"' + (loan.repaymentType === 'interest_only' ? ' selected' : '') + '>이자만 상환</option>' +
+        '</select>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+    }
+    loansContainer.innerHTML = html;
+
+    // 이벤트 리스너 추가
+    loansContainer.querySelectorAll('.btn-remove-loan').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var loanId = this.getAttribute('data-loan-id');
+        removeLoanItem(loanId);
+      });
+    });
+
+    loansContainer.querySelectorAll('.loan-principal, .loan-apr, .loan-term, .loan-repayment').forEach(function(input) {
+      input.addEventListener('input', function() {
+        var loanId = this.getAttribute('data-loan-id');
+        var loan = loans.find(function(l) { return l.id === loanId; });
+        if (loan) {
+          if (this.classList.contains('loan-principal')) {
+            loan.principal = this.value;
+          } else if (this.classList.contains('loan-apr')) {
+            loan.apr = this.value;
+          } else if (this.classList.contains('loan-term')) {
+            loan.termMonths = this.value;
+          } else if (this.classList.contains('loan-repayment')) {
+            loan.repaymentType = this.value;
+          }
+        }
+      });
+    });
+  }
+
+  // Exit Plan 토글
+  btnToggleExitPlan.addEventListener('click', function() {
+    exitPlanExpanded = !exitPlanExpanded;
+    if (exitPlanExpanded) {
+      exitPlanContainer.style.display = 'block';
+      btnToggleExitPlan.innerHTML = '<i class="fa-solid fa-chevron-up" style="margin-right:0.3rem;"></i> 접기';
+    } else {
+      exitPlanContainer.style.display = 'none';
+      btnToggleExitPlan.innerHTML = '<i class="fa-solid fa-chevron-down" style="margin-right:0.3rem;"></i> 펼치기';
+    }
+  });
+
+  // 대출 추가 버튼
+  btnAddLoan.addEventListener('click', function() {
+    addLoanItem();
+  });
 
   // ── Init ──
   prefillFromPrevious();

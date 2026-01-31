@@ -828,9 +828,11 @@ a {
 .bar-chart {
     display: flex;
     align-items: flex-end;
-    gap: 8px;
-    height: 200px;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 280px;
     padding: 1rem 0;
+    width: 100%;
 }
 
 .bar-col {
@@ -839,7 +841,8 @@ a {
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    height: 100%;
+    min-width: 120px;
+    max-width: 200px;
     justify-content: flex-end;
 }
 

@@ -75,22 +75,6 @@
         </div>
       </div>
 
-      <!-- IA 2: 상권 요약 (Mock) -->
-      <div id="marketSummary" class="glass-card" style="display:none;">
-        <h3><i class="fa-solid fa-store" style="color:var(--gold); margin-right:0.5rem;"></i> 상권 요약</h3>
-        <div class="two-col" style="margin-top:1rem;">
-          <div class="metric-card">
-            <div class="metric-label">반경 내 경쟁 카페</div>
-            <div class="metric-value" id="compCount">7개</div>
-            <div class="metric-sub">밀도: 높음</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-label">유동인구 (평일)</div>
-            <div class="metric-value">높음</div>
-            <div class="metric-sub">피크: 12:00~14:00</div>
-          </div>
-        </div>
-      </div>
 
       <!-- IA 2: AI 로드뷰 분석 (Mock) -->
       <div id="roadviewCard" class="glass-card" style="display:none;">
@@ -154,6 +138,56 @@
         <div class="field-group" style="margin-top:1rem;">
           <input type="number" id="inputDailySales" class="field-input" placeholder="예: 300" style="font-size:2rem; text-align:center;">
           <div class="field-hint" style="text-align:center;">잔/일 (AI 기대치 기준 입력 추천)</div>
+        </div>
+      </div>
+
+      <!-- 선택 입력: 대출 정보 -->
+      <div class="glass-card" style="border:1px dashed rgba(212,175,55,0.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h3 style="margin:0;"><i class="fa-solid fa-credit-card" style="color:var(--gold); margin-right:0.5rem;"></i> 대출 정보 <span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">(선택)</span></h3>
+          <button type="button" id="btnAddLoan" class="btn-outline" style="font-size:0.85rem; padding:0.4rem 0.8rem;">
+            <i class="fa-solid fa-plus" style="margin-right:0.3rem;"></i> 대출 추가
+          </button>
+        </div>
+        <div id="loansContainer" style="display:none;">
+          <!-- 대출 항목들이 여기에 동적으로 추가됨 -->
+        </div>
+        <div id="loansEmpty" style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.9rem;">
+          <i class="fa-solid fa-info-circle" style="margin-right:0.5rem;"></i> 대출이 없으면 자동으로 대출 없음으로 계산됩니다
+        </div>
+      </div>
+
+      <!-- 선택 입력: Exit Plan 정보 -->
+      <div class="glass-card" style="border:1px dashed rgba(212,175,55,0.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h3 style="margin:0;"><i class="fa-solid fa-door-open" style="color:var(--gold); margin-right:0.5rem;"></i> Exit Plan 정보 <span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">(선택)</span></h3>
+          <button type="button" id="btnToggleExitPlan" class="btn-outline" style="font-size:0.85rem; padding:0.4rem 0.8rem;">
+            <i class="fa-solid fa-chevron-down" style="margin-right:0.3rem;"></i> 펼치기
+          </button>
+        </div>
+        <div id="exitPlanContainer" style="display:none;">
+          <div class="two-col" style="margin-top:0.5rem;">
+            <div class="field-group">
+              <label class="field-label">권리금 (만원)</label>
+              <input type="number" id="inputKeyMoney" class="field-input" placeholder="예: 5000">
+              <div class="field-hint">Exit Plan 계산에 사용됩니다</div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">철거 기본비 (만원)</label>
+              <input type="number" id="inputDemolitionBase" class="field-input" placeholder="예: 1500" value="1500">
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field-group">
+              <label class="field-label">평당 철거비 (만원)</label>
+              <input type="number" id="inputDemolitionPerPyeong" class="field-input" placeholder="예: 100" value="100">
+            </div>
+            <div class="field-group">
+              <label class="field-label">운영자금 (만원)</label>
+              <input type="number" id="inputWorkingCapital" class="field-input" placeholder="예: 1000" value="0">
+              <div class="field-hint">향후 사용 예정</div>
+            </div>
+          </div>
         </div>
       </div>
 

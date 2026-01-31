@@ -336,19 +336,54 @@
     }
   ];
 
-  // 최대값 계산 (매출과 순이익 중 큰 값)
+  // 최대값 계산 (매출과 순이익을 각각 계산)
   var maxRevenue = 0;
   var maxProfit = 0;
+  var minProfit = Infinity;
   for (var s = 0; s < sensData.length; s++) {
     if (sensData[s].revenue > maxRevenue) maxRevenue = sensData[s].revenue;
-    if (Math.abs(sensData[s].profit) > maxProfit) maxProfit = Math.abs(sensData[s].profit);
+    if (sensData[s].profit > maxProfit) maxProfit = sensData[s].profit;
+    if (sensData[s].profit < minProfit) minProfit = sensData[s].profit;
   }
-  var maxVal = Math.max(maxRevenue, maxProfit);
+  
+  // minProfit이 Infinity인 경우 0으로 설정
+  if (minProfit === Infinity) minProfit = 0;
+  
+  // 그래프 높이 (픽셀 단위로 계산)
+  var chartHeight = 180; // 그래프 영역 높이
+  var minBarHeight = 8; // 최소 바 높이 (시각적 표시를 위해)
 
   var sensHtml = '';
   for (var s = 0; s < sensData.length; s++) {
-    var revenueHPct = maxVal > 0 ? sensData[s].revenue / maxVal * 80 : 10;
-    var profitHPct = maxVal > 0 ? Math.abs(sensData[s].profit) / maxVal * 80 : 10;
+    // 매출 바 높이 계산 (매출 최대값 기준)
+    var revenueHeight = maxRevenue > 0 
+      ? Math.max(minBarHeight, (sensData[s].revenue / maxRevenue) * chartHeight)
+      : minBarHeight;
+    
+    // 순이익 바 높이 계산 (순이익 최대값 기준, 0부터 시작)
+    var profitHeight = minBarHeight;
+    if (maxProfit > 0 && sensData[s].profit > 0) {
+      // 양수 순이익: 0부터 maxProfit까지 정규화
+      profitHeight = Math.max(minBarHeight, (sensData[s].profit / maxProfit) * chartHeight);
+    } else if (sensData[s].profit < 0 && minProfit < 0) {
+      // 음수 순이익: minProfit부터 0까지 정규화 (하단에 표시)
+      var absMinProfit = Math.abs(minProfit);
+      var absProfit = Math.abs(sensData[s].profit);
+      if (absMinProfit > 0) {
+        profitHeight = Math.max(minBarHeight, (absProfit / absMinProfit) * chartHeight * 0.3);
+      }
+    } else if (sensData[s].profit === 0) {
+      profitHeight = minBarHeight;
+    } else if (maxProfit === 0 && sensData[s].profit === 0) {
+      // 모든 값이 0인 경우
+      profitHeight = minBarHeight;
+    }
+    
+    // 기준 컬럼(s === 1)은 최소한 중간 높이 보장
+    if (s === 1 && profitHeight < chartHeight * 0.3) {
+      profitHeight = Math.max(profitHeight, chartHeight * 0.3);
+    }
+    
     var revenueColor = 'var(--gold)';
     var profitColor = sensData[s].profit > 0 ? '#4ade80' : '#f87171';
     if (s === 1) {
@@ -357,16 +392,20 @@
       revenueColor = '#94a3b8';
     }
     
-    sensHtml += '<div class="bar-col" style="position:relative;">' +
+    // 배경색 설정 (투명도 포함)
+    var revenueBgColor = s === 1 ? 'rgba(212, 175, 55, 0.5)' : 'rgba(148, 163, 184, 0.5)'; // gold 또는 gray
+    var profitBgColor = sensData[s].profit > 0 ? 'rgba(74, 222, 128, 0.7)' : 'rgba(248, 113, 113, 0.7)'; // green 또는 red
+    
+    sensHtml += '<div class="bar-col" style="position:relative; min-width:120px;">' +
       '<div class="bar-value" style="margin-bottom:0.5rem;">' +
         '<div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;">총 매출</div>' +
         '<div style="font-size:0.85rem; font-weight:600; color:' + revenueColor + ';">' + Utils.formatKRW(sensData[s].revenue) + '</div>' +
         '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem; margin-bottom:0.2rem;">순이익</div>' +
         '<div style="font-size:0.85rem; font-weight:600; color:' + profitColor + ';">' + Utils.formatKRW(sensData[s].profit) + '</div>' +
       '</div>' +
-      '<div style="position:relative; height:150px; display:flex; align-items:flex-end; justify-content:center; gap:4px;">' +
-        '<div class="bar" style="height:' + revenueHPct + '%; width:45%; background:' + revenueColor + '80; border-radius:4px 4px 0 0;" title="총 매출"></div>' +
-        '<div class="bar" style="height:' + profitHPct + '%; width:45%; background:' + profitColor + '80; border-radius:4px 4px 0 0;" title="순이익"></div>' +
+      '<div style="position:relative; height:' + chartHeight + 'px; display:flex; align-items:flex-end; justify-content:center; gap:6px; margin-bottom:0.5rem;">' +
+        '<div class="bar" style="height:' + revenueHeight + 'px; width:48%; min-width:40px; background:' + revenueBgColor + '; border-radius:4px 4px 0 0;" title="총 매출"></div>' +
+        '<div class="bar" style="height:' + profitHeight + 'px; width:48%; min-width:40px; background:' + profitBgColor + '; border-radius:4px 4px 0 0;" title="순이익"></div>' +
       '</div>' +
       '<div class="bar-label">' + sensData[s].label + '</div>' +
       '<div class="bar-label" style="font-size:0.7rem; color:var(--text-muted);">(' + (sensData[s].months >= 999 ? '회수불가' : sensData[s].months + '개월') + ')</div>' +
@@ -561,8 +600,7 @@
   var intens = intensityMap[comp?.intensity] || intensityMap.medium;
   document.getElementById('competitiveInfo').innerHTML =
     '<div class="comp-grid">' +
-    '<div class="comp-item"><div class="comp-label">경쟁 강도</div><div class="comp-value">' + intens.label + '</div>' +
-    '<div class="intensity-bar"><div class="fill" style="width:' + intens.pct + '%; background:' + (intens.pct > 70 ? '#f87171' : intens.pct > 40 ? '#facc15' : '#4ade80') + ';"></div></div></div>' +
+    '<div class="comp-item"><div class="comp-label">경쟁 강도</div><div class="comp-value">' + intens.label + '</div></div>' +
     '<div class="comp-item"><div class="comp-label">차별화 가능성</div><div class="comp-value">' + (diffMap[comp.differentiation] || comp.differentiation) + '</div></div>' +
     '<div class="comp-item"><div class="comp-label">가격 전략</div><div class="comp-value">' + (priceMap[comp.priceStrategy] || comp.priceStrategy) + '</div></div>' +
     '</div>' +
