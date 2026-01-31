@@ -127,6 +127,21 @@ var Utils = (function () {
     return d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
   }
 
+  // ── API Base URL 가져오기 ──
+  // config.js가 로드되지 않았거나 API_CONFIG가 없을 경우에도 올바른 URL 반환
+  function getApiBaseUrl() {
+    // 1. config.js에서 설정된 값 사용
+    if (window.API_CONFIG && window.API_CONFIG.API_BASE_URL) {
+      return window.API_CONFIG.API_BASE_URL;
+    }
+    // 2. 배포 환경: 현재 호스트 사용
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return window.location.origin;
+    }
+    // 3. 로컬 환경
+    return 'http://localhost:3000';
+  }
+
   return {
     formatKRW: formatKRW,
     formatKRWFull: formatKRWFull,
@@ -142,6 +157,7 @@ var Utils = (function () {
     loadSimulations: loadSimulations,
     deleteSimulation: deleteSimulation,
     escapeHtml: escapeHtml,
-    formatDate: formatDate
+    formatDate: formatDate,
+    getApiBaseUrl: getApiBaseUrl
   };
 })();

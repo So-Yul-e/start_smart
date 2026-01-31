@@ -705,7 +705,7 @@
 
   // 브랜드 position이 없으면 API에서 가져와서 업데이트
   if (!brand.position && brand.id) {
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
+    var apiBaseUrl = Utils.getApiBaseUrl();
     fetch(apiBaseUrl + '/api/brands')
       .then(function(response) { return response.json(); })
       .then(function(data) {

@@ -236,7 +236,7 @@
     showTyping();
 
     // API 호출 (분석 데이터 포함)
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
+    var apiBaseUrl = Utils.getApiBaseUrl();
     
     fetch(apiBaseUrl + '/api/chatbot', {
       method: 'POST',
@@ -292,7 +292,7 @@
     var category = matchKeyword(text);
 
     // API 호출 (분석 데이터 포함)
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
+    var apiBaseUrl = Utils.getApiBaseUrl();
     
     fetch(apiBaseUrl + '/api/chatbot', {
       method: 'POST',

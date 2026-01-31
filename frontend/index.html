@@ -174,7 +174,7 @@
     // Render first 6 brands
     var brandGrid = document.getElementById('brandGrid');
     // API에서 브랜드 목록 가져오기
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
+    var apiBaseUrl = Utils.getApiBaseUrl();
     
     fetch(apiBaseUrl + '/api/brands')
       .then(function(response) { return response.json(); })

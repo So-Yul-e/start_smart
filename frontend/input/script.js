@@ -768,7 +768,7 @@
     overlay.classList.add('active');
 
     // API Base URL 가져오기
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
+    var apiBaseUrl = Utils.getApiBaseUrl();
 
     // 더미 애니메이션 제거 - 바로 API 호출로 실제 진행 상태 추적
     console.log('[분석 실행] 실시간 프로그레스 모드로 API 호출 시작');

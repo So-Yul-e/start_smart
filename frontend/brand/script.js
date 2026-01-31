@@ -222,7 +222,7 @@
 
   // API에서 브랜드 목록 가져오기
   function loadBrandsFromAPI() {
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
+    var apiBaseUrl = Utils.getApiBaseUrl();
     
     console.log('[브랜드 선택] API에서 브랜드 목록 로드:', apiBaseUrl);
     
