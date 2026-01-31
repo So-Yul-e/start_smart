@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PDF 리포트 - StartSmart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../styles/main.css">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -25,14 +28,11 @@
       <button id="btnPrint" class="btn-outline" onclick="window.print()">
         <i class="fa-solid fa-print" style="margin-right:0.5rem;"></i> 인쇄
       </button>
-      <button id="btnPDF" class="btn-outline" style="border-color:var(--gold); color:var(--gold);">
-        <i class="fa-solid fa-file-pdf" style="margin-right:0.5rem;"></i> PDF 다운로드
-      </button>
     </div>
   </header>
 
   <main class="report-main">
-    <!-- ========== PAGE 0: Executive Summary ========== -->
+    <!-- ========== PAGE 0: Executive Summary + 창업 조건 요약 통합 ========== -->
     <div class="report-page" id="page0-executive">
       <div class="report-page-header">
         <div>
@@ -65,17 +65,8 @@
         <div id="rExecutiveComment" style="padding:1.5rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm); border-left:4px solid var(--gold);"></div>
       </div>
 
-      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 1</div>
-    </div>
-
-    <!-- ========== PAGE 1: 창업 조건 요약 ========== -->
-    <div class="report-page" id="page1-conditions">
-      <div class="report-page-header compact">
-        <div class="report-logo small">StartSmart</div>
-        <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
-      </div>
-
-      <div class="report-section">
+      <!-- 창업 조건 요약 -->
+      <div class="report-section" style="margin-top:2rem;">
         <h2 class="report-h2">1. 창업 조건 요약 (입력값 스냅샷)</h2>
         <table class="report-table">
           <tr><th>브랜드</th><td id="rBrand"></td></tr>
@@ -84,13 +75,11 @@
           <tr><th>월세</th><td id="rRent"></td></tr>
           <tr><th>초기 투자금</th><td id="rInvestment"></td></tr>
           <tr><th>목표 일 판매량</th><td id="rTarget"></td></tr>
-          <tr><th>1일 방문객 수</th><td id="rDailyVisitors"></td></tr>
-          <tr><th>1인당 평균 구매비용</th><td id="rAvgSpend"></td></tr>
           <tr><th>점주 근무</th><td id="rOwner"></td></tr>
         </table>
       </div>
 
-      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 2</div>
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 1</div>
     </div>
 
     <!-- ========== PAGE 2: 손익 시뮬레이션 결과 ========== -->
