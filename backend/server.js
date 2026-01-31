@@ -12,13 +12,20 @@ const app = express();
 // 미들웨어 설정
 app.use(cors());
 app.use(express.json());
-app.use(express.static('frontend'));
+app.use(express.static('frontend', {
+  etag: false,
+  maxAge: 0,
+  setHeaders: (res) => {
+    res.set('Cache-Control', 'no-store');
+  }
+}));
 
 // 라우트 연결
 app.use('/api/brands', require('./routes/brands'));
 app.use('/api/analyze', require('./routes/analyze'));
 app.use('/api/result', require('./routes/result'));
 app.use('/api/report', require('./routes/report'));
+app.use('/api/config', require('./routes/config'));
 
 // 헬스 체크
 app.get('/health', (req, res) => {

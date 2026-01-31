@@ -8,6 +8,7 @@
  * - 신뢰도 점수 산출
  */
 
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
 

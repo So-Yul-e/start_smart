@@ -8,6 +8,7 @@
  * - shared/interfaces.js에 정의된 형식으로 결과 반환
  */
 
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const { analyzeImageWithGemini } = require('./visionAnalyzer');
 const axios = require('axios');
 

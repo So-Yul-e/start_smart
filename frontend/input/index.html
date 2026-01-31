@@ -49,7 +49,7 @@
           <div id="map" style="width:100%; height:100%;"></div>
           <div id="mapFallback" class="map-fallback" style="display:none;">
             <i class="fa-solid fa-map" style="font-size:3rem; color:var(--text-muted); margin-bottom:1rem;"></i>
-            <p>카카오맵을 불러올 수 없습니다</p>
+            <p>지도를 불러올 수 없습니다</p>
             <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">주소를 직접 입력하여 위치를 설정하세요</p>
             <div style="display:flex; gap:0.5rem; width:100%; max-width:400px;">
               <input type="text" id="manualAddress" class="field-input" placeholder="예: 서울시 강남구 역삼동 123" style="flex:1; margin:0;">
@@ -182,8 +182,97 @@
     <p>&copy; 2024 StartSmart. Premium Intelligence.</p>
   </footer>
 
-  <!-- Kakao Map SDK -->
-  <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=58425d97fda2e7cbd509e06465e80b19&libraries=services"></script>
+  <!-- Kakao Map SDK (입지 선택용) -->
+  <script>
+    // 카카오맵 SDK 로드 상태 추적
+    window.kakaoMapLoaded = false;
+    window.kakaoMapLoadError = false;
+    
+    // SDK 로드 완료 콜백
+    window.onKakaoMapReady = function() {
+      console.log('[카카오맵] SDK 로드 완료, kakao 객체:', typeof kakao);
+      window.kakaoMapLoaded = true;
+      // script.js의 initMap이 대기 중이면 호출
+      if (window.initMapCallback) {
+        console.log('[카카오맵] initMapCallback 호출');
+        window.initMapCallback();
+        window.initMapCallback = null;
+      }
+    };
+    
+    // 스크립트 로드 핸들러
+    window.kakaoMapScriptOnLoad = function() {
+      console.log('[카카오맵] 스크립트 태그 onload 이벤트 발생');
+      setTimeout(function() {
+        if (typeof kakao !== 'undefined') {
+          window.onKakaoMapReady();
+        }
+      }, 100);
+    };
+    
+  </script>
+  <script>
+    // 카카오맵 SDK 동적 로드
+    (function() {
+      var sdkUrl = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=27b440fcdad2758673282f470834f270&autoload=false&libraries=services';
+      var script = document.createElement('script');
+      script.src = sdkUrl;
+      script.onload = function() {
+        console.log('[카카오맵] 스크립트 로드 성공');
+        if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.load) {
+          kakao.maps.load(function() {
+            console.log('[카카오맵] SDK 초기화 완료');
+            window.kakaoMapLoaded = true;
+            if (window.initMapCallback) {
+              window.initMapCallback();
+              window.initMapCallback = null;
+            }
+          });
+        }
+      };
+      script.onerror = function() {
+        console.error('[카카오맵] 스크립트 로드 실패');
+        console.error('[카카오맵] URL:', sdkUrl);
+        console.error('[카카오맵] 광고 차단기가 있다면 비활성화 후 다시 시도하세요');
+        window.kakaoMapLoadError = true;
+      };
+      document.head.appendChild(script);
+    })();
+  </script>
+  
+  <!-- Google Maps SDK (로드뷰용) - 동적으로 로드 -->
+  <script>
+    // 구글 지도 API 키를 백엔드에서 가져와서 동적으로 로드
+    (function() {
+      var apiBaseUrl = window.location.protocol + '//' + window.location.hostname + ':3000';
+      fetch(apiBaseUrl + '/api/config/google-maps-key')
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('API 키 요청 실패: ' + response.status);
+          }
+          return response.json();
+        })
+        .then(function(data) {
+          if (data.success && data.apiKey && data.apiKey !== 'xxxxx' && data.apiKey.trim() !== '') {
+            var script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key=' + data.apiKey + '&libraries=streetview&callback=initGoogleMaps';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+          } else {
+            console.warn('구글 지도 API 키를 가져올 수 없습니다. (환경변수 확인 필요)');
+          }
+        })
+        .catch(function(error) {
+          console.warn('구글 지도 API 키 로드 실패:', error);
+        });
+    })();
+    
+    // 구글 지도 로드 완료 콜백
+    window.initGoogleMaps = function() {
+      console.log('구글 지도 SDK 로드 완료');
+    };
+  </script>
   <script src="../config.js"></script>
   <script src="../js/mock-data.js"></script>
   <script src="../js/utils.js"></script>

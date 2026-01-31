@@ -37,7 +37,8 @@ const API_ENDPOINTS = {
   analyze: `${API_BASE_URL}/api/analyze`,
   result: (analysisId) => `${API_BASE_URL}/api/result/${analysisId}`,
   report: (analysisId) => `${API_BASE_URL}/api/report/${analysisId}`,
-  health: `${API_BASE_URL}/health`
+  health: `${API_BASE_URL}/health`,
+  googleMapsKey: `${API_BASE_URL}/api/config/google-maps-key` // 구글 지도 API 키 (프론트엔드용)
 };
 
 // Export
