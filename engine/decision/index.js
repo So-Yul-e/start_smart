@@ -247,15 +247,17 @@ function generateFailureTriggers(finance, survivalMonths) {
   const minus10Profit = finance.sensitivity?.minus10?.monthlyProfit || finance.monthlyProfit;
   if (minus10Profit <= 0) {
     triggers.push({
-      trigger: "sales -10%",
-      outcome: "monthlyProfit < 0",
+      trigger: "매출 감소",
+      triggerName: "매출 10% 감소 시",
+      outcome: "월 순이익이 적자로 전환되어 운영 지속 불가",
       impact: "critical",
       estimatedFailureWindow: "12~18개월"
     });
   } else if (minus10Profit < finance.monthlyProfit * 0.5) {
     triggers.push({
-      trigger: "sales -10%",
-      outcome: "monthlyProfit < 50%",
+      trigger: "매출 감소",
+      triggerName: "매출 10% 감소 시",
+      outcome: "월 순이익이 현재 대비 50% 이상 감소하여 위험 수준 도달",
       impact: "high",
       estimatedFailureWindow: "18~24개월"
     });
@@ -263,9 +265,11 @@ function generateFailureTriggers(finance, survivalMonths) {
 
   // 트리거 2: 생존 기간 36개월 미만
   if (survivalMonths < 36) {
+    const monthsText = survivalMonths < 24 ? "24개월 미만으로 매우 위험" : "36개월 미만으로 기준선 미달";
     triggers.push({
-      trigger: "survival threshold",
-      outcome: "survivalMonths < 36",
+      trigger: "생존 기간 부족",
+      triggerName: "생존 가능 기간 36개월 미만",
+      outcome: `예상 생존 기간이 ${survivalMonths}개월로 ${monthsText}`,
       impact: survivalMonths < 24 ? "critical" : "high",
       estimatedFailureWindow: `${survivalMonths}개월 이내`
     });
@@ -274,9 +278,11 @@ function generateFailureTriggers(finance, survivalMonths) {
   // 트리거 3: 고정비 압박 (임대료 고정 시)
   const fixedCostShare = (finance.monthlyCosts.rent + finance.monthlyCosts.labor) / finance.monthlyRevenue;
   if (fixedCostShare >= 0.35) {
+    const sharePct = Math.round(fixedCostShare * 100);
     triggers.push({
-      trigger: "rent fixed",
-      outcome: "survivalMonths < 36",
+      trigger: "고정비 과다",
+      triggerName: "고정비 비중 35% 이상",
+      outcome: `고정비가 월 매출의 ${sharePct}%를 차지하여 수익성 악화 및 현금 흐름 위험`,
       impact: "high",
       estimatedFailureWindow: "24~36개월"
     });
@@ -285,8 +291,9 @@ function generateFailureTriggers(finance, survivalMonths) {
   // 트리거 4: 회수 기간 36개월 초과
   if (finance.paybackMonths !== null && isFinite(finance.paybackMonths) && finance.paybackMonths >= 36) {
     triggers.push({
-      trigger: "payback threshold",
-      outcome: "paybackMonths >= 36",
+      trigger: "회수 기간 초과",
+      triggerName: "투자 회수 기간 36개월 초과",
+      outcome: `초기 투자금 회수에 ${Math.round(finance.paybackMonths)}개월이 소요되어 장기 부담 및 리스크 증가`,
       impact: "high",
       estimatedFailureWindow: "36개월 이후"
     });
@@ -296,11 +303,38 @@ function generateFailureTriggers(finance, survivalMonths) {
   const dscr = finance.debt?.dscr;
   if (dscr !== null && dscr !== undefined && dscr < 1.0) {
     triggers.push({
-      trigger: "debt service",
-      outcome: "DSCR < 1.0",
+      trigger: "대출 상환 능력 부족",
+      triggerName: "대출 상환 능력 비율 1.0 미만",
+      outcome: `대출 상환 능력 비율이 ${dscr.toFixed(2)}로 영업 이익이 대출 상환액보다 낮아 즉시 위험`,
       impact: "critical",
       estimatedFailureWindow: "즉시"
     });
+  }
+
+  // 트리거 6: 손절 기준선 미달 (새로 추가)
+  const breakdownVisitors = finance.breakdownVisitors;
+  const dailyVisitors = finance.dailyVisitors;
+  if (breakdownVisitors !== null && breakdownVisitors !== undefined && 
+      dailyVisitors !== null && dailyVisitors !== undefined) {
+    if (dailyVisitors < breakdownVisitors) {
+      const gap = Math.round((breakdownVisitors - dailyVisitors) / breakdownVisitors * 100);
+      triggers.push({
+        trigger: "손절 기준선 미달",
+        triggerName: "방문객 수가 손절 기준선 미만",
+        outcome: `현재 방문객 수(${Math.round(dailyVisitors)}명)가 손절 기준선(${Math.round(breakdownVisitors)}명)보다 ${gap}% 낮아 구조적 위험. 이 수준이 3개월 이상 지속되면 손절 검토 필요`,
+        impact: "critical",
+        estimatedFailureWindow: "3개월 이내"
+      });
+    } else if (dailyVisitors < breakdownVisitors * 1.1) {
+      // 기준선의 10% 이내에 있는 경우도 경고
+      triggers.push({
+        trigger: "손절 기준선 근접",
+        triggerName: "방문객 수가 손절 기준선에 근접",
+        outcome: `현재 방문객 수(${Math.round(dailyVisitors)}명)가 손절 기준선(${Math.round(breakdownVisitors)}명)에 근접하여 위험 수준. 지속적 모니터링 필요`,
+        impact: "high",
+        estimatedFailureWindow: "6~12개월"
+      });
+    }
   }
 
   return triggers;

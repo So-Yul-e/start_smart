@@ -266,8 +266,19 @@
       return;
     }
 
+    // 로드뷰 이미지 표시 (있는 경우)
+    var roadviewImageUrl = roadview.roadviewUrl || roadview.imageUrl || null;
+    var imageHtml = '';
+    if (roadviewImageUrl) {
+      imageHtml = '<div style="margin-bottom:2rem;">' +
+        '<h4 style="margin-bottom:1rem; font-size:1rem; color:var(--text-main);">주소지 로드뷰</h4>' +
+        '<div style="border-radius:var(--radius-sm); overflow:hidden; border:1px solid rgba(0,0,0,0.1);">' +
+        '<img src="' + Utils.escapeHtml(roadviewImageUrl) + '" alt="로드뷰 이미지" style="width:100%; max-width:100%; height:auto; display:block;" />' +
+        '</div></div>';
+    }
+
     var risks = roadview.risks || [];
-    var riskHtml = '';
+    var riskHtml = imageHtml; // 이미지를 먼저 표시
 
     // 리스크 타입별 라벨 매핑
     var riskTypeMap = {
@@ -516,9 +527,12 @@
       var impactColor = impactColorMap[trigger.impact] || '#94a3b8';
       var impactLabel = impactLabelMap[trigger.impact] || trigger.impact;
       
+      var triggerDisplayName = trigger.triggerName || trigger.trigger || '';
+      var outcomeDisplay = trigger.outcome || trigger.result || '';
+      
       failureTriggersHtml += '<div class="report-risk-item ' + (trigger.impact === 'critical' ? 'high' : trigger.impact === 'high' ? 'medium' : 'low') + '">' +
-        '<h4>' + (ft + 1) + '. ' + (trigger.trigger || '') + ' <span style="font-size:0.8rem; color:' + impactColor + ';">(' + impactLabel + ')</span></h4>' +
-        '<p><strong>결과:</strong> ' + (trigger.outcome || trigger.result || '') + '</p>' +
+        '<h4>' + (ft + 1) + '. ' + triggerDisplayName + ' <span style="font-size:0.8rem; color:' + impactColor + ';">(' + impactLabel + ')</span></h4>' +
+        '<p><strong>결과:</strong> ' + outcomeDisplay + '</p>' +
         (trigger.estimatedFailureWindow ? '<p style="color:var(--text-muted); font-size:0.9rem;"><strong>예상 실패 시점:</strong> ' + trigger.estimatedFailureWindow + '</p>' : '') +
         (trigger.totalLossAtFailure !== undefined ? '<p style="color:var(--text-muted); font-size:0.9rem;"><strong>그때 총손실:</strong> ' + Utils.formatKRW(trigger.totalLossAtFailure) + '</p>' : '') +
         (trigger.exitCostAtFailure !== undefined ? '<p style="color:var(--text-muted); font-size:0.9rem;"><strong>그때 Exit 비용:</strong> ' + Utils.formatKRW(trigger.exitCostAtFailure) + '</p>' : '') +

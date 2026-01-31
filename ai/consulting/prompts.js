@@ -68,11 +68,13 @@ ${roadview.risks.map(risk => {
 
 다음 형식으로 JSON을 반환해주세요:
 {
-  "conservative": 숫자,  // 보수적 판매량 (잔/일)
-  "expected": 숫자,      // 기대 판매량 (잔/일)
-  "optimistic": 숫자,    // 낙관적 판매량 (잔/일)
+  "conservative": 숫자,  // 보수적 방문객 수 (명/일)
+  "expected": 숫자,      // 기대 방문객 수 (명/일)
+  "optimistic": 숫자,    // 낙관적 방문객 수 (명/일)
   "reason": "이유 설명"
-}`;
+}
+
+⚠️ 중요: "잔 수" 개념을 완전히 제거하고 "1일 방문객 수"로만 표현해주세요.`;
 }
 
 /**
@@ -173,12 +175,15 @@ ${decisionInfo}${gapInfo}${sensitivityInfo}재무 결과:
   (계산식: 월 매출 - 총 지출금액 = ${finance.monthlyRevenue ? (finance.monthlyRevenue / 10000).toFixed(0) : '0'}만원 - ${(totalMonthlyCosts / 10000).toFixed(0)}만원)
 - 회수 개월: ${finance.paybackMonths}개월
   (계산식: 초기 투자비용(${(initialInvestment / 100000000).toFixed(1)}억원) - (월순수익(${(finance.monthlyProfit / 10000).toFixed(0)}만원) × N) ≤ 0이 되는 최소 정수 N)
-- 목표 판매량: ${targetDailySales}잔/일
+- 1일 방문객 수: ${data.dailyVisitors || targetDailySales || '-'}명/일
+- 1인당 평균 구매비용: ${data.avgSpendPerPerson || avgPrice || '-'}원
   (계산식: 월 매출 - 총지출금액이 30% 이상인 수량, 즉 (월 매출 - 총 지출금액) / 월 매출 ≥ 0.3)
 
 ⚠️ 중요 계산식:
-1. 월 매출 = 판매량(잔/일) × 아메리카노 판매금액(원/잔) × 30일
-   예시: ${targetDailySales}잔/일 × ${avgPrice}원 × 30일 = ${targetDailySales * avgPrice * 30}원
+1. 일 매출 = 1일 방문객 수 × 1인당 평균 구매비용
+   예시: ${data.dailyVisitors || targetDailySales || '-'}명 × ${data.avgSpendPerPerson || avgPrice || '-'}원 = ${finance.dailyRevenue ? (finance.dailyRevenue / 10000).toFixed(0) : '-'}만원
+2. 월 매출 = 일 매출 × 30.4일
+   예시: ${finance.dailyRevenue ? (finance.dailyRevenue / 10000).toFixed(0) : '-'}만원 × 30.4일 = ${finance.monthlyRevenue ? (finance.monthlyRevenue / 10000).toFixed(0) : '-'}만원
 
 2. 총 지출금액 = 월세 + 인건비 + 원재료비 + 공과금 + 로열티 + 마케팅비 + 기타고정비
    현재 총 지출: ${(totalMonthlyCosts / 10000).toFixed(0)}만원
@@ -223,10 +228,24 @@ ${roadview.risks.map(risk => {
   return `  - ${name}: ${level} - ${risk.description || ''}`;
 }).join('\n')}` : ''}
 
+【브랜드별 소비 구조 해석】
+이 브랜드는 다음 중 어떤 유형인지 판단해주세요:
+- "객단가형": 1인당 구매비용에 민감 (고가 상품 중심)
+- "회전형": 방문객 수에 민감 (저가 고회전 중심)
+- "혼합형": 방문객 수와 구매비용 모두 중요
+
+【브랜드별 소비 구조 해석】
+이 브랜드는 다음 중 어떤 유형인지 판단해주세요:
+- "객단가형": 1인당 구매비용에 민감 (고가 상품 중심)
+- "회전형": 방문객 수에 민감 (저가 고회전 중심)
+- "혼합형": 방문객 수와 구매비용 모두 중요
+
 【리스크 판단 기준】
 다음 기준을 반드시 고려하여 리스크를 식별해주세요:
 
 ⚠️ 중요: 회수 기간은 월 순이익이 0원보다 큰 양수일 때만 의미가 있습니다.
+⚠️ 중요: "잔 수" 개념을 완전히 제거하고 "방문객 수"와 "1인당 평균 구매비용"으로만 설명해주세요.
+⚠️ 중요: "잔 수" 개념을 완전히 제거하고 "방문객 수"와 "1인당 평균 구매비용"으로만 설명해주세요.
 월 순이익이 0원 이하면 회수 기간을 계산할 수 없으므로, 월 순이익 기준을 우선 확인하세요.
 
 1. 월 순이익 기준 (최우선 확인):

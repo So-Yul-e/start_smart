@@ -19,7 +19,7 @@ const { timeProfiles, dayTypeMultipliers, footTrafficIndexClamp } = require('../
  * @param {Number} params.targetDailySales - 목표 일 판매량
  * @returns {Object} 손익 계산 결과
  */
-function calculateFinance({ brand, conditions, market, targetDailySales }) {
+function calculateFinance({ brand, conditions, market, targetDailySales, dailyVisitors, avgSpendPerPerson }) {
   // 입력 검증
   if (!brand?.defaults) {
     throw new Error('brand.defaults가 필요합니다. avgPrice, cogsRate, laborRate 등을 포함해야 합니다.');
@@ -36,8 +36,21 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
     throw new Error('conditions.initialInvestment와 conditions.monthlyRent가 필요합니다.');
   }
   
-  if (!targetDailySales || targetDailySales <= 0) {
-    throw new Error('targetDailySales는 0보다 큰 값이어야 합니다.');
+  // 하위 호환성: targetDailySales가 있으면 자동 변환
+  let finalDailyVisitors = dailyVisitors;
+  let finalAvgSpendPerPerson = avgSpendPerPerson;
+  
+  if (!finalDailyVisitors && targetDailySales) {
+    finalDailyVisitors = targetDailySales;
+    finalAvgSpendPerPerson = brand.defaults.avgSpendPerPerson || brand.defaults.avgPrice;
+  }
+  
+  if (!finalAvgSpendPerPerson) {
+    finalAvgSpendPerPerson = brand.defaults.avgSpendPerPerson || brand.defaults.avgPrice;
+  }
+  
+  if (!finalDailyVisitors || finalDailyVisitors <= 0) {
+    throw new Error('dailyVisitors 또는 targetDailySales는 0보다 큰 값이어야 합니다.');
   }
 
   // 대출 입력 검증
@@ -49,7 +62,8 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
   }
 
   const defaults = brand.defaults;
-  const avgPrice = defaults.avgPrice;  // 하드코딩 제거: 입력에서 받음
+  const avgPrice = defaults.avgPrice;  // 하위 호환성 유지
+  const avgSpend = finalAvgSpendPerPerson;  // 1인당 평균 구매비용
   const cogsRate = defaults.cogsRate;
   const laborRate = defaults.laborRate;
   const utilitiesRate = defaults.utilitiesRate || 0.03;
@@ -57,8 +71,12 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
   const marketingRate = defaults.marketingRate || 0.02;
   const etcFixed = defaults.etcFixed || 0;
 
-  // 월 매출 계산 (목표 기준)
-  const monthlyRevenue = targetDailySales * avgPrice * 30;
+  // 매출 계산 (방문객 수 기반)
+  const dailyRevenue = finalDailyVisitors * avgSpend;
+  const monthlyRevenue = dailyRevenue * 30.4;  // 평균 월 일수 (30.4일)
+  
+  // 하위 호환성: targetDailySales도 계산 (기존 로직과 비교용)
+  const targetDailySalesForComparison = targetDailySales || finalDailyVisitors;
 
   // ============================================
   // 기대 판매량 계산 (브랜드 데이터 기반)
@@ -124,12 +142,14 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
   // demandMultiplier 적용
   expectedDailySales = expectedDailySales * demandMultiplier;
   
-  const expectedMonthlyRevenue = expectedDailySales * avgPrice * 30;
+  // 기대 매출 계산 (방문객 수 기반)
+  const expectedDailyVisitors = expectedDailySales;  // 기대 방문객 수 (명/일)
+  const expectedMonthlyRevenue = expectedDailyVisitors * avgSpend * 30.4;
 
   // GAP 비율 계산: (target - adjustedExpectedDailySales) / adjustedExpectedDailySales
   // adjustedExpectedDailySales가 없으면 기존 expectedDailySales 사용
   const gapBase = adjustedExpectedDailySales !== null ? adjustedExpectedDailySales : expectedDailySales;
-  const gapPctVsTarget = gapWarning ? 0 : (targetDailySales - gapBase) / gapBase;
+  const gapPctVsTarget = gapWarning ? 0 : (targetDailySalesForComparison - gapBase) / gapBase;
 
   // 월 비용 계산
   const monthlyCosts = {
@@ -173,17 +193,74 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
     ? conditions.initialInvestment / monthlyProfit 
     : null;
 
-  // 손익분기점 일 판매량 계산
-  // ⚠️ 중요: avgPrice=0 같은 엣지 케이스 방어
+  // 손익분기점 계산 (방문객 수 기반)
+  // ⚠️ 중요: avgSpend=0 같은 엣지 케이스 방어
+  const breakEvenDailyVisitors = (totalCosts > 0 && avgSpend > 0)
+    ? totalCosts / (avgSpend * 30.4)
+    : null;
+  
+  // 하위 호환성: breakEvenDailySales도 계산
   const breakEvenDailySales = (totalCosts > 0 && avgPrice > 0)
     ? totalCosts / (avgPrice * 30)
     : null;
+  
+  // 손절 기준선 계산 (새로 추가)
+  // 변동비율 계산
+  const variableCostRate = cogsRate + royaltyRate + marketingRate + utilitiesRate;
+  
+  // 고정비 (월세 + 인건비 + 기타 고정비)
+  const monthlyFixedCost = monthlyCosts.rent + monthlyCosts.labor + monthlyCosts.etc;
+  
+  // 손절 기준 방문객 수
+  // breakdownVisitors = 고정비 / (1인당 구매비용 × 30.4일 × (1 - 변동비율))
+  const breakdownVisitors = (monthlyFixedCost > 0 && avgSpend > 0 && variableCostRate < 1)
+    ? monthlyFixedCost / (avgSpend * 30.4 * (1 - variableCostRate))
+    : null;
 
-  // 민감도 분석 (±10%)
+  // 민감도 분석 (방문객 수 ±10%, 구매비용 ±5%)
   const debtPayment = monthlyDebtPayment;  // 대출 상환액 재사용
+  
+  // 방문객 수 ±10% 시나리오
   const sensitivity = {
+    visitorsPlus10: calculateSensitivity(
+      finalDailyVisitors * 1.1,
+      avgSpend,
+      monthlyCosts,
+      conditions.initialInvestment,
+      conditions.ownerWorking,
+      defaults,
+      debtPayment
+    ),
+    visitorsMinus10: calculateSensitivity(
+      finalDailyVisitors * 0.9,
+      avgSpend,
+      monthlyCosts,
+      conditions.initialInvestment,
+      conditions.ownerWorking,
+      defaults,
+      debtPayment
+    ),
+    spendPlus5: calculateSensitivity(
+      finalDailyVisitors,
+      avgSpend * 1.05,
+      monthlyCosts,
+      conditions.initialInvestment,
+      conditions.ownerWorking,
+      defaults,
+      debtPayment
+    ),
+    spendMinus5: calculateSensitivity(
+      finalDailyVisitors,
+      avgSpend * 0.95,
+      monthlyCosts,
+      conditions.initialInvestment,
+      conditions.ownerWorking,
+      defaults,
+      debtPayment
+    ),
+    // 하위 호환성: 기존 plus10/minus10도 유지
     plus10: calculateSensitivity(
-      targetDailySales * 1.1,
+      targetDailySalesForComparison * 1.1,
       avgPrice,
       monthlyCosts,
       conditions.initialInvestment,
@@ -192,7 +269,7 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
       debtPayment
     ),
     minus10: calculateSensitivity(
-      targetDailySales * 0.9,
+      targetDailySalesForComparison * 0.9,
       avgPrice,
       monthlyCosts,
       conditions.initialInvestment,
@@ -204,8 +281,12 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
 
   return {
     monthlyRevenue: Math.round(monthlyRevenue),
+    dailyRevenue: Math.round(dailyRevenue),  // 새로 추가
+    dailyVisitors: Math.round(finalDailyVisitors),  // 새로 추가
+    avgSpendPerPerson: Math.round(finalAvgSpendPerPerson),  // 새로 추가
     expected: {
       expectedDailySales: Math.round(expectedDailySales * 10) / 10,  // 최종 사용된 기대 판매량 (demandMultiplier 적용 후)
+      expectedDailyVisitors: Math.round(expectedDailyVisitors * 10) / 10,  // 새로 추가: 기대 방문객 수
       expectedDailySalesRaw: Math.round(expectedDailySalesRaw * 10) / 10,  // 보정 전 원본 값
       expectedMonthlyRevenue: Math.round(expectedMonthlyRevenue),
       gapPctVsTarget: Math.round(gapPctVsTarget * 1000) / 1000,  // 소수점 셋째자리까지
@@ -233,7 +314,9 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
     operatingProfit: Math.round(operatingProfit),  // 대출 상환 전 이익
     monthlyProfit: Math.round(monthlyProfit),  // 대출 상환 후 순이익
     paybackMonths: paybackMonths === null ? null : Math.round(paybackMonths * 10) / 10,  // null 처리
-    breakEvenDailySales: breakEvenDailySales === null ? null : Math.round(breakEvenDailySales * 10) / 10,  // null 처리
+    breakEvenDailySales: breakEvenDailySales === null ? null : Math.round(breakEvenDailySales * 10) / 10,  // 하위 호환성
+    breakEvenDailyVisitors: breakEvenDailyVisitors === null ? null : Math.round(breakEvenDailyVisitors * 10) / 10,  // 새로 추가
+    breakdownVisitors: breakdownVisitors === null ? null : Math.round(breakdownVisitors * 10) / 10,  // 새로 추가: 손절 기준선
     debt: {
       monthlyPayment: debtInfo.totalMonthlyPayment,
       monthlyInterest: debtInfo.totalMonthlyInterest,
@@ -243,6 +326,25 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
       debtSchedulePreview: debtInfo.debtSchedulePreview
     },
     sensitivity: {
+      // 방문객 수 기반 민감도 분석
+      visitorsPlus10: {
+        monthlyProfit: Math.round(sensitivity.visitorsPlus10.monthlyProfit),
+        paybackMonths: sensitivity.visitorsPlus10.paybackMonths === null ? null : Math.round(sensitivity.visitorsPlus10.paybackMonths * 10) / 10
+      },
+      visitorsMinus10: {
+        monthlyProfit: Math.round(sensitivity.visitorsMinus10.monthlyProfit),
+        paybackMonths: sensitivity.visitorsMinus10.paybackMonths === null ? null : Math.round(sensitivity.visitorsMinus10.paybackMonths * 10) / 10
+      },
+      // 구매비용 기반 민감도 분석
+      spendPlus5: {
+        monthlyProfit: Math.round(sensitivity.spendPlus5.monthlyProfit),
+        paybackMonths: sensitivity.spendPlus5.paybackMonths === null ? null : Math.round(sensitivity.spendPlus5.paybackMonths * 10) / 10
+      },
+      spendMinus5: {
+        monthlyProfit: Math.round(sensitivity.spendMinus5.monthlyProfit),
+        paybackMonths: sensitivity.spendMinus5.paybackMonths === null ? null : Math.round(sensitivity.spendMinus5.paybackMonths * 10) / 10
+      },
+      // 하위 호환성: 기존 plus10/minus10도 유지
       plus10: {
         monthlyProfit: Math.round(sensitivity.plus10.monthlyProfit),
         paybackMonths: sensitivity.plus10.paybackMonths === null ? null : Math.round(sensitivity.plus10.paybackMonths * 10) / 10
@@ -267,7 +369,9 @@ function calculateFinance({ brand, conditions, market, targetDailySales }) {
  * @returns {Object} { monthlyProfit, paybackMonths }
  */
 function calculateSensitivity(dailySales, avgPrice, baseCosts, initialInvestment, ownerWorking, defaults, debtPayment = 0) {
-  const scenarioRevenue = dailySales * avgPrice * 30;
+  // dailySales는 방문객 수 또는 잔 수일 수 있음 (하위 호환성)
+  // avgPrice는 1인당 구매비용 또는 잔당 단가일 수 있음
+  const scenarioRevenue = dailySales * avgPrice * 30.4;  // 30.4일로 변경
   
   // 비용 재계산 (매출 비례 항목만 변경, 대출 상환액 제외)
   const scenarioCosts = {

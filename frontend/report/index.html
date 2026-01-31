@@ -32,8 +32,8 @@
   </header>
 
   <main class="report-main">
-    <!-- ========== PAGE 1: Overview ========== -->
-    <div class="report-page" id="page1">
+    <!-- ========== PAGE 0: Executive Summary ========== -->
+    <div class="report-page" id="page0-executive">
       <div class="report-page-header">
         <div>
           <div class="report-logo">StartSmart</div>
@@ -47,46 +47,65 @@
 
       <div class="report-stamp">대외비</div>
 
+      <!-- 결론 카드 -->
       <div class="report-section">
-        <h2 class="report-h2">1. 분석 개요</h2>
-        <table class="report-table">
-          <tr><th>브랜드</th><td id="rBrand"></td></tr>
-          <tr><th>분석 위치</th><td id="rLocation"></td></tr>
-          <tr><th>매장 규모</th><td id="rArea"></td></tr>
-          <tr><th>초기 투자금</th><td id="rInvestment"></td></tr>
-          <tr><th>월세</th><td id="rRent"></td></tr>
-          <tr><th>점주 근무</th><td id="rOwner"></td></tr>
-          <tr><th>목표 판매량</th><td id="rTarget"></td></tr>
-        </table>
-      </div>
-
-      <div class="report-section">
-        <h2 class="report-h2">2. 종합 평가</h2>
-        <div class="report-score-row">
-          <div class="report-score-circle" id="rScoreCircle">
-            <span class="report-score-num" id="rScoreNum"></span>
-            <span class="report-score-label">점</span>
-          </div>
-          <div class="report-score-detail">
-            <div id="rSignalText" style="font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;"></div>
-            <div id="rDecisionSummary" style="line-height:1.7;"></div>
-            <div id="rConfidence" style="margin-top:1.5rem;"></div>
-          </div>
-        </div>
+        <h2 class="report-h2">Executive Summary</h2>
+        <div id="rExecutiveCard" style="margin-bottom:2rem;"></div>
+        <div id="rExecutiveComment" style="padding:1.5rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm); border-left:4px solid var(--gold);"></div>
       </div>
 
       <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 1</div>
     </div>
 
-    <!-- ========== PAGE 2: Financial ========== -->
-    <div class="report-page" id="page2">
+    <!-- ========== PAGE 1: 창업 조건 요약 ========== -->
+    <div class="report-page" id="page1-conditions">
       <div class="report-page-header compact">
         <div class="report-logo small">StartSmart</div>
         <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
       </div>
 
       <div class="report-section">
-        <h2 class="report-h2">3. 예상 수익성 분석</h2>
+        <h2 class="report-h2">1. 창업 조건 요약 (입력값 스냅샷)</h2>
+        <table class="report-table">
+          <tr><th>브랜드</th><td id="rBrand"></td></tr>
+          <tr><th>입지 (지역/반경)</th><td id="rLocation"></td></tr>
+          <tr><th>평수</th><td id="rArea"></td></tr>
+          <tr><th>월세</th><td id="rRent"></td></tr>
+          <tr><th>초기 투자금</th><td id="rInvestment"></td></tr>
+          <tr><th>1일 방문객 수</th><td id="rDailyVisitors"></td></tr>
+          <tr><th>1인당 평균 구매비용</th><td id="rAvgSpend"></td></tr>
+          <tr><th>점주 근무</th><td id="rOwner"></td></tr>
+        </table>
+      </div>
+
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 2</div>
+    </div>
+
+    <!-- ========== PAGE 2: 매출 구조 해석 ========== -->
+    <div class="report-page" id="page2-revenue">
+      <div class="report-page-header compact">
+        <div class="report-logo small">StartSmart</div>
+        <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">2. 매출 구조 해석 (사람 수 기준)</h2>
+        <div id="rRevenueFormula" style="margin-bottom:2rem;"></div>
+        <div id="rPurchasePattern" style="padding:1.5rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm);"></div>
+      </div>
+
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 3</div>
+    </div>
+
+    <!-- ========== PAGE 3: 손익 시뮬레이션 결과 ========== -->
+    <div class="report-page" id="page3-pnl">
+      <div class="report-page-header compact">
+        <div class="report-logo small">StartSmart</div>
+        <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">3. 손익 시뮬레이션 결과</h2>
         <table class="report-table" id="rFinanceTable">
           <thead>
             <tr>
@@ -100,12 +119,13 @@
       </div>
 
       <div class="report-section">
-        <h2 class="report-h2">4. 핵심 지표</h2>
+        <h2 class="report-h2">핵심 지표</h2>
         <div class="report-kpi-grid" id="rKpiGrid"></div>
       </div>
 
       <div class="report-section">
-        <h2 class="report-h2">5. 민감도 분석</h2>
+        <h2 class="report-h2">민감도 분석</h2>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">방문객 수 ±10%, 구매비용 ±5%</p>
         <table class="report-table">
           <thead>
             <tr><th>시나리오</th><th>월 순이익</th><th>투자 회수 기간</th></tr>
@@ -114,77 +134,97 @@
         </table>
       </div>
 
-      <div class="report-section">
-        <h2 class="report-h2">6. 점수 Breakdown</h2>
-        <div id="rBreakdown"></div>
-      </div>
-
-      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 2</div>
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 4</div>
     </div>
 
-    <!-- ========== PAGE 3: 입지-상권분석 ========== -->
-    <div class="report-page" id="page3-location">
+    <!-- ========== PAGE 4: 구조적 리스크 진단 ========== -->
+    <div class="report-page" id="page4-risks">
       <div class="report-page-header compact">
         <div class="report-logo small">StartSmart</div>
         <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
       </div>
 
       <div class="report-section">
-        <h2 class="report-h2">6. 입지 분석</h2>
-        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">로드뷰 기반 물리적 입지 리스크 평가</p>
-        <div id="rRoadviewRisks"></div>
-        <div id="rRoadviewSummary" style="margin-top:1.5rem;"></div>
-      </div>
-
-      <div class="report-section">
-        <h2 class="report-h2">7. 상권 분석</h2>
-        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">반경 내 경쟁 환경 및 유동인구 분석</p>
-        <div id="rMarketCompetitors"></div>
-        <div id="rMarketFootTraffic" style="margin-top:1.5rem;"></div>
-        <div id="rMarketScore" style="margin-top:1.5rem;"></div>
-      </div>
-
-      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 3</div>
-    </div>
-
-    <!-- ========== PAGE 4: AI Consulting ========== -->
-    <div class="report-page" id="page3">
-      <div class="report-page-header compact">
-        <div class="report-logo small">StartSmart</div>
-        <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
-      </div>
-
-      <div class="report-section">
-        <h2 class="report-h2">8. AI 리스크 분석</h2>
+        <h2 class="report-h2">4. 구조적 리스크 진단 (AI Consulting Layer)</h2>
+        <h3 class="report-h3">4-1. Top 3 리스크</h3>
         <div id="rRiskList"></div>
+        <h3 class="report-h3" style="margin-top:2rem;">4-2. AI 해석</h3>
+        <div id="rRiskAnalysis"></div>
       </div>
 
       <div class="report-section">
-        <h2 class="report-h2">9. AI 개선 제안</h2>
-        <div id="rImprovementList"></div>
+        <h2 class="report-h2">입지 분석</h2>
+        <div id="rRoadviewRisks"></div>
       </div>
 
       <div class="report-section">
-        <h2 class="report-h2">10. 경쟁 환경 요약</h2>
-        <div id="rCompetitive"></div>
+        <h2 class="report-h2">상권 분석</h2>
+        <div id="rMarketCompetitors"></div>
+      </div>
+
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 5</div>
+    </div>
+
+    <!-- ========== PAGE 5: 손절 & 폐업 판단 리포트 ========== -->
+    <div class="report-page" id="page5-exit">
+      <div class="report-page-header compact">
+        <div class="report-logo small">StartSmart</div>
+        <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
       </div>
 
       <div class="report-section">
-        <h2 class="report-h2">11. 실패 트리거</h2>
-        <div id="rFailureTriggers"></div>
-      </div>
-
-      <div class="report-section">
-        <h2 class="report-h2">12. Exit Plan (손절 타이밍 및 폐업 비용)</h2>
+        <h2 class="report-h2">5. 손절 & 폐업 판단 리포트</h2>
+        <h3 class="report-h3">5-1. 손절 기준선 (Break-Down Line)</h3>
+        <div id="rBreakdownLine"></div>
+        <h3 class="report-h3" style="margin-top:2rem;">5-2. 적자 지속 시 생존 개월 수</h3>
+        <div id="rSurvivalOnLoss"></div>
+        <h3 class="report-h3" style="margin-top:2rem;">5-3. 폐업 시 회수 구조</h3>
         <div id="rExitPlan"></div>
       </div>
 
-      <div class="report-disclaimer">
+      <div class="report-section">
+        <h2 class="report-h2">실패 트리거</h2>
+        <div id="rFailureTriggers"></div>
+      </div>
+
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 6</div>
+    </div>
+
+    <!-- ========== PAGE 6: 조건 변경 시 개선 시뮬레이션 ========== -->
+    <div class="report-page" id="page6-improvements">
+      <div class="report-page-header compact">
+        <div class="report-logo small">StartSmart</div>
+        <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">6. 조건 변경 시 개선 시뮬레이션</h2>
+        <div id="rImprovementList"></div>
+        <div id="rBestLeverage" style="margin-top:2rem; padding:1.5rem; background:rgba(74,222,128,0.1); border-radius:var(--radius-sm); border-left:4px solid #4ade80;"></div>
+      </div>
+
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 7</div>
+    </div>
+
+    <!-- ========== PAGE 7: 최종 컨설턴트 결론 ========== -->
+    <div class="report-page" id="page7-conclusion">
+      <div class="report-page-header compact">
+        <div class="report-logo small">StartSmart</div>
+        <div style="font-size:0.8rem; color:#999;">창업 타당성 검증 리포트</div>
+      </div>
+
+      <div class="report-section">
+        <h2 class="report-h2">7. 최종 컨설턴트 결론</h2>
+        <div id="rFinalConclusion"></div>
+        <div id="rRecommendedActions" style="margin-top:2rem;"></div>
+      </div>
+
+      <div class="report-disclaimer" style="margin-top:3rem;">
         * 본 리포트는 AI 예측 모델에 기반한 시뮬레이션 결과로, 실제 결과와 다를 수 있습니다.<br>
         * 투자 결정 시 추가적인 전문가 상담을 권장합니다.
       </div>
 
-      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 4</div>
+      <div class="report-page-footer">StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page 8</div>
     </div>
   </main>
 

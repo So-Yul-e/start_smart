@@ -277,66 +277,6 @@
   // Breakdown 렌더링 실행
   renderBreakdown(breakdown);
 
-  // Decision Confidence 렌더링
-  function renderConfidence(confidence) {
-    if (!confidence) {
-      document.getElementById('confidenceCard').style.display = 'none';
-      return;
-    }
-
-    document.getElementById('confidenceCard').style.display = 'block';
-    
-    var html = '';
-    
-    // confidence가 객체인 경우
-    if (typeof confidence === 'object') {
-      var coverageMap = { high: '높음', medium: '보통', low: '낮음' };
-      var coverageColor = { high: '#4ade80', medium: '#facc15', low: '#f87171' };
-      
-      if (confidence.dataCoverage) {
-        var coverage = confidence.dataCoverage.toLowerCase();
-        html += '<div style="margin-bottom:1rem;">' +
-          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
-          '<span style="font-size:0.9rem; color:var(--text-muted);">데이터 커버리지</span>' +
-          '<span style="padding:0.3rem 0.8rem; border-radius:20px; background:' + coverageColor[coverage] + '22; color:' + coverageColor[coverage] + '; font-size:0.9rem; font-weight:600;">' + (coverageMap[coverage] || coverage) + '</span>' +
-          '</div></div>';
-      }
-      
-      if (confidence.assumptionRisk) {
-        var risk = confidence.assumptionRisk.toLowerCase();
-        html += '<div style="margin-bottom:1rem;">' +
-          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
-          '<span style="font-size:0.9rem; color:var(--text-muted);">가정 리스크</span>' +
-          '<span style="padding:0.3rem 0.8rem; border-radius:20px; background:' + coverageColor[risk] + '22; color:' + coverageColor[risk] + '; font-size:0.9rem; font-weight:600;">' + (coverageMap[risk] || risk) + '</span>' +
-          '</div></div>';
-      }
-      
-      if (confidence.stability) {
-        var stability = confidence.stability.toLowerCase();
-        html += '<div style="margin-bottom:1rem;">' +
-          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
-          '<span style="font-size:0.9rem; color:var(--text-muted);">판정 안정성</span>' +
-          '<span style="padding:0.3rem 0.8rem; border-radius:20px; background:' + coverageColor[stability] + '22; color:' + coverageColor[stability] + '; font-size:0.9rem; font-weight:600;">' + (coverageMap[stability] || stability) + '</span>' +
-          '</div></div>';
-      }
-    } else {
-      // confidence가 단순 값인 경우
-      var confValue = confidence.toString().toLowerCase();
-      var confMap = { high: '높음', medium: '보통', low: '낮음' };
-      var confColor = { high: '#4ade80', medium: '#facc15', low: '#f87171' };
-      
-      html += '<div style="padding:1rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm); text-align:center;">' +
-        '<div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.5rem;">판정 신뢰도</div>' +
-        '<div style="font-size:1.5rem; font-weight:700; color:' + (confColor[confValue] || '#94a3b8') + ';">' + (confMap[confValue] || confValue) + '</div>' +
-        '</div>';
-    }
-    
-    document.getElementById('confidenceInfo').innerHTML = html || '<p style="color:var(--text-muted); text-align:center; padding:2rem;">신뢰도 정보가 없습니다.</p>';
-  }
-
-  // Confidence 렌더링 실행
-  renderConfidence(executive?.confidence);
-
   // Cost Stack Chart
   var costs = finance.monthlyCosts;
   var totalRev = finance.monthlyRevenue;
@@ -373,28 +313,63 @@
 
   document.getElementById('costStack').innerHTML = stackHtml;
 
-  // Sensitivity Chart
+  // Sensitivity Chart (총 매출과 순이익 모두 표시)
+  var baseRevenue = finance.monthlyRevenue || 0;
   var sensData = [
-    { label: '-10%', value: finance.sensitivity.minus10.monthlyProfit, months: finance.sensitivity.minus10.paybackMonths === null ? 999 : finance.sensitivity.minus10.paybackMonths },
-    { label: '기준', value: finance.monthlyProfit, months: paybackMonths },
-    { label: '+10%', value: finance.sensitivity.plus10.monthlyProfit, months: finance.sensitivity.plus10.paybackMonths === null ? 999 : finance.sensitivity.plus10.paybackMonths }
+    { 
+      label: '-10%', 
+      revenue: baseRevenue * 0.9,  // 매출 10% 감소
+      profit: finance.sensitivity.minus10.monthlyProfit, 
+      months: finance.sensitivity.minus10.paybackMonths === null ? 999 : finance.sensitivity.minus10.paybackMonths 
+    },
+    { 
+      label: '기준', 
+      revenue: baseRevenue,
+      profit: finance.monthlyProfit, 
+      months: paybackMonths 
+    },
+    { 
+      label: '+10%', 
+      revenue: baseRevenue * 1.1,  // 매출 10% 증가
+      profit: finance.sensitivity.plus10.monthlyProfit, 
+      months: finance.sensitivity.plus10.paybackMonths === null ? 999 : finance.sensitivity.plus10.paybackMonths 
+    }
   ];
 
-  var maxVal = 0;
+  // 최대값 계산 (매출과 순이익 중 큰 값)
+  var maxRevenue = 0;
+  var maxProfit = 0;
   for (var s = 0; s < sensData.length; s++) {
-    if (Math.abs(sensData[s].value) > maxVal) maxVal = Math.abs(sensData[s].value);
+    if (sensData[s].revenue > maxRevenue) maxRevenue = sensData[s].revenue;
+    if (Math.abs(sensData[s].profit) > maxProfit) maxProfit = Math.abs(sensData[s].profit);
   }
+  var maxVal = Math.max(maxRevenue, maxProfit);
 
   var sensHtml = '';
   for (var s = 0; s < sensData.length; s++) {
-    var heightPct = maxVal > 0 ? Math.abs(sensData[s].value) / maxVal * 80 : 10;
-    var barColor = sensData[s].value > 0 ? '#4ade80' : '#f87171';
-    if (s === 1) barColor = 'var(--gold)';
-    sensHtml += '<div class="bar-col">' +
-      '<div class="bar-value">' + Utils.formatKRW(sensData[s].value) + '</div>' +
-      '<div class="bar" style="height:' + heightPct + '%; background:' + barColor + ';"></div>' +
+    var revenueHPct = maxVal > 0 ? sensData[s].revenue / maxVal * 80 : 10;
+    var profitHPct = maxVal > 0 ? Math.abs(sensData[s].profit) / maxVal * 80 : 10;
+    var revenueColor = 'var(--gold)';
+    var profitColor = sensData[s].profit > 0 ? '#4ade80' : '#f87171';
+    if (s === 1) {
+      revenueColor = 'var(--gold)';
+    } else {
+      revenueColor = '#94a3b8';
+    }
+    
+    sensHtml += '<div class="bar-col" style="position:relative;">' +
+      '<div class="bar-value" style="margin-bottom:0.5rem;">' +
+        '<div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;">총 매출</div>' +
+        '<div style="font-size:0.85rem; font-weight:600; color:' + revenueColor + ';">' + Utils.formatKRW(sensData[s].revenue) + '</div>' +
+        '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem; margin-bottom:0.2rem;">순이익</div>' +
+        '<div style="font-size:0.85rem; font-weight:600; color:' + profitColor + ';">' + Utils.formatKRW(sensData[s].profit) + '</div>' +
+      '</div>' +
+      '<div style="position:relative; height:150px; display:flex; align-items:flex-end; justify-content:center; gap:4px;">' +
+        '<div class="bar" style="height:' + revenueHPct + '%; width:45%; background:' + revenueColor + '80; border-radius:4px 4px 0 0;" title="총 매출"></div>' +
+        '<div class="bar" style="height:' + profitHPct + '%; width:45%; background:' + profitColor + '80; border-radius:4px 4px 0 0;" title="순이익"></div>' +
+      '</div>' +
       '<div class="bar-label">' + sensData[s].label + '</div>' +
-      '<div class="bar-label" style="font-size:0.7rem;">(' + (sensData[s].months >= 999 ? '회수불가' : sensData[s].months + '개월') + ')</div>' +
+      '<div class="bar-label" style="font-size:0.7rem; color:var(--text-muted);">(' + (sensData[s].months >= 999 ? '회수불가' : sensData[s].months + '개월') + ')</div>' +
       '</div>';
   }
   document.getElementById('sensitivityChart').innerHTML = sensHtml;
@@ -456,11 +431,11 @@
     // reportModel의 병합된 improvement cards 사용
     improvementsToShow = improvement.cards.map(function(card) {
       console.log('[대시보드] improvement card:', card);
-      // engine과 ai가 모두 있으면 ai의 description을 우선 사용
+      // ai가 있으면 ai만 사용 (engine 버림)
       if (card.ai) {
-        var title = card.ai.title || card.engine?.title || card.engine?.delta || '개선 제안';
-        var description = card.ai.description || card.engine?.description || card.engine?.narrative || '';
-        var expectedImpact = card.ai.expectedImpact || card.engine?.expectedImpact || '';
+        var title = card.ai.title || '개선 제안';
+        var description = card.ai.description || '';
+        var expectedImpact = card.ai.expectedImpact || '';
         
         // title이나 description이 있으면 표시
         if (title || description) {
@@ -516,10 +491,53 @@
   
   console.log('[대시보드] improvementsToShow:', improvementsToShow);
   
+  // 중복 제거: 같은 주제의 개선 제안을 하나로 통일
+  var deduplicated = [];
+  var seenCategories = new Set();
+  
   for (var im = 0; im < improvementsToShow.length; im++) {
     var imp = improvementsToShow[im];
     var title = imp.title || '개선 제안';
     var description = imp.description || '';
+    
+    // 카테고리 키워드 추출 (중복 판단용)
+    var category = '';
+    var titleLower = title.toLowerCase();
+    if (titleLower.includes('월세') || titleLower.includes('rent') || titleLower.includes('임대료')) {
+      category = 'rent';
+    } else if (titleLower.includes('판매량') || titleLower.includes('sales') || titleLower.includes('target') || titleLower.includes('목표')) {
+      category = 'sales';
+    } else if (titleLower.includes('원재료') || titleLower.includes('material') || titleLower.includes('재료')) {
+      category = 'material';
+    } else if (titleLower.includes('상권') || titleLower.includes('location') || titleLower.includes('입지')) {
+      category = 'location';
+    } else if (titleLower.includes('투자') || titleLower.includes('investment')) {
+      category = 'investment';
+    } else {
+      // 카테고리 없으면 제목의 첫 10자로 구분
+      category = title.substring(0, 10).toLowerCase();
+    }
+    
+    // 같은 카테고리가 이미 있으면 스킵 (첫 번째 것만 유지)
+    if (seenCategories.has(category)) {
+      continue;
+    }
+    
+    seenCategories.add(category);
+    deduplicated.push(imp);
+  }
+  
+  for (var im = 0; im < deduplicated.length; im++) {
+    var imp = deduplicated[im];
+    var title = imp.title || '개선 제안';
+    var description = imp.description || '';
+    
+    // 제목 통일 (월세 관련)
+    if (title.includes('월세') || title.includes('임대료')) {
+      if (title.includes('조정') || title.includes('절감') || title.includes('감소')) {
+        title = '월세 절감';
+      }
+    }
     
     impHtml += '<div class="risk-card">' +
       '<div class="risk-icon" style="background:rgba(74,222,128,0.15); color:#4ade80;"><i class="fa-solid fa-lightbulb"></i></div>' +
@@ -573,12 +591,15 @@
       var impactColor = impactColorMap[trigger.impact] || '#94a3b8';
       var impactLabel = impactLabelMap[trigger.impact] || trigger.impact;
       
+      var triggerDisplayName = trigger.triggerName || trigger.trigger || '';
+      var outcomeDisplay = trigger.outcome || trigger.result || '';
+      
       failureTriggersHtml += '<div class="risk-card" style="margin-bottom:1rem;">' +
         '<div class="risk-icon" style="background:' + impactColor + '22; color:' + impactColor + ';">' +
         '<i class="fa-solid fa-exclamation-triangle"></i></div>' +
         '<div class="risk-body">' +
-        '<h4>' + (ft + 1) + '. ' + Utils.escapeHtml(trigger.trigger || '') + ' <span style="font-size:0.8rem; color:' + impactColor + '; font-weight:600;">(' + impactLabel + ')</span></h4>' +
-        '<p style="margin-bottom:0.5rem;"><strong>결과:</strong> ' + Utils.escapeHtml(trigger.outcome || trigger.result || '') + '</p>' +
+        '<h4>' + (ft + 1) + '. ' + Utils.escapeHtml(triggerDisplayName) + ' <span style="font-size:0.8rem; color:' + impactColor + '; font-weight:600;">(' + impactLabel + ')</span></h4>' +
+        '<p style="margin-bottom:0.5rem;"><strong>결과:</strong> ' + Utils.escapeHtml(outcomeDisplay) + '</p>' +
         (trigger.estimatedFailureWindow ? '<p style="margin-bottom:0.5rem; color:var(--text-muted); font-size:0.9rem;"><strong>예상 실패 시점:</strong> ' + Utils.escapeHtml(trigger.estimatedFailureWindow) + '</p>' : '') +
         (trigger.totalLossAtFailure !== undefined ? '<p style="margin-bottom:0.5rem; color:var(--text-muted); font-size:0.9rem;"><strong>그때 총손실:</strong> ' + Utils.formatKRW(trigger.totalLossAtFailure) + '</p>' : '') +
         (trigger.exitCostAtFailure !== undefined ? '<p style="color:var(--text-muted); font-size:0.9rem;"><strong>그때 Exit 비용:</strong> ' + Utils.formatKRW(trigger.exitCostAtFailure) + '</p>' : '') +
@@ -647,28 +668,68 @@
   function updateScenarioChart(position) {
     var avgPrice = position === '프리미엄' ? 5500 : position === '스탠다드' ? 4000 : 3000;
 
+    // 현재 비용 구조 가져오기
+    var costs = finance.monthlyCosts || {};
+    var baseRevenue = finance.monthlyRevenue || 0;
+    
+    // 비율 계산 (현재 매출 기준)
+    var laborRate = baseRevenue > 0 ? (costs.labor || 0) / baseRevenue : 0;
+    var materialsRate = baseRevenue > 0 ? (costs.materials || 0) / baseRevenue : 0;
+    var utilitiesRate = baseRevenue > 0 ? (costs.utilities || 0) / baseRevenue : 0;
+    var royaltyRate = baseRevenue > 0 ? (costs.royalty || 0) / baseRevenue : 0;
+    var marketingRate = baseRevenue > 0 ? (costs.marketing || 0) / baseRevenue : 0;
+    
+    // 고정비
+    var fixedCosts = (costs.rent || 0) + (costs.etc || 0);
+    
+    // 대출 상환액 (있는 경우)
+    var debtPayment = finance.debt?.totalMonthlyPayment || 0;
+
     var scenRevs = [
       { label: '보수적', daily: scenarios.conservative },
       { label: '기대치', daily: scenarios.expected },
       { label: '낙관적', daily: scenarios.optimistic }
     ];
 
-    var maxRev = 0;
+    var maxValue = 0;
     for (var sc = 0; sc < scenRevs.length; sc++) {
+      // 시나리오별 매출 계산
       var rev = scenRevs[sc].daily * avgPrice * 30;
       scenRevs[sc].revenue = rev;
-      if (rev > maxRev) maxRev = rev;
+      
+      // 시나리오별 비용 계산
+      var variableCosts = rev * (laborRate + materialsRate + utilitiesRate + royaltyRate + marketingRate);
+      var totalCosts = fixedCosts + variableCosts + debtPayment;
+      
+      // 시나리오별 순이익 계산
+      var profit = rev - totalCosts;
+      scenRevs[sc].profit = profit;
+      scenRevs[sc].totalCosts = totalCosts;
+      
+      // 차트 높이 계산을 위한 최대값 (매출과 순이익 중 큰 값)
+      var maxForChart = Math.max(rev, profit > 0 ? profit : 0);
+      if (maxForChart > maxValue) maxValue = maxForChart;
     }
 
   var scenHtml = '';
   var scenColors = ['#94a3b8', 'var(--gold)', '#4ade80'];
   for (var sc = 0; sc < scenRevs.length; sc++) {
-    var hPct = maxRev > 0 ? scenRevs[sc].revenue / maxRev * 80 : 10;
-    scenHtml += '<div class="bar-col">' +
-      '<div class="bar-value">' + Utils.formatKRW(scenRevs[sc].revenue) + '</div>' +
-      '<div class="bar" style="height:' + hPct + '%; background:' + scenColors[sc] + ';"></div>' +
-      '<div class="bar-label">' + scenRevs[sc].label + '</div>' +
-      '<div class="bar-label" style="font-size:0.7rem;">' + scenRevs[sc].daily + '잔/일</div>' +
+    // 매출 기준으로 차트 높이 계산
+    var hPct = maxValue > 0 ? scenRevs[sc].revenue / maxValue * 80 : 10;
+    var profitHPct = maxValue > 0 && scenRevs[sc].profit > 0 ? scenRevs[sc].profit / maxValue * 80 : 0;
+    
+    scenHtml += '<div class="bar-col" style="position:relative;">' +
+      '<div class="bar-value" style="margin-bottom:0.5rem;">' +
+        '<div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.2rem;">총 매출</div>' +
+        '<div style="font-weight:600; color:' + scenColors[sc] + ';">' + Utils.formatKRW(scenRevs[sc].revenue) + '</div>' +
+        '<div style="font-size:0.75rem; color:' + (scenRevs[sc].profit > 0 ? '#4ade80' : '#f87171') + '; margin-top:0.3rem;">순이익 ' + Utils.formatKRW(scenRevs[sc].profit) + '</div>' +
+      '</div>' +
+      '<div style="position:relative; height:150px; display:flex; align-items:flex-end; justify-content:center; gap:4px;">' +
+        '<div class="bar" style="height:' + hPct + '%; width:45%; background:' + scenColors[sc] + '80; border-radius:4px 4px 0 0;" title="총 매출"></div>' +
+        '<div class="bar" style="height:' + profitHPct + '%; width:45%; background:' + (scenRevs[sc].profit > 0 ? '#4ade80' : '#f87171') + '80; border-radius:4px 4px 0 0;" title="순이익"></div>' +
+      '</div>' +
+      '<div class="bar-label" style="margin-top:0.5rem;">' + scenRevs[sc].label + '</div>' +
+      '<div class="bar-label" style="font-size:0.7rem; color:var(--text-muted);">' + scenRevs[sc].daily + '잔/일</div>' +
       '</div>';
   }
   document.getElementById('scenarioChart').innerHTML = scenHtml;
@@ -689,104 +750,8 @@
       var toast = document.getElementById('saveToast');
       toast.classList.add('show');
       setTimeout(function () { toast.classList.remove('show'); }, 2000);
-      // Refresh saved list
-      renderSavedSimulations();
     });
   }
-
-  function renderSavedSimulations() {
-    var sims = Utils.loadSimulations();
-    var container = document.getElementById('savedSimList');
-    if (!container) return;
-
-    if (sims.length === 0) {
-      container.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem; text-align:center; padding:2rem;">' +
-        '<i class="fa-solid fa-bookmark" style="font-size:1.5rem; display:block; margin-bottom:0.5rem; opacity:0.3;"></i>' +
-        '저장된 시뮬레이션이 없습니다. 위 "저장" 버튼으로 현재 결과를 저장하세요.</p>';
-      return;
-    }
-
-    var html = '';
-    for (var i = 0; i < sims.length; i++) {
-      var sim = sims[i];
-      var isCurrent = sim.id === result.id;
-      var sigInfo = Utils.getSignal(sim.signal);
-      var profitColor = sim.monthlyProfit > 0 ? '#4ade80' : '#f87171';
-
-      html += '<div class="sim-row' + (isCurrent ? ' current' : '') + '" data-sim-id="' + sim.id + '">' +
-        '<div class="sim-info">' +
-        '<span class="sim-brand">' + Utils.escapeHtml(sim.brandName) + '</span>' +
-        '<span class="sim-metric">점수 <strong style="color:' + sigInfo.color + ';">' + sim.score + '</strong></span>' +
-        '<span class="sim-metric">순이익 <strong style="color:' + profitColor + ';">' + Utils.formatKRW(sim.monthlyProfit) + '</strong></span>' +
-        '<span class="sim-metric">회수 <strong>' + (sim.paybackMonths >= 999 ? '불가' : sim.paybackMonths + '개월') + '</strong></span>' +
-        '<span class="sim-metric" style="font-size:0.75rem;">' + Utils.escapeHtml(sim.address || '') + '</span>' +
-        (isCurrent ? '<span style="color:var(--gold); font-size:0.75rem; font-weight:600;">현재</span>' : '') +
-        '</div>' +
-        '<div class="sim-actions">' +
-        (isCurrent ? '' : '<button class="sim-btn-sm btn-compare" data-idx="' + i + '">비교</button>') +
-        '<button class="sim-btn-sm danger btn-delete" data-sim-id="' + sim.id + '"><i class="fa-solid fa-trash"></i></button>' +
-        '</div>' +
-        '</div>';
-    }
-
-    container.innerHTML = html;
-
-    // Attach compare handlers
-    var compareBtns = container.querySelectorAll('.btn-compare');
-    for (var c = 0; c < compareBtns.length; c++) {
-      compareBtns[c].addEventListener('click', function () {
-        var idx = parseInt(this.getAttribute('data-idx'));
-        showSimComparison(sims[idx]);
-      });
-    }
-
-    // Attach delete handlers
-    var deleteBtns = container.querySelectorAll('.btn-delete');
-    for (var d = 0; d < deleteBtns.length; d++) {
-      deleteBtns[d].addEventListener('click', function () {
-        var simId = this.getAttribute('data-sim-id');
-        Utils.deleteSimulation(simId);
-        renderSavedSimulations();
-      });
-    }
-  }
-
-  function showSimComparison(savedSim) {
-    if (!savedSim || !savedSim.result) return;
-    var other = savedSim.result;
-
-    // Update the Before/After section to show saved vs current
-    var compareHtml =
-      '<div class="compare-grid">' +
-      '<div class="compare-box"><div class="compare-label">저장된 분석</div>' +
-      '<div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem;">' + Utils.escapeHtml(other.brand.name) + ' · ' + Utils.escapeHtml(other.location.address || '') + '</div>' +
-      '<div class="compare-val" style="color:var(--text-muted);">점수 ' + other.decision.score + '</div>' +
-      '<div style="margin-top:0.75rem; font-size:0.9rem; color:var(--text-muted);">순이익 ' + Utils.formatKRW(other.finance.monthlyProfit) + '</div>' +
-      '<div style="font-size:0.9rem; color:var(--text-muted);">회수 ' + (other.finance.paybackMonths >= 999 ? '불가' : other.finance.paybackMonths + '개월') + '</div></div>' +
-      '<div class="compare-arrow"><i class="fa-solid fa-arrow-right"></i></div>' +
-      '<div class="compare-box" style="border-color:rgba(74,222,128,0.3);"><div class="compare-label" style="color:var(--primary-glow);">현재 분석</div>' +
-      '<div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem;">' + Utils.escapeHtml(result.brand.name) + ' · ' + Utils.escapeHtml(result.location.address || '') + '</div>' +
-      '<div class="compare-val" style="color:var(--primary-glow);">점수 ' + decision.score + '</div>' +
-      '<div style="margin-top:0.75rem; font-size:0.9rem; color:var(--primary-glow);">순이익 ' + Utils.formatKRW(finance.monthlyProfit) + '</div>' +
-      '<div style="font-size:0.9rem; color:var(--primary-glow);">회수 ' + (finance.paybackMonths >= 999 ? '불가' : finance.paybackMonths + '개월') + '</div></div>' +
-      '</div>';
-
-    // Score diff
-    var scoreDiff = decision.score - other.decision.score;
-    var profitDiff = finance.monthlyProfit - other.finance.monthlyProfit;
-    compareHtml += '<div style="text-align:center; margin-top:1.5rem; padding:1rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm);">' +
-      '<span style="margin-right:2rem;">점수 변화: <strong style="color:' + (scoreDiff >= 0 ? '#4ade80' : '#f87171') + ';">' + (scoreDiff >= 0 ? '+' : '') + scoreDiff + '점</strong></span>' +
-      '<span>순이익 변화: <strong style="color:' + (profitDiff >= 0 ? '#4ade80' : '#f87171') + ';">' + (profitDiff >= 0 ? '+' : '') + Utils.formatKRW(profitDiff) + '</strong></span>' +
-      '</div>';
-
-    document.getElementById('compareSection').innerHTML = compareHtml;
-
-    // Scroll to compare section
-    document.getElementById('compareSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  // Initial render of saved simulations
-  renderSavedSimulations();
 
   // Exit Plan 렌더링
   function renderExitPlan(exitPlan) {
@@ -912,8 +877,19 @@
       return;
     }
 
+    // 로드뷰 이미지 표시 (있는 경우)
+    var roadviewImageUrl = roadview.roadviewUrl || roadview.imageUrl || null;
+    var imageHtml = '';
+    if (roadviewImageUrl) {
+      imageHtml = '<div style="margin-bottom:2rem;">' +
+        '<h4 style="margin-bottom:1rem; font-size:1rem; color:var(--text-main);">주소지 로드뷰</h4>' +
+        '<div style="border-radius:var(--radius-sm); overflow:hidden; border:1px solid rgba(255,255,255,0.1);">' +
+        '<img src="' + Utils.escapeHtml(roadviewImageUrl) + '" alt="로드뷰 이미지" style="width:100%; max-width:100%; height:auto; display:block;" />' +
+        '</div></div>';
+    }
+
     var risks = roadview.risks || [];
-    var riskHtml = '';
+    var riskHtml = imageHtml; // 이미지를 먼저 표시
 
     // 리스크 타입별 아이콘 및 라벨 매핑
     var riskTypeMap = {
