@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
     console.log('[분석 요청] 요청 받음');
     console.log('[분석 요청] 요청 본문:', JSON.stringify(req.body, null, 2));
     
-    const { brandId, location, radius, conditions, targetDailySales } = req.body;
+    const { brandId, location, radius, conditions, targetDailySales, roadviewAnalysis } = req.body;
 
     // 입력 검증
     console.log('[분석 요청] 입력 검증 시작:', {
@@ -80,7 +80,8 @@ router.post('/', async (req, res) => {
         location,
         radius: radius || 500,
         conditions,
-        targetDailySales
+        targetDailySales,
+        roadviewAnalysis // 프론트엔드에서 전송한 로드뷰 분석 결과
       }, updateAnalysis);
       
       console.log('[분석 요청] runAnalysis Promise 생성됨:', !!analysisPromise);

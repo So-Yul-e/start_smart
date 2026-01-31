@@ -28,7 +28,7 @@ app.use('/api/analyze', require('./routes/analyze'));
 app.use('/api/result', require('./routes/result'));
 app.use('/api/report', require('./routes/report'));
 app.use('/api/config', require('./routes/config'));
-app.use('/api/competition', require('./routes/competition'));
+// app.use('/api/competition', require('./routes/competition')); // 파일이 없어서 주석 처리
 app.use('/api/roadview', require('./routes/roadview'));
 
 // 루트 경로
@@ -70,7 +70,7 @@ app.listen(PORT, HOST, () => {
   const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
   console.log(`🚀 Server running on http://${displayHost}:${PORT}`);
   console.log(`📊 Health check: http://${displayHost}:${PORT}/health`);
-  console.log(`📊 경쟁 밀도 분석 API: POST /api/competition/analyze`);
+  // console.log(`📊 경쟁 밀도 분석 API: POST /api/competition/analyze`); // competition 라우트 비활성화
   console.log(`🖼️  거리뷰 이미지 분석 API: POST /api/roadview/analyze`);
   
   if (HOST === '0.0.0.0') {

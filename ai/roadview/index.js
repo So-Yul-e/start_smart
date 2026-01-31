@@ -348,5 +348,9 @@ async function analyzeRoadview(input) {
 }
 
 module.exports = {
-  analyzeRoadview
+  analyzeRoadview,
+  convertToLegacyFormat,
+  validateAndNormalizeRisks,
+  calculateRiskScore,
+  calculateOverallRisk
 };

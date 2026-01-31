@@ -1,5 +1,5 @@
 /**
- * Input Page - Kakao Map (입지 선택) + Google Street View (로드뷰) + Form Pre-fill + Loading Animation
+ * Input Page - Kakao Map (입지 선택) + Form Pre-fill + Loading Animation
  */
 (function () {
   // ── State ──
@@ -11,7 +11,9 @@
   var marker = null;
   var circle = null;
   var geocoder = null;
-  var streetViewPanorama = null; // Google Street View Panorama
+  var kakaoRoadview = null; // 카카오 로드뷰 객체
+  var kakaoRoadviewClient = null; // 카카오 로드뷰 클라이언트
+  var capturedRoadviewImage = null; // 캡처한 로드뷰 이미지 (base64)
   var mapLoaded = false;
 
   // ── DOM ──
@@ -92,17 +94,10 @@
     
     try {
       // 카카오맵 SDK가 로드되었는지 확인
-      if (window.kakaoMapLoaded && typeof kakao !== 'undefined' && kakao.maps) {
+      if (window.kakaoMapLoaded && typeof kakao !== 'undefined' && kakao.maps && kakao.maps.Map) {
         console.log('[initMap] 카카오맵 SDK 로드 완료, 지도 초기화 시작');
         // SDK가 이미 로드된 경우 바로 지도 생성
         createKakaoMap();
-      } else if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.load) {
-        // SDK 객체는 있지만 아직 load()가 호출되지 않은 경우
-        console.log('[initMap] SDK 객체 확인, load() 호출');
-        kakao.maps.load(function() {
-          console.log('[initMap] kakao.maps.load() 콜백 실행');
-          createKakaoMap();
-        });
       } else {
         console.warn('[initMap] 카카오맵 SDK가 아직 로드되지 않았습니다. 콜백으로 등록합니다.');
         // SDK가 아직 로드되지 않았으면 콜백으로 등록
@@ -110,22 +105,26 @@
           console.log('[initMap] 콜백 실행됨');
           createKakaoMap();
         };
-        // 최대 5초 대기
+        // 최대 10초 대기
         if (!window.kakaoMapRetryTimeout) {
           window.kakaoMapRetryTimeout = setTimeout(function() {
             if (!window.kakaoMapLoaded) {
               console.error('[initMap] 카카오맵 SDK 로드 실패 (타임아웃)');
-              document.getElementById('map').style.display = 'none';
-              document.getElementById('mapFallback').style.display = 'flex';
+              var mapEl = document.getElementById('map');
+              var fallbackEl = document.getElementById('mapFallback');
+              if (mapEl) mapEl.style.display = 'none';
+              if (fallbackEl) fallbackEl.style.display = 'flex';
             }
-          }, 5000);
+          }, 10000);
         }
         return;
       }
     } catch (e) {
       console.error('[initMap] 오류 발생:', e);
-      document.getElementById('map').style.display = 'none';
-      document.getElementById('mapFallback').style.display = 'flex';
+      var mapEl = document.getElementById('map');
+      var fallbackEl = document.getElementById('mapFallback');
+      if (mapEl) mapEl.style.display = 'none';
+      if (fallbackEl) fallbackEl.style.display = 'flex';
     }
   }
 
@@ -133,6 +132,17 @@
   function createKakaoMap() {
     try {
       console.log('[createKakaoMap] 지도 생성 시작');
+      
+      // kakao 객체 최종 확인
+      if (typeof kakao === 'undefined' || !kakao.maps || !kakao.maps.Map) {
+        console.error('[createKakaoMap] kakao.maps.Map이 없습니다. SDK가 완전히 로드되지 않았습니다.');
+        var mapEl = document.getElementById('map');
+        var fallbackEl = document.getElementById('mapFallback');
+        if (mapEl) mapEl.style.display = 'none';
+        if (fallbackEl) fallbackEl.style.display = 'flex';
+        return;
+      }
+      
       var centerLat = 37.5665;
       var centerLng = 126.9780;
 
@@ -143,28 +153,49 @@
       }
 
       var container = document.getElementById('map');
+      if (!container) {
+        console.error('[createKakaoMap] 지도 컨테이너를 찾을 수 없습니다.');
+        return;
+      }
+      
+      // 지도 컨테이너가 숨겨져 있으면 표시
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+      }
+      
+      // 높이가 설정되지 않았으면 기본 높이 설정
+      if (!container.style.height || container.style.height === '0px' || container.style.height === '') {
+        container.style.height = '400px';
+      }
+      
+      // 부모 컨테이너도 확인
+      var mapContainer = document.getElementById('mapContainer');
+      if (mapContainer && mapContainer.style.display === 'none') {
+        mapContainer.style.display = 'block';
+      }
+      
+      console.log('[createKakaoMap] 컨테이너 확인:', {
+        exists: !!container,
+        display: container.style.display,
+        height: container.style.height,
+        offsetWidth: container.offsetWidth,
+        offsetHeight: container.offsetHeight,
+        parentDisplay: mapContainer ? mapContainer.style.display : 'N/A'
+      });
+      
       var options = {
         center: new kakao.maps.LatLng(centerLat, centerLng),
         level: 5
       };
+      
+      console.log('[createKakaoMap] 지도 옵션:', options);
       map = new kakao.maps.Map(container, options);
       geocoder = new kakao.maps.services.Geocoder();
       mapLoaded = true;
+      
+      console.log('[createKakaoMap] 지도 생성 완료, map 객체:', !!map);
 
-      // Init Google Street View Panorama
-      try {
-        var rvContainer = document.getElementById('roadview');
-        if (rvContainer && typeof google !== 'undefined' && google.maps) {
-          streetViewPanorama = new google.maps.StreetViewPanorama(rvContainer, {
-            position: { lat: centerLat, lng: centerLng },
-            pov: { heading: 0, pitch: 0 },
-            zoom: 1,
-            visible: false // 초기에는 숨김
-          });
-        }
-      } catch (e) {
-        console.warn('Google Street View init failed:', e);
-      }
+      // 카카오 로드뷰는 showRoadview에서 초기화됨
 
       // Restore previous pin
       if (prevInput && prevInput.location) {
@@ -248,57 +279,114 @@
     });
   }
 
-  // ── Google Street View (로드뷰) ──
+  // ── 카카오 로드뷰 (캡처용) ──
   function showRoadview(latlng) {
     var lat = latlng.getLat ? latlng.getLat() : latlng.lat;
     var lng = latlng.getLng ? latlng.getLng() : latlng.lng;
-    var position = { lat: lat, lng: lng };
+    var rvContainer = document.getElementById('roadview');
+    var fallback = document.getElementById('roadviewFallback');
 
-    if (!streetViewPanorama) {
-      // Google Street View 초기화 시도
+    // 카카오 로드뷰 초기화
+    if (!kakaoRoadview && typeof kakao !== 'undefined' && kakao.maps && kakao.maps.Roadview) {
       try {
-        var rvContainer = document.getElementById('roadview');
-        if (rvContainer && typeof google !== 'undefined' && google.maps) {
-          streetViewPanorama = new google.maps.StreetViewPanorama(rvContainer, {
-            position: position,
-            pov: { heading: 0, pitch: 0 },
-            zoom: 1
-          });
-          
-          // Street View Service로 해당 위치에 파노라마가 있는지 확인
-          var streetViewService = new google.maps.StreetViewService();
-          streetViewService.getPanorama({ location: position, radius: 50 }, function(data, status) {
-            if (status === 'OK') {
-              document.getElementById('roadviewFallback').style.display = 'none';
-              streetViewPanorama.setPosition(position);
-              streetViewPanorama.setVisible(true);
-            } else {
-              document.getElementById('roadviewFallback').style.display = 'flex';
-              streetViewPanorama.setVisible(false);
-            }
-          });
-        } else {
-          document.getElementById('roadviewFallback').style.display = 'flex';
-        }
+        kakaoRoadview = new kakao.maps.Roadview(rvContainer);
+        kakaoRoadviewClient = new kakao.maps.RoadviewClient();
+        
+        // 로드뷰 초기화 완료 이벤트
+        kakao.maps.event.addListener(kakaoRoadview, 'init', function() {
+          console.log('[카카오 로드뷰] 초기화 완료');
+          captureRoadviewImage();
+        });
       } catch (e) {
-        console.warn('Google Street View error:', e);
-        document.getElementById('roadviewFallback').style.display = 'flex';
+        console.warn('[카카오 로드뷰] 초기화 실패:', e);
+        if (fallback) fallback.style.display = 'flex';
+        return;
       }
+    }
+
+    // 파노라마 ID 조회 및 로드뷰 표시
+    if (kakaoRoadviewClient) {
+      var position = new kakao.maps.LatLng(lat, lng);
+      kakaoRoadviewClient.getNearestPanoId(position, 50, function(panoId) {
+        if (panoId === null) {
+          console.warn('[카카오 로드뷰] 해당 위치에 로드뷰가 없습니다.');
+          if (fallback) fallback.style.display = 'flex';
+          capturedRoadviewImage = null;
+          return;
+        }
+        
+        if (fallback) fallback.style.display = 'none';
+        kakaoRoadview.setPanoId(panoId, 0);
+        
+        // 로드뷰 로드 완료 후 캡처
+        setTimeout(function() {
+          captureRoadviewImage();
+        }, 1000); // 로드뷰 렌더링 대기
+      });
+    } else {
+      console.warn('[카카오 로드뷰] 클라이언트가 초기화되지 않았습니다.');
+      if (fallback) fallback.style.display = 'flex';
+    }
+  }
+
+  // ── 로드뷰 이미지 캡처 ──
+  function captureRoadviewImage() {
+    if (!kakaoRoadview) {
+      console.warn('[로드뷰 캡처] 로드뷰 객체가 없습니다.');
       return;
     }
 
-    // 이미 초기화된 경우 위치만 업데이트
-    var streetViewService = new google.maps.StreetViewService();
-    streetViewService.getPanorama({ location: position, radius: 50 }, function(data, status) {
-      if (status === 'OK') {
-        document.getElementById('roadviewFallback').style.display = 'none';
-        streetViewPanorama.setPosition(position);
-        streetViewPanorama.setVisible(true);
-      } else {
-        document.getElementById('roadviewFallback').style.display = 'flex';
-        streetViewPanorama.setVisible(false);
+    try {
+      var rvContainer = document.getElementById('roadview');
+      if (!rvContainer) {
+        console.warn('[로드뷰 캡처] 컨테이너를 찾을 수 없습니다.');
+        return;
       }
-    });
+
+      // html2canvas를 사용하여 캡처 (동적 로드)
+      if (typeof html2canvas === 'undefined') {
+        // html2canvas 동적 로드
+        var script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        script.onload = function() {
+          captureRoadviewImage();
+        };
+        script.onerror = function() {
+          console.error('[로드뷰 캡처] html2canvas 로드 실패');
+        };
+        document.head.appendChild(script);
+        return;
+      }
+
+      // 캡처 실행
+      html2canvas(rvContainer, {
+        useCORS: true,
+        allowTaint: false,
+        scale: 0.8, // 이미지 크기 축소 (네트워크 부하 감소)
+        logging: false
+      }).then(function(canvas) {
+        // Canvas를 Blob으로 변환
+        canvas.toBlob(function(blob) {
+          if (!blob) {
+            console.error('[로드뷰 캡처] Blob 변환 실패');
+            return;
+          }
+
+          // Blob을 base64로 변환
+          var reader = new FileReader();
+          reader.onloadend = function() {
+            var base64data = reader.result;
+            capturedRoadviewImage = base64data;
+            console.log('[로드뷰 캡처] 완료, 크기:', (base64data.length / 1024).toFixed(2) + 'KB');
+          };
+          reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.85); // JPEG, 품질 85%
+      }).catch(function(error) {
+        console.error('[로드뷰 캡처] 오류:', error);
+      });
+    } catch (e) {
+      console.error('[로드뷰 캡처] 예외:', e);
+    }
   }
 
   // ── Radius Buttons ──
@@ -567,6 +655,76 @@
   function callAnalyzeAPI(input, apiBaseUrl) {
     console.log('[분석 실행] API 호출 시작:', apiBaseUrl);
     
+    // 로드뷰 이미지가 캡처되었는지 확인
+    if (capturedRoadviewImage) {
+      console.log('[분석 실행] 로드뷰 이미지 캡처됨, 로드뷰 분석 먼저 진행');
+      // 로드뷰 분석 먼저 진행
+      sendRoadviewAnalysis(input, apiBaseUrl).then(function(roadviewResult) {
+        // 로드뷰 분석 완료 후 일반 분석 진행
+        sendAnalyzeRequest(input, apiBaseUrl, roadviewResult);
+      }).catch(function(error) {
+        console.warn('[분석 실행] 로드뷰 분석 실패, 기본 분석 진행:', error);
+        // 로드뷰 분석 실패해도 일반 분석은 진행
+        sendAnalyzeRequest(input, apiBaseUrl, null);
+      });
+    } else {
+      console.log('[분석 실행] 로드뷰 이미지 없음, 기본 분석 진행');
+      // 로드뷰 없이 분석 진행
+      sendAnalyzeRequest(input, apiBaseUrl, null);
+    }
+  }
+
+  // ── 로드뷰 분석 API 호출 ──
+  function sendRoadviewAnalysis(input, apiBaseUrl) {
+    return new Promise(function(resolve, reject) {
+      // base64를 Blob으로 변환
+      var base64Data = capturedRoadviewImage.split(',')[1]; // data:image/jpeg;base64, 제거
+      var byteCharacters = atob(base64Data);
+      var byteNumbers = new Array(byteCharacters.length);
+      for (var i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      var byteArray = new Uint8Array(byteNumbers);
+      var blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+      // FormData 생성
+      var formData = new FormData();
+      formData.append('address', input.location.address || '');
+      formData.append('lat', input.location.lat.toString());
+      formData.append('lng', input.location.lng.toString());
+      formData.append('roadview', blob, 'roadview.jpg');
+
+      // 로드뷰 분석 API 호출
+      fetch(apiBaseUrl + '/api/roadview/analyze', {
+        method: 'POST',
+        body: formData
+      })
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('로드뷰 분석 실패: ' + response.status);
+        }
+        return response.json();
+      })
+      .then(function(roadviewResult) {
+        console.log('[분석 실행] 로드뷰 분석 완료:', roadviewResult);
+        resolve(roadviewResult);
+      })
+      .catch(function(error) {
+        console.error('[분석 실행] 로드뷰 분석 오류:', error);
+        reject(error);
+      });
+    });
+  }
+
+  // ── 일반 분석 요청 (로드뷰 결과 포함) ──
+  function sendAnalyzeRequest(input, apiBaseUrl, roadviewAnalysis) {
+    // 로드뷰 분석 결과가 있으면 input에 추가 (백엔드에서 사용)
+    if (roadviewAnalysis && roadviewAnalysis.success && roadviewAnalysis.results && roadviewAnalysis.results.roadview) {
+      // 백엔드 orchestrator에서 로드뷰 분석 결과를 사용하도록 함
+      input.roadviewAnalysis = roadviewAnalysis.results.roadview;
+      console.log('[분석 실행] 로드뷰 분석 결과를 백엔드에 전달할 준비 완료');
+    }
+    
     fetch(apiBaseUrl + '/api/analyze', {
       method: 'POST',
       headers: {
@@ -582,6 +740,11 @@
     })
     .then(function(data) {
       console.log('[분석 실행] 분석 ID 받음:', data.analysisId);
+      
+      // 로드뷰 분석 결과가 있으면 세션에 저장 (리포트에서 사용)
+      if (roadviewAnalysis && roadviewAnalysis.success) {
+        Utils.saveSession('roadviewAnalysis', roadviewAnalysis);
+      }
       
       // 분석 결과를 폴링하여 가져오기
       pollAnalysisResult(data.analysisId, apiBaseUrl);
@@ -722,19 +885,19 @@
   // ── Init ──
   prefillFromPrevious();
   
-  // 카카오맵 초기화 (SDK 로드 완료 후 실행)
-  // window.onload를 사용하여 모든 스크립트가 로드된 후 실행
-  if (window.addEventListener) {
-    window.addEventListener('load', function() {
-      console.log('[전역] window.load 이벤트 발생, initMap 호출');
-      setTimeout(initMap, 200); // SDK 로드 대기
-    });
-  } else if (window.attachEvent) {
-    window.attachEvent('onload', function() {
-      setTimeout(initMap, 200);
+  // window.onload 이벤트에서 initMap 호출 (원래 방식)
+  window.onload = function() {
+    console.log('[전역] window.load 이벤트 발생, initMap 호출');
+    setTimeout(initMap, 500); // SDK 로드 대기
+  };
+  
+  // DOMContentLoaded 이벤트도 처리
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(initMap, 500);
     });
   } else {
-    // 폴백: 즉시 시도
+    // 이미 로드된 경우
     setTimeout(initMap, 500);
   }
 })();

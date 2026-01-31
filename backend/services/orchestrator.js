@@ -27,7 +27,7 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     requestKeys: analysisRequest ? Object.keys(analysisRequest) : []
   });
   
-  const { analysisId, brandId, location, radius, conditions, targetDailySales } = analysisRequest;
+  const { analysisId, brandId, location, radius, conditions, targetDailySales, roadviewAnalysis } = analysisRequest;
   const startTime = Date.now();
 
   console.log(`[${analysisId}] 🚀 분석 시작 준비...`, {
@@ -133,53 +133,97 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
 
     // 3. 로드뷰 분석
     // 참고: 카카오 로드뷰는 서버 사이드에서 직접 호출 불가 (JavaScript API만 제공)
-    // 따라서 Google Street View Static API를 사용하여 로드뷰 이미지 URL을 가져온 후,
-    // ai/roadview 모듈에 전달하여 Gemini Vision API로 분석합니다.
-    // 프론트엔드에서는 카카오 로드뷰 JavaScript API로 사용자에게 로드뷰를 표시할 수 있습니다.
+    // 프론트엔드에서 카카오 로드뷰를 캡처하여 분석한 결과를 사용
+    // 프론트엔드에서 전송한 roadviewAnalysis가 있으면 사용, 없으면 Google Street View 사용
     const step3Start = Date.now();
     console.log(`[${analysisId}] 🗺️ 3/5 로드뷰 분석 시작...`);
     let roadview;
-    try {
-      // Google Street View API로 로드뷰 이미지 URL 가져오기
-      const { getRoadviewImageUrl } = require('../market/roadviewApi');
-      const roadviewInfo = await getRoadviewImageUrl(location);
+    
+    if (roadviewAnalysis && roadviewAnalysis.success && roadviewAnalysis.data) {
+      // 프론트엔드에서 전송한 로드뷰 분석 결과 사용
+      console.log(`[${analysisId}] ✅ 프론트엔드에서 전송한 로드뷰 분석 결과 사용`);
       
-      // AI 로드뷰 분석 모듈 호출
-      // ai/roadview 모듈은 이미지 URL을 받아서 다운로드하고 Gemini Vision API로 분석합니다.
       try {
-        const { analyzeRoadview } = require('../../ai/roadview');
-        roadview = await analyzeRoadview({
-          location,
-          imageUrl: roadviewInfo.imageUrl, // Google Street View 이미지 URL
-          source: roadviewInfo.source // 'google' | 'naver' | 'kakao'
-        });
+        // 프론트엔드 분석 결과를 기존 인터페이스 형식으로 변환
+        // roadviewAnalysis는 backend/routes/roadview.js에서 반환한 형식
+        // { success: true, data: { analysis_result: {...}, overall_assessment: {...} } }
+        const geminiResult = {
+          success: true,
+          data: roadviewAnalysis.data
+        };
+        
+        // ai/roadview/index.js의 변환 함수 사용
+        const { convertToLegacyFormat, validateAndNormalizeRisks, calculateRiskScore, calculateOverallRisk } = require('../../ai/roadview');
+        const converted = convertToLegacyFormat(geminiResult);
+        
+        // 리스크 항목 검증 및 구조화
+        const risks = validateAndNormalizeRisks(converted.risks);
+        const riskScore = converted.riskScore || calculateRiskScore(risks);
+        const overallRisk = calculateOverallRisk(risks);
+        
+        roadview = {
+          location: { lat: location.lat, lng: location.lng },
+          risks,
+          overallRisk,
+          riskScore,
+          source: 'kakao' // 카카오 로드뷰에서 캡처
+        };
+        
         const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
-        console.log(`[${analysisId}] ✅ 로드뷰 분석 완료 (${step3Time}초, 소스: ${roadviewInfo.source})`);
-      } catch (roadviewError) {
-        // ai/roadview 모듈이 아직 구현되지 않았거나 오류 발생 시 기본값 사용
-        const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
-        console.warn(`[${analysisId}] ⚠️  ai/roadview 모듈 호출 실패 (${step3Time}초): ${roadviewError.message}`);
-        console.warn(`[${analysisId}] ⚠️  기본값으로 대체합니다.`);
+        console.log(`[${analysisId}] ✅ 로드뷰 분석 완료 (${step3Time}초, 소스: 프론트엔드 카카오 로드뷰)`);
+      } catch (convertError) {
+        console.warn(`[${analysisId}] ⚠️  로드뷰 분석 결과 변환 실패: ${convertError.message}`);
+        console.warn(`[${analysisId}] ⚠️  스택:`, convertError.stack);
+        // 변환 실패 시 기본값 사용
         roadview = {
           location: { lat: location.lat, lng: location.lng },
           risks: [],
           overallRisk: 'medium',
           riskScore: 65,
-          roadviewUrl: roadviewInfo.imageUrl, // 로드뷰 이미지 URL (프론트엔드에서 사용 가능)
-          source: roadviewInfo.source
+          source: 'kakao'
         };
       }
-    } catch (error) {
-      const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
-      console.error(`[${analysisId}] ❌ 로드뷰 이미지 URL 가져오기 실패 (${step3Time}초):`, error);
-      // 로드뷰 분석 실패 시에도 기본값으로 계속 진행
-      roadview = {
-        location: { lat: location.lat, lng: location.lng },
-        risks: [],
-        overallRisk: 'medium',
-        riskScore: 65
-      };
-      console.warn(`[${analysisId}] ⚠️  로드뷰 분석 실패, 기본값으로 대체합니다.`);
+    } else {
+      // 프론트엔드에서 로드뷰 분석 결과가 없으면 Google Street View 사용 (기존 방식)
+      console.log(`[${analysisId}] ⚠️  프론트엔드 로드뷰 분석 결과 없음, Google Street View 사용`);
+      try {
+        // Google Street View API로 로드뷰 이미지 URL 가져오기
+        const { getRoadviewImageUrl } = require('../market/roadviewApi');
+        const roadviewInfo = await getRoadviewImageUrl(location);
+        
+        // AI 로드뷰 분석 모듈 호출
+        try {
+          const { analyzeRoadview } = require('../../ai/roadview');
+          roadview = await analyzeRoadview({
+            location,
+            imageUrl: roadviewInfo.imageUrl, // Google Street View 이미지 URL
+            source: roadviewInfo.source // 'google' | 'naver' | 'kakao'
+          });
+          const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
+          console.log(`[${analysisId}] ✅ 로드뷰 분석 완료 (${step3Time}초, 소스: ${roadviewInfo.source})`);
+        } catch (roadviewError) {
+          const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
+          console.warn(`[${analysisId}] ⚠️  ai/roadview 모듈 호출 실패 (${step3Time}초): ${roadviewError.message}`);
+          roadview = {
+            location: { lat: location.lat, lng: location.lng },
+            risks: [],
+            overallRisk: 'medium',
+            riskScore: 65,
+            roadviewUrl: roadviewInfo.imageUrl,
+            source: roadviewInfo.source
+          };
+        }
+      } catch (error) {
+        const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
+        console.error(`[${analysisId}] ❌ 로드뷰 이미지 URL 가져오기 실패 (${step3Time}초):`, error);
+        roadview = {
+          location: { lat: location.lat, lng: location.lng },
+          risks: [],
+          overallRisk: 'medium',
+          riskScore: 65
+        };
+        console.warn(`[${analysisId}] ⚠️  로드뷰 분석 실패, 기본값으로 대체합니다.`);
+      }
     }
 
     // 4. AI 컨설팅
