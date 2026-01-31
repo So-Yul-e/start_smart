@@ -40,13 +40,14 @@ postgresql://postgres.oetxnpgfsmmxcgnelhvd:[PASSWORD]@aws-0-ap-northeast-2.poole
 
 현재 (IPv4 호환 안 됨):
 ```bash
-CLOUD_DATABASE_URL=postgresql://postgres:mySecurePassword123@db.oetxnpgfsmmxcgnelhvd.supabase.co:5432/postgres
+CLOUD_DATABASE_URL=postgresql://postgres:[PASSWORD]@db.oetxnpgfsmmxcgnelhvd.supabase.co:5432/postgres
 ```
 
 수정 후 (IPv4 호환):
 ```bash
-CLOUD_DATABASE_URL=postgresql://postgres.oetxnpgfsmmxcgnelhvd:mySecurePassword123@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres
+CLOUD_DATABASE_URL=postgresql://postgres.oetxnpgfsmmxcgnelhvd:[PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres
 ```
+⚠️ **보안 주의**: `[PASSWORD]`를 실제 Supabase 비밀번호로 교체하세요.
 
 **차이점:**
 - 사용자명: `postgres` → `postgres.oetxnpgfsmmxcgnelhvd` (프로젝트 ID 포함)
@@ -67,8 +68,9 @@ node backend/db/upload-to-cloud.js
 
 ```bash
 # Session Pooler 연결 테스트
-psql "postgresql://postgres.oetxnpgfsmmxcgnelhvd:mySecurePassword123@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
+psql "postgresql://postgres.oetxnpgfsmmxcgnelhvd:[PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
 ```
+⚠️ **보안 주의**: `[PASSWORD]`를 실제 Supabase 비밀번호로 교체하세요.
 
 연결이 성공하면 `postgres=#` 프롬프트가 나타납니다.
 

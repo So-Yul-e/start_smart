@@ -79,8 +79,9 @@ SQL Editor로 업로드가 완료되면:
 
 1. `.env` 파일에 `DATABASE_URL` 설정:
    ```bash
-   DATABASE_URL=postgresql://postgres.oetxnpgfsmmxcgnelhvd:aidirectors123!@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres
+   DATABASE_URL=postgresql://postgres.oetxnpgfsmmxcgnelhvd:[YOUR-PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres
    ```
+   ⚠️ **보안 주의**: `[YOUR-PASSWORD]`를 실제 Supabase 비밀번호로 교체하세요.
 
 2. 서버 실행 및 테스트:
    ```bash
