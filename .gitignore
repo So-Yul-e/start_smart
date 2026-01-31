@@ -51,3 +51,5 @@ status.json
 # Local workspace
 my-project/
 docs/권동영_Frontend_가이드.md
+.vercel
+.env*.local

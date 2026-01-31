@@ -24,10 +24,14 @@
   
   // 브랜드 이름을 로고 파일명으로 매핑
   function getLogoFileName(brandName) {
-    if (!brandName) return null;
+    if (!brandName) {
+      console.log('[getLogoFileName] brandName이 없음');
+      return null;
+    }
     
     // 브랜드 이름 정규화
     var normalizedName = normalizeBrandName(brandName);
+    console.log('[getLogoFileName] 입력:', brandName, '→ 정규화:', normalizedName);
     
     // 실제 존재하는 로고 파일만 매핑 (frontend/images/logos/ 기준)
     var logoMap = {
@@ -52,17 +56,20 @@
     
     // 1. 원본 이름으로 정확한 매칭
     if (logoMap[brandName]) {
+      console.log('[getLogoFileName] 원본 매칭 성공:', brandName, '→', logoMap[brandName]);
       return logoMap[brandName];
     }
     
     // 2. 정규화된 이름으로 정확한 매칭
     if (logoMap[normalizedName]) {
+      console.log('[getLogoFileName] 정규화 매칭 성공:', normalizedName, '→', logoMap[normalizedName]);
       return logoMap[normalizedName];
     }
     
     // 3. 부분 매칭 (원본 이름 기준)
     for (var key in logoMap) {
       if (brandName.includes(key) || key.includes(brandName)) {
+        console.log('[getLogoFileName] 부분 매칭 성공:', brandName, '포함', key, '→', logoMap[key]);
         return logoMap[key];
       }
     }
@@ -70,12 +77,13 @@
     // 4. 부분 매칭 (정규화된 이름 기준)
     for (var key in logoMap) {
       if (normalizedName.includes(key) || key.includes(normalizedName)) {
+        console.log('[getLogoFileName] 정규화 부분 매칭 성공:', normalizedName, '포함', key, '→', logoMap[key]);
         return logoMap[key];
       }
     }
     
     // 5. 매핑 실패 → null 반환 (아이콘으로 대체됨)
-    // 로고 파일이 없는 브랜드: 던킨도너츠, 뚜레쥬르, 만렙커피, 바나프레소, 파리바게트
+    console.log('[getLogoFileName] 매핑 실패:', brandName);
     return null;
   }
   

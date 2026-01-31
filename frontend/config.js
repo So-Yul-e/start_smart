@@ -17,8 +17,12 @@ const getApiBaseUrl = () => {
     return process.env.REACT_APP_API_URL;
   }
   
-  // 3. 기본값: localhost (로컬 개발 환경)
-  // 각자가 푸시 받아서 바로 사용할 수 있도록 localhost로 고정
+  // 3. 배포 환경 (Vercel 등): 현재 호스트 사용
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return window.location.origin;
+  }
+  
+  // 4. 기본값: localhost (로컬 개발 환경)
   return 'http://localhost:3000';
 };
 
