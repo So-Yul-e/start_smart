@@ -107,3 +107,17 @@
         height: 300px;
     }
 }
+
+@media (max-width: 480px) {
+    .map-container {
+        height: 250px;
+    }
+
+    .roadview-preview {
+        height: 180px;
+    }
+
+    .roadview-grid {
+        grid-template-columns: 1fr;
+    }
+}

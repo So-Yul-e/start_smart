@@ -1194,3 +1194,121 @@ a {
         overflow-x: auto;
     }
 }
+
+/* ===========================================
+   SMALL MOBILE (480px)
+   =========================================== */
+@media (max-width: 480px) {
+    .container {
+        padding: 0 1rem;
+    }
+
+    .header {
+        padding: 0.6rem 1rem;
+    }
+
+    .header.scrolled {
+        padding: 0.5rem 1rem;
+    }
+
+    .logo {
+        font-size: 1.2rem;
+    }
+
+    .nav {
+        gap: 1.2rem;
+    }
+
+    .nav a {
+        font-size: 0.8rem;
+    }
+
+    .hero h1 {
+        font-size: 2rem;
+    }
+
+    .hero p {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .btn-cta {
+        padding: 0.9rem 1.8rem;
+        font-size: 0.95rem;
+    }
+
+    .section {
+        padding: 3.5rem 0;
+    }
+
+    .section-title {
+        margin-bottom: 2rem;
+    }
+
+    .section-title h2 {
+        font-size: 1.5rem;
+    }
+
+    .brand-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+
+    .glass-card {
+        padding: 1.2rem;
+    }
+
+    .score-circle-lg {
+        width: 130px;
+        height: 130px;
+    }
+
+    .score-circle-lg .score-num {
+        font-size: 2.8rem;
+    }
+
+    .scenario-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .tab-btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .page-wrapper {
+        padding-top: 80px;
+    }
+
+    .page-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .badge-pill {
+        font-size: 0.75rem;
+        padding: 0.4rem 1rem;
+    }
+
+    .input-container {
+        padding: 1.5rem;
+    }
+
+    .dashboard-modal {
+        padding: 2rem 1rem;
+    }
+
+    .result-card {
+        padding: 1.5rem;
+    }
+
+    .cta-heading {
+        font-size: 1.5rem;
+    }
+
+    .dash-title {
+        font-size: 1.5rem;
+    }
+
+    .roadview-grid {
+        grid-template-columns: 1fr;
+    }
+}
