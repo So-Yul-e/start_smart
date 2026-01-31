@@ -7,17 +7,17 @@ var MockData = (function () {
   // ── 12개 브랜드 목록 ──
   var brands = [
     { id: 'brand_1',  name: '메가커피',     position: '저가',     initialInvestment: 120000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 450, logo: 'megamgcoffee_BI.png' },
-    { id: 'brand_2',  name: '컴포즈커피',   position: '저가',     initialInvestment: 115000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 420, logo: null },
+    { id: 'brand_2',  name: '컴포즈커피',   position: '저가',     initialInvestment: 115000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 420, logo: 'compose.png' },
     { id: 'brand_3',  name: '빽다방',       position: '저가',     initialInvestment: 130000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 400, logo: 'paik.png' },
     { id: 'brand_4',  name: '스타벅스',     position: '프리미엄', initialInvestment: 500000000, monthlyRoyalty: 5,  monthlyMarketing: 2, avgDailySales: 600, logo: 'Starbucks.png' },
     { id: 'brand_5',  name: '이디야',       position: '표준',     initialInvestment: 180000000, monthlyRoyalty: 3,  monthlyMarketing: 1, avgDailySales: 250, logo: 'EDIYA.png' },
     { id: 'brand_6',  name: '투썸플레이스', position: '프리미엄', initialInvestment: 320000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 350, logo: 'atwosomeplace.png' },
-    { id: 'brand_7',  name: '더벤티',       position: '저가',     initialInvestment: 110000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 380, logo: null },
-    { id: 'brand_8',  name: '할리스',       position: '프리미엄', initialInvestment: 280000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 300, logo: null },
+    { id: 'brand_7',  name: '더벤티',       position: '저가',     initialInvestment: 110000000, monthlyRoyalty: 2,  monthlyMarketing: 1, avgDailySales: 380, logo: 'theventi.png' },
+    { id: 'brand_8',  name: '할리스',       position: '프리미엄', initialInvestment: 280000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 300, logo: 'hollys.png' },
     { id: 'brand_9',  name: '블루보틀',     position: '프리미엄', initialInvestment: 500000000, monthlyRoyalty: 5,  monthlyMarketing: 3, avgDailySales: 200, logo: 'bluebottle.png' },
-    { id: 'brand_10', name: '커피빈',       position: '프리미엄', initialInvestment: 350000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 280, logo: null },
-    { id: 'brand_11', name: '탐앤탐스',     position: '표준',     initialInvestment: 200000000, monthlyRoyalty: 3,  monthlyMarketing: 1, avgDailySales: 230, logo: null },
-    { id: 'brand_12', name: '폴바셋',       position: '프리미엄', initialInvestment: 400000000, monthlyRoyalty: 5,  monthlyMarketing: 2, avgDailySales: 180, logo: null }
+    { id: 'brand_10', name: '커피빈',       position: '프리미엄', initialInvestment: 350000000, monthlyRoyalty: 4,  monthlyMarketing: 2, avgDailySales: 280, logo: 'coffeebean.png' },
+    { id: 'brand_11', name: '탐앤탐스',     position: '표준',     initialInvestment: 200000000, monthlyRoyalty: 3,  monthlyMarketing: 1, avgDailySales: 230, logo: 'tomntoms.png' },
+    { id: 'brand_12', name: '폴바셋',       position: '프리미엄', initialInvestment: 400000000, monthlyRoyalty: 5,  monthlyMarketing: 2, avgDailySales: 180, logo: 'paulbassett.png' }
   ];
 
   // ── 분석 결과 생성 함수 (입력 기반) ──

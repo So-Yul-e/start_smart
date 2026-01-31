@@ -147,6 +147,7 @@
       console.warn('Kakao Map init failed:', e);
       document.getElementById('map').style.display = 'none';
       document.getElementById('mapFallback').style.display = 'flex';
+      document.getElementById('mapContainer').classList.add('fallback-mode');
       // Still allow pre-fill to work without map
       if (prevInput && prevInput.location) {
         selectedLocation = prevInput.location;
@@ -277,30 +278,75 @@
     var optimistic = Math.round(brand.avgDailySales * 1.3);
 
     document.getElementById('scenarioReason').textContent =
-      brand.name + ' 브랜드의 평균 판매량과 상권 유동인구, 경쟁 밀도를 종합 분석한 AI 추정치입니다.';
+      brand.name + ' 평균 판매량 + 상권 분석 기반 AI 추정치 — 클릭하여 선택';
 
     document.getElementById('scenarioCards').innerHTML =
-      '<div class="scenario-card">' +
+      '<div class="scenario-card" data-sales="' + conservative + '">' +
       '<div class="label">보수적</div>' +
       '<div class="value">' + conservative + '</div>' +
       '<div class="unit">잔/일</div>' +
       '</div>' +
-      '<div class="scenario-card highlight">' +
-      '<div class="label" style="color:var(--gold);">기대치</div>' +
-      '<div class="value" style="color:var(--gold);">' + expected + '</div>' +
+      '<div class="scenario-card highlight" data-sales="' + expected + '">' +
+      '<div class="label">기대치</div>' +
+      '<div class="value">' + expected + '</div>' +
       '<div class="unit">잔/일</div>' +
       '</div>' +
-      '<div class="scenario-card">' +
+      '<div class="scenario-card" data-sales="' + optimistic + '">' +
       '<div class="label">낙관적</div>' +
       '<div class="value">' + optimistic + '</div>' +
       '<div class="unit">잔/일</div>' +
       '</div>';
 
-    // Only set daily sales if not already pre-filled
+    // Click to select scenario
+    var cards = document.querySelectorAll('#scenarioCards .scenario-card');
+    for (var i = 0; i < cards.length; i++) {
+      cards[i].addEventListener('click', function () {
+        for (var j = 0; j < cards.length; j++) {
+          cards[j].classList.remove('highlight');
+        }
+        this.classList.add('highlight');
+        inputDailySales.value = this.getAttribute('data-sales');
+        updateSalesHint();
+        validateForm();
+      });
+    }
+
+    // Set default value
     if (!inputDailySales.value) {
       inputDailySales.value = expected;
     }
+    updateSalesHint();
     validateForm();
+  }
+
+  // ── Sales Hint — sync highlight with input value ──
+  function updateSalesHint() {
+    var hint = document.getElementById('salesHint');
+    if (!hint) return;
+    var val = parseInt(inputDailySales.value);
+    if (!val) {
+      hint.textContent = '잔/일';
+      return;
+    }
+    var cards = document.querySelectorAll('#scenarioCards .scenario-card');
+    if (cards.length === 0) {
+      hint.textContent = '잔/일';
+      return;
+    }
+    var matched = false;
+    for (var i = 0; i < cards.length; i++) {
+      if (parseInt(cards[i].getAttribute('data-sales')) === val) {
+        var label = cards[i].querySelector('.label').textContent;
+        hint.textContent = '잔/일 — AI ' + label + ' 기준';
+        cards[i].classList.add('highlight');
+        matched = true;
+      } else {
+        cards[i].classList.remove('highlight');
+      }
+    }
+    if (!matched) {
+      hint.textContent = '잔/일 — 직접 입력';
+    }
   }
 
   // ── Form Validation ──
@@ -317,6 +363,8 @@
   [inputInvestment, inputRent, inputArea, inputDailySales].forEach(function (el) {
     el.addEventListener('input', validateForm);
   });
+
+  inputDailySales.addEventListener('input', updateSalesHint);
 
   // ── Analysis Execution ──
   btnAnalyze.addEventListener('click', function () {

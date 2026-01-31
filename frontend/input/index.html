@@ -141,19 +141,16 @@
         </div>
       </div>
 
-      <!-- IA 3: AI 판매량 제안 -->
-      <div id="scenarioSection" class="glass-card" style="display:none;">
-        <h3><i class="fa-solid fa-robot" style="color:var(--gold); margin-right:0.5rem;"></i> AI 판매량 제안</h3>
-        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;" id="scenarioReason"></p>
-        <div class="scenario-cards" id="scenarioCards"></div>
-      </div>
-
-      <!-- 목표 판매량 입력 -->
+      <!-- 목표 일 판매량 (AI 제안 통합) -->
       <div class="glass-card">
         <h3><i class="fa-solid fa-bullseye" style="color:var(--gold); margin-right:0.5rem;"></i> 목표 일 판매량</h3>
+        <div id="scenarioSection" style="display:none; margin-top:0.75rem;">
+          <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.75rem;" id="scenarioReason"></p>
+          <div class="scenario-cards" id="scenarioCards"></div>
+        </div>
         <div class="field-group" style="margin-top:1rem;">
           <input type="number" id="inputDailySales" class="field-input" placeholder="예: 300" style="font-size:2rem; text-align:center;">
-          <div class="field-hint" style="text-align:center;">잔/일 (AI 기대치 기준 입력 추천)</div>
+          <div class="field-hint" style="text-align:center;" id="salesHint">잔/일 (위치 선택 시 AI가 판매량을 제안합니다)</div>
         </div>
       </div>
 
