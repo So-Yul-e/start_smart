@@ -9,7 +9,17 @@ const { getAnalysis } = require('../db/analysisRepository');
 router.get('/:analysisId', async (req, res) => {
   try {
     const { analysisId } = req.params;
+    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    console.log(`[결과 조회] ========== 요청 받음 ==========`);
     console.log(`[결과 조회] 분석 ID: ${analysisId}`);
+    console.log(`[결과 조회] 환경:`, {
+      isVercel,
+      isProduction,
+      nodeEnv: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
     
     const analysis = await getAnalysis(analysisId);
 
@@ -70,8 +80,11 @@ router.get('/:analysisId', async (req, res) => {
       message: '분석 상태를 확인할 수 없습니다.'
     });
   } catch (error) {
-    console.error('[결과 조회] 오류:', error);
-    console.error('[결과 조회] 스택:', error.stack);
+    console.error('[결과 조회] ❌ 오류 발생:', error);
+    console.error('[결과 조회] ❌ 오류 메시지:', error.message);
+    console.error('[결과 조회] ❌ 오류 스택:', error.stack);
+    console.error('[결과 조회] ❌ 오류 코드:', error.code);
+    console.error('[결과 조회] ❌ 오류 타입:', error.constructor.name);
     res.status(500).json({
       success: false,
       status: 'error',

@@ -9,7 +9,34 @@ const { createAnalysis, updateAnalysis } = require('../db/analysisRepository');
 
 router.post('/', async (req, res) => {
   try {
-    console.log('[분석 요청] 요청 받음');
+    // 배포 환경 체크
+    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    console.log('[분석 요청] ========== 요청 받음 ==========');
+    console.log('[분석 요청] 환경:', {
+      isVercel,
+      isProduction,
+      nodeEnv: process.env.NODE_ENV,
+      vercel: process.env.VERCEL,
+      timestamp: new Date().toISOString()
+    });
+    
+    // 환경 변수 체크 (배포 환경)
+    if (isVercel || isProduction) {
+      const requiredEnvVars = ['DATABASE_URL'];
+      const missingEnvVars = requiredEnvVars.filter(key => !process.env[key]);
+      if (missingEnvVars.length > 0) {
+        console.error('[분석 요청] ❌ 필수 환경 변수 누락:', missingEnvVars);
+        return res.status(500).json({
+          success: false,
+          error: '서버 설정 오류: 필수 환경 변수가 설정되지 않았습니다.',
+          details: isProduction ? undefined : `누락된 변수: ${missingEnvVars.join(', ')}`
+        });
+      }
+      console.log('[분석 요청] ✅ 필수 환경 변수 확인 완료');
+    }
+    
     console.log('[분석 요청] 요청 본문:', JSON.stringify(req.body, null, 2));
     
     const { brandId, location, radius, conditions, targetDailySales, roadviewAnalysis } = req.body;
@@ -88,12 +115,21 @@ router.post('/', async (req, res) => {
       console.log('[분석 요청] Promise 타입:', analysisPromise instanceof Promise ? 'Promise' : typeof analysisPromise);
       
       analysisPromise.catch(async (err) => {
-        console.error(`[${analysisId}] 분석 실행 오류:`, err);
-        console.error(`[${analysisId}] 분석 실행 오류 스택:`, err.stack);
-        await updateAnalysis(analysisId, {
-          status: 'failed',
-          errorMessage: err.message
-        });
+        console.error(`[${analysisId}] ❌ 분석 실행 오류:`, err);
+        console.error(`[${analysisId}] ❌ 분석 실행 오류 메시지:`, err.message);
+        console.error(`[${analysisId}] ❌ 분석 실행 오류 스택:`, err.stack);
+        console.error(`[${analysisId}] ❌ 분석 실행 오류 코드:`, err.code);
+        console.error(`[${analysisId}] ❌ 분석 실행 오류 타입:`, err.constructor.name);
+        
+        try {
+          await updateAnalysis(analysisId, {
+            status: 'failed',
+            errorMessage: err.message || '알 수 없는 오류가 발생했습니다.'
+          });
+          console.log(`[${analysisId}] ✅ 실패 상태 DB 저장 완료`);
+        } catch (updateErr) {
+          console.error(`[${analysisId}] ❌ 실패 상태 DB 저장 실패:`, updateErr);
+        }
       });
     } catch (syncError) {
       console.error('[분석 요청] runAnalysis 동기 오류:', syncError);

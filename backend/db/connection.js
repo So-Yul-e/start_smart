@@ -81,6 +81,17 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   console.error('❌ PostgreSQL 데이터베이스 연결 오류:', err);
+  console.error('❌ 연결 오류 메시지:', err.message);
+  console.error('❌ 연결 오류 코드:', err.code);
+  console.error('❌ 연결 오류 스택:', err.stack);
+  
+  // 배포 환경에서 연결 오류 발생 시 상세 정보 로깅
+  if (process.env.VERCEL === '1' || process.env.NODE_ENV === 'production') {
+    console.error('❌ 배포 환경 연결 오류 상세:');
+    console.error('   - DATABASE_URL 존재:', !!process.env.DATABASE_URL);
+    console.error('   - 연결 문자열 길이:', process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0);
+    console.error('   - 호스트:', connectionString ? (connectionString.match(/@([^:]+)/)?.[1] || '알 수 없음') : '없음');
+  }
 });
 
 module.exports = pool;

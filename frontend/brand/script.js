@@ -12,6 +12,99 @@
     return n.toLocaleString() + '원';
   }
 
+  // 브랜드 이름 정규화 (괄호, 공백 제거 등)
+  function normalizeBrandName(brandName) {
+    if (!brandName) return '';
+    // 괄호와 내용 제거: "컴포즈(2024)" → "컴포즈"
+    var normalized = brandName.replace(/\([^)]*\)/g, '').trim();
+    // 공백 제거
+    normalized = normalized.replace(/\s+/g, '');
+    return normalized;
+  }
+  
+  // 브랜드 이름을 로고 파일명으로 매핑
+  function getLogoFileName(brandName) {
+    if (!brandName) return null;
+    
+    // 브랜드 이름 정규화
+    var normalizedName = normalizeBrandName(brandName);
+    
+    // 실제 존재하는 로고 파일만 매핑 (frontend/images/logos/ 기준)
+    var logoMap = {
+      // DB 브랜드 → 실제 파일
+      '이디야': 'EDIYA.png',
+      '이디야커피': 'EDIYA.png',
+      '메가커피': 'megamgcoffee_BI.png',
+      '빽다방': 'paik.png',
+      '탐앤탐스': 'tomntoms.png',
+      '투썸플레이스': 'atwosomeplace.png',
+      '할리스': 'hollys.png',
+      '할리스커피': 'hollys.png',
+      '컴포즈': 'compose.png',
+      '컴포즈커피': 'compose.png',
+      // MockData 브랜드 → 실제 파일
+      '스타벅스': 'Starbucks.png',
+      '더벤티': 'theventi.png',
+      '카페베네': 'coffeebean.png',
+      '커피빈': 'coffeebean.png',
+      '블루보틀': 'bluebottle.png',
+      '폴바셋': 'paulbassett.png'
+      // 로고 파일 없음: 던킨도너츠, 뚜레쥬르, 만렙커피, 바나프레소, 파리바게트
+    };
+    
+    // 1. 원본 이름으로 정확한 매칭
+    if (logoMap[brandName]) {
+      return logoMap[brandName];
+    }
+    
+    // 2. 정규화된 이름으로 정확한 매칭
+    if (logoMap[normalizedName]) {
+      return logoMap[normalizedName];
+    }
+    
+    // 3. 부분 매칭 (원본 이름 기준)
+    for (var key in logoMap) {
+      if (brandName.includes(key) || key.includes(brandName)) {
+        return logoMap[key];
+      }
+    }
+    
+    // 4. 부분 매칭 (정규화된 이름 기준)
+    for (var key in logoMap) {
+      if (normalizedName.includes(key) || key.includes(normalizedName)) {
+        return logoMap[key];
+      }
+    }
+    
+    // 5. 매핑 실패 → null 반환 (아이콘으로 대체됨)
+    // 로고 파일이 없는 브랜드: 던킨도너츠, 뚜레쥬르, 만렙커피, 바나프레소, 파리바게트
+    return null;
+  }
+  
+  // MockData의 logo 필드 파일명을 실제 파일명으로 변환
+  function normalizeLogoFileName(logoFileName) {
+    if (!logoFileName) return null;
+    
+    // MockData의 잘못된 파일명을 실제 파일명으로 변환
+    var fileMap = {
+      'starbucks.svg': 'Starbucks.png',
+      'atwosomeplace.svg': 'atwosomeplace.png',
+      'megamgcoffee_BI.png': 'megamgcoffee_BI.png', // 이미 정확함
+      'compose.png': 'compose.png',
+      'paik.png': 'paik.png',
+      'EDIYA.png': 'EDIYA.png',
+      'theventi.png': 'theventi.png',
+      'hollys.png': 'hollys.png',
+      'bluebottle.png': 'bluebottle.png',
+      'coffeebean.png': 'coffeebean.png',
+      'tomntoms.png': 'tomntoms.png',
+      'paulbassett.png': 'paulbassett.png'
+    };
+    
+    // 파일명이 fileMap에 있으면 변환, 없으면 그대로 사용
+    return fileMap[logoFileName] || logoFileName;
+  }
+
   function renderBrands(filter) {
     // 실제 API에서 브랜드 목록 가져오기
     var brands = window.brandsFromAPI || MockData.brands;
@@ -19,11 +112,21 @@
       brands = brands.filter(function (b) { return b.position === filter; });
     }
 
+    console.log('[브랜드 렌더링] 브랜드 수:', brands.length);
+    
     grid.innerHTML = brands.map(function (b, idx) {
       var logoHtml;
-      if (b.logo) {
-        logoHtml = '<img src="../images/logos/' + b.logo + '" alt="' + Utils.escapeHtml(b.name) + '" style="width:60px;height:60px;object-fit:contain;background:#fff;border-radius:50%;padding:4px;">';
+      // DB에서 logo 필드가 없으므로 브랜드 이름으로 매핑
+      var logoFileName = getLogoFileName(b.name);
+      
+      console.log('[브랜드 로고]', b.name, '→', logoFileName || '(없음)');
+      
+      if (logoFileName) {
+        // 절대 경로 사용 (로컬 및 배포 환경 모두 지원)
+        var logoPath = '/images/logos/' + logoFileName;
+        logoHtml = '<img src="' + logoPath + '" alt="' + Utils.escapeHtml(b.name) + '" style="width:60px;height:60px;object-fit:contain;background:#fff;border-radius:50%;padding:4px;" onerror="console.warn(\'이미지 로드 실패:\', this.src); var icon=document.createElement(\'i\'); icon.className=\'fa-solid fa-mug-hot\'; icon.style.cssText=\'font-size:2.5rem;color:var(--gold);\'; this.parentNode.replaceChild(icon, this);">';
       } else {
+        // 로고 파일이 없는 브랜드는 아이콘 표시
         logoHtml = '<i class="fa-solid fa-mug-hot" style="font-size:2.5rem;color:var(--gold);"></i>';
       }
 

@@ -8,10 +8,24 @@
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "backend/server.js",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+      }
+    },
+    {
       "src": "/(.*)",
       "dest": "backend/server.js"
     }
   ],
+  "functions": {
+    "backend/server.js": {
+      "maxDuration": 60
+    }
+  },
   "env": {
     "NODE_ENV": "production"
   }

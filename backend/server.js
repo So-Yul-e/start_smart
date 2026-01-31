@@ -14,6 +14,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Favicon 처리 (express.static보다 먼저 설정하여 404 방지)
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
 app.use(express.static(path.join(__dirname, '../frontend'), {
   etag: false,
   maxAge: 0,

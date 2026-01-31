@@ -95,9 +95,18 @@ async function createAnalysis(analysisData) {
     console.log('[createAnalysis] DB 저장 성공:', result.rows[0].id, '상태:', result.rows[0].status);
     return result.rows[0];
   } catch (dbError) {
-    console.error('[createAnalysis] DB 쿼리 오류:', dbError);
-    console.error('[createAnalysis] DB 쿼리 오류 메시지:', dbError.message);
-    console.error('[createAnalysis] DB 쿼리 오류 코드:', dbError.code);
+    console.error('[createAnalysis] ❌ DB 쿼리 오류:', dbError);
+    console.error('[createAnalysis] ❌ 오류 메시지:', dbError.message);
+    console.error('[createAnalysis] ❌ 오류 코드:', dbError.code);
+    console.error('[createAnalysis] ❌ 오류 스택:', dbError.stack);
+    
+    // 배포 환경에서 연결 오류 상세 로깅
+    if (process.env.VERCEL === '1' || process.env.NODE_ENV === 'production') {
+      console.error('[createAnalysis] ❌ 배포 환경 DB 오류 상세:');
+      console.error('   - DATABASE_URL 존재:', !!process.env.DATABASE_URL);
+      console.error('   - 연결 문자열 길이:', process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0);
+    }
+    
     throw dbError;
   }
 }
@@ -147,9 +156,14 @@ async function updateAnalysis(analysisId, updates) {
     const dbResult = await pool.query(query, values);
     return dbResult.rows[0];
   } catch (error) {
+    console.error('[updateAnalysis] ❌ DB 업데이트 오류:', error);
+    console.error('[updateAnalysis] ❌ 오류 메시지:', error.message);
+    console.error('[updateAnalysis] ❌ 오류 코드:', error.code);
+    console.error('[updateAnalysis] ❌ 오류 스택:', error.stack);
+    
     // progress 컬럼이 없는 경우 무시하고 계속 진행
     if (error.code === '42703' && progress !== undefined) {
-      console.warn('[updateAnalysis] progress 컬럼이 없습니다. 컬럼 없이 업데이트 재시도');
+      console.warn('[updateAnalysis] ⚠️  progress 컬럼이 없습니다. 컬럼 없이 업데이트 재시도');
       // progress 없이 재시도
       const retryUpdates = { status, result, errorMessage };
       return updateAnalysis(analysisId, retryUpdates);
@@ -205,7 +219,11 @@ async function getAnalysis(analysisId) {
         [analysisId]
       );
     } else {
-      // 다른 에러는 그대로 throw
+      // 다른 에러는 상세 로깅 후 throw
+      console.error('[getAnalysis] ❌ DB 조회 오류:', error);
+      console.error('[getAnalysis] ❌ 오류 메시지:', error.message);
+      console.error('[getAnalysis] ❌ 오류 코드:', error.code);
+      console.error('[getAnalysis] ❌ 오류 스택:', error.stack);
       throw error;
     }
   }

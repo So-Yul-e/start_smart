@@ -30,12 +30,21 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
   const { analysisId, brandId, location, radius, conditions, targetDailySales, roadviewAnalysis } = analysisRequest;
   const startTime = Date.now();
 
+  // 배포 환경 체크
+  const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   console.log(`[${analysisId}] 🚀 분석 시작 준비...`, {
     analysisId,
     brandId,
     hasLocation: !!location,
     hasConditions: !!conditions,
-    targetDailySales
+    targetDailySales,
+    environment: {
+      isVercel,
+      isProduction,
+      nodeEnv: process.env.NODE_ENV
+    }
   });
 
   try {
@@ -118,6 +127,9 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     } catch (error) {
       const step1Time = ((Date.now() - step1Start) / 1000).toFixed(2);
       console.error(`[${analysisId}] ❌ 상권 분석 실패 (${step1Time}초):`, error);
+      console.error(`[${analysisId}] ❌ 상권 분석 실패 메시지:`, error.message);
+      console.error(`[${analysisId}] ❌ 상권 분석 실패 스택:`, error.stack);
+      console.error(`[${analysisId}] ❌ 상권 분석 실패 코드:`, error.code);
       throw new Error(`상권 분석 실패: ${error.message}`);
     }
 
@@ -146,6 +158,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     } catch (error) {
       const step2Time = ((Date.now() - step2Start) / 1000).toFixed(2);
       console.error(`[${analysisId}] ❌ 손익 계산 실패 (${step2Time}초):`, error);
+      console.error(`[${analysisId}] ❌ 손익 계산 실패 메시지:`, error.message);
+      console.error(`[${analysisId}] ❌ 손익 계산 실패 스택:`, error.stack);
       throw new Error(`손익 계산 실패: ${error.message}`);
     }
 
@@ -236,6 +250,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         } catch (roadviewError) {
           const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
           console.warn(`[${analysisId}] ⚠️  ai/roadview 모듈 호출 실패 (${step3Time}초): ${roadviewError.message}`);
+          console.warn(`[${analysisId}] ⚠️  로드뷰 분석 오류 스택:`, roadviewError.stack);
+          console.warn(`[${analysisId}] ⚠️  로드뷰 분석 오류 코드:`, roadviewError.code);
           roadview = {
             location: { lat: location.lat, lng: location.lng },
             risks: [],
@@ -248,6 +264,9 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
       } catch (error) {
         const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
         console.error(`[${analysisId}] ❌ 로드뷰 이미지 URL 가져오기 실패 (${step3Time}초):`, error);
+        console.error(`[${analysisId}] ❌ 로드뷰 URL 가져오기 실패 메시지:`, error.message);
+        console.error(`[${analysisId}] ❌ 로드뷰 URL 가져오기 실패 스택:`, error.stack);
+        console.error(`[${analysisId}] ❌ 로드뷰 URL 가져오기 실패 코드:`, error.code);
         roadview = {
           location: { lat: location.lat, lng: location.lng },
           risks: [],
@@ -326,6 +345,9 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     } catch (error) {
       const step5Time = ((Date.now() - step5Start) / 1000).toFixed(2);
       console.error(`[${analysisId}] ❌ 판단 계산 실패 (${step5Time}초):`, error);
+      console.error(`[${analysisId}] ❌ 판단 계산 실패 메시지:`, error.message);
+      console.error(`[${analysisId}] ❌ 판단 계산 실패 스택:`, error.stack);
+      console.error(`[${analysisId}] ❌ 판단 계산 실패 코드:`, error.code);
       throw new Error(`판단 계산 실패: ${error.message}`);
     }
 
@@ -385,13 +407,30 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     console.log(`[${analysisId}] 🎉 분석 완료! (총 ${totalTime}초 소요)`);
     return finalResult;
   } catch (error) {
-    console.error(`[${analysisId}] ❌ 분석 실패:`, error);
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.error(`[${analysisId}] ❌ 분석 실패 (총 ${totalTime}초 소요):`, error);
+    console.error(`[${analysisId}] ❌ 분석 실패 메시지:`, error.message);
+    console.error(`[${analysisId}] ❌ 분석 실패 스택:`, error.stack);
+    console.error(`[${analysisId}] ❌ 분석 실패 코드:`, error.code);
+    console.error(`[${analysisId}] ❌ 분석 실패 타입:`, error.constructor.name);
     
     // 실패 상태 저장 (DB)
-    await updateAnalysis(analysisId, {
-      status: 'failed',
-      errorMessage: error.message
-    });
+    try {
+      await updateAnalysis(analysisId, {
+        status: 'failed',
+        errorMessage: error.message || '알 수 없는 오류가 발생했습니다.',
+        progress: {
+          step: 0,
+          total: 5,
+          message: `오류 발생: ${error.message}`,
+          timestamp: new Date().toISOString(),
+          error: true
+        }
+      });
+      console.log(`[${analysisId}] ✅ 실패 상태 DB 저장 완료`);
+    } catch (updateErr) {
+      console.error(`[${analysisId}] ❌ 실패 상태 DB 저장 실패:`, updateErr);
+    }
     
     throw error;
   }
