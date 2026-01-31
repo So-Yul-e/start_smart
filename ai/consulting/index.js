@@ -256,11 +256,41 @@ async function generateRiskAnalysis(data) {
       impact: risk.impact // high | medium | low
     }));
 
-  const improvements = result.improvements.slice(0, 3).map(improvement => ({
-    title: improvement.title,
-    description: improvement.description,
-    expectedImpact: improvement.expectedImpact
-  }));
+  const improvements = result.improvements.slice(0, 3).map(improvement => {
+    const improvementObj = {
+      title: improvement.title,
+      description: improvement.description,
+      expectedImpact: improvement.expectedImpact
+    };
+
+    // scenarios가 있으면 추가
+    if (Array.isArray(improvement.scenarios) && improvement.scenarios.length > 0) {
+      improvementObj.scenarios = improvement.scenarios.map(scenario => {
+        // 시나리오 타입 검증
+        const validTypes = ['rent_reduction', 'sales_adjustment', 'location_change', 'material_cost_reduction'];
+        const scenarioType = validTypes.includes(scenario.type) ? scenario.type : 'other';
+
+        return {
+          type: scenarioType,
+          description: scenario.description || '',
+          before: scenario.before ? {
+            monthlyProfit: Number(scenario.before.monthlyProfit) || 0,
+            paybackMonths: Number(scenario.before.paybackMonths) || 0
+          } : null,
+          after: scenario.after ? {
+            monthlyProfit: Number(scenario.after.monthlyProfit) || 0,
+            paybackMonths: Number(scenario.after.paybackMonths) || 0
+          } : null,
+          improvement: scenario.improvement ? {
+            profitIncrease: Number(scenario.improvement.profitIncrease) || 0,
+            paybackReduction: Number(scenario.improvement.paybackReduction) || 0
+          } : null
+        };
+      });
+    }
+
+    return improvementObj;
+  });
 
   return {
     topRisks,
@@ -286,12 +316,30 @@ async function generateCompetitiveAnalysis(data) {
     throw new Error('경쟁 환경 분석 응답 형식이 올바르지 않습니다.');
   }
 
+  // reasoningRule 검증 및 구조화
+  const reasoningRule = result.reasoningRule || {};
+  const competitiveAnalysis = {
+    intensity: result.intensity,
+    differentiation: result.differentiation,
+    priceStrategy: result.priceStrategy
+  };
+
+  // reasoningRule이 있으면 추가
+  if (reasoningRule.metric && reasoningRule.userValue !== undefined && reasoningRule.benchmark && reasoningRule.judgement) {
+    competitiveAnalysis.reasoningRule = {
+      metric: reasoningRule.metric,
+      userValue: Number(reasoningRule.userValue),
+      benchmark: {
+        cityAverage: Number(reasoningRule.benchmark.cityAverage) || 0,
+        top20Percent: Number(reasoningRule.benchmark.top20Percent) || 0,
+        top10Percent: Number(reasoningRule.benchmark.top10Percent) || 0
+      },
+      judgement: reasoningRule.judgement
+    };
+  }
+
   return {
-    competitiveAnalysis: {
-      intensity: result.intensity,
-      differentiation: result.differentiation,
-      priceStrategy: result.priceStrategy
-    }
+    competitiveAnalysis
   };
 }
 
@@ -340,8 +388,18 @@ async function generateConsulting(input) {
       generateCompetitiveAnalysis(input)
     ]);
 
-    // 결과 병합
+    // 결과 병합 (입력 데이터도 함께 반환)
     return {
+      // 입력 데이터 포함
+      brand: input.brand,
+      location: input.location,
+      conditions: input.conditions,
+      targetDailySales: input.targetDailySales,
+      finance: input.finance,
+      market: input.market,
+      roadview: input.roadview,
+      decision: input.decision,
+      // AI 컨설팅 결과
       ...salesScenario,
       ...riskAnalysis,
       ...competitiveAnalysis

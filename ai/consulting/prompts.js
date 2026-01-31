@@ -44,6 +44,27 @@ function getSalesScenarioPrompt(data) {
 물리적 리스크:
 - 전체 리스크: ${roadview.overallRisk}
 - 리스크 점수: ${roadview.riskScore}/100
+${roadview.risks && roadview.risks.length > 0 ? `
+- 세부 항목:
+${roadview.risks.map(risk => {
+  const riskNameMap = {
+    'signage_obstruction': '간판 가림',
+    'steep_slope': '급경사',
+    'floor_level': '층위',
+    'visibility': '보행 가시성'
+  };
+  const levelMap = {
+    'low': '낮음',
+    'medium': '중간',
+    'high': '높음',
+    'ground': '1층',
+    'half_basement': '반지하',
+    'second_floor': '2층 이상'
+  };
+  const name = riskNameMap[risk.type] || risk.type;
+  const level = levelMap[risk.level] || risk.level;
+  return `  - ${name}: ${level} - ${risk.description || ''}`;
+}).join('\n')}` : ''}
 
 다음 형식으로 JSON을 반환해주세요:
 {
@@ -58,13 +79,14 @@ function getSalesScenarioPrompt(data) {
  * 리스크 분석 및 개선 제안 프롬프트
  * @param {Object} data - 입력 데이터
  * @param {Object} data.finance - 재무 분석 결과
+ * @param {Object} data.decision - Decision 엔진 판정 결과
  * @param {number} data.targetDailySales - 목표 일 판매량
  * @param {Object} data.market - 상권 분석 결과
  * @param {Object} data.roadview - 로드뷰 분석 결과
  * @returns {string} 프롬프트 텍스트
  */
 function getRiskAnalysisPrompt(data) {
-  const { finance, targetDailySales, market, roadview, conditions, brand } = data;
+  const { finance, decision, targetDailySales, market, roadview, conditions, brand } = data;
   
   // 반경 정보 추출 (radiusM 또는 location.radius)
   const radiusM = market.radiusM || market.location?.radius || 500;
@@ -90,10 +112,57 @@ ${monthlyCosts.royalty ? `- 로열티 (royalty): ${(monthlyCosts.royalty / 10000
 ${monthlyCosts.marketing ? `- 마케팅비 (marketing): ${(monthlyCosts.marketing / 10000).toFixed(0)}만원` : ''}
 ${monthlyCosts.etc ? `- 기타 고정비 (etc): ${(monthlyCosts.etc / 10000).toFixed(0)}만원` : ''}` : '';
 
+  // Decision 엔진 판정 결과 추출 (선택적)
+  const decisionInfo = decision ? `
+【시스템 판정 결과 (반드시 참고)】
+- 신호등: ${decision.finalJudgement?.signal || decision.signal || 'N/A'} (${decision.finalJudgement?.label || 'N/A'})
+- 판정 요약: ${decision.finalJudgement?.summary || 'N/A'}
+- 시스템 판정 (컨설팅으로 변경 불가): ${decision.finalJudgement?.nonNegotiable ? '예' : '아니오'}
+- 하드컷 판정 근거: ${decision.hardCutReasons && decision.hardCutReasons.length > 0 ? decision.hardCutReasons.map(reason => {
+    const reasonMap = {
+      'NEGATIVE_PROFIT': '월 순이익이 0원 이하 (적자 위험)',
+      'DSCR_FAIL': 'DSCR이 1.0 미만 (대출 상환 불가)',
+      'PAYBACK_TOO_LONG': '회수 기간이 36개월 이상',
+      'SURVIVAL_LT_36': '예상 생존 기간이 36개월 미만'
+    };
+    return reasonMap[reason] || reason;
+  }).join(', ') : '없음'}
+- 종합 점수: ${decision.score || 'N/A'}점
+- 예상 생존 기간: ${decision.survivalMonths || 'N/A'}개월
+- 리스크 레벨: ${decision.riskLevel || 'N/A'}
+
+⚠️ 중요: 시스템 판정이 "HIGH RISK"이고 nonNegotiable이 true인 경우, 
+반드시 해당 판정을 존중하여 리스크 분석을 작성하세요.
+하드컷 판정이 있는 경우, 해당 리스크를 최우선으로 다뤄야 합니다.
+
+` : '';
+
+  // GAP 분석 정보 추출
+  const gapInfo = finance.expected ? `
+【상권 기대치 분석 (GAP 분석)】
+- 목표 일 판매량: ${targetDailySales}잔/일
+- 상권 기대 일 판매량: ${finance.expected.expectedDailySales || 'N/A'}잔/일
+- GAP 비율: ${finance.expected.gapPctVsTarget !== undefined ? (finance.expected.gapPctVsTarget * 100).toFixed(1) : 'N/A'}%
+- GAP 경고: ${finance.expected.gapWarning ? '예' : '아니오'}
+
+⚠️ GAP 비율이 15% 이상이면 목표 판매량 달성 난이도가 높습니다.
+
+` : '';
+
+  // 민감도 분석 정보 추출
+  const sensitivityInfo = finance.sensitivity ? `
+【민감도 분석 (매출 변동 시나리오)】
+- 매출 +10% 시: 월 순이익 ${(finance.sensitivity.plus10.monthlyProfit / 10000).toFixed(0)}만원, 회수 기간 ${finance.sensitivity.plus10.paybackMonths}개월
+- 매출 -10% 시: 월 순이익 ${(finance.sensitivity.minus10.monthlyProfit / 10000).toFixed(0)}만원, 회수 기간 ${finance.sensitivity.minus10.paybackMonths}개월
+
+⚠️ 매출 -10% 시나리오에서 월 순이익이 0원 이하가 되면 매우 위험합니다.
+
+` : '';
+
   return `당신은 프랜차이즈 카페 창업 컨설턴트입니다.
 다음 재무 분석 결과를 바탕으로 핵심 리스크 Top 3를 식별하고 개선 제안을 해주세요:
 
-재무 결과:
+${decisionInfo}${gapInfo}${sensitivityInfo}재무 결과:
 - 초기 투자비용: ${(initialInvestment / 100000000).toFixed(1)}억원
 - 평균 단가(아메리카노 판매금액): ${avgPrice}원/잔
 - 월 매출: ${finance.monthlyRevenue ? (finance.monthlyRevenue / 10000).toFixed(0) + '만원' : '정보 없음'}
@@ -132,6 +201,27 @@ ${monthlyCosts.etc ? `- 기타 고정비 (etc): ${(monthlyCosts.etc / 10000).toF
 물리적 리스크:
 - 전체 리스크: ${roadview.overallRisk}
 - 리스크 점수: ${roadview.riskScore}/100
+${roadview.risks && roadview.risks.length > 0 ? `
+- 세부 항목:
+${roadview.risks.map(risk => {
+  const riskNameMap = {
+    'signage_obstruction': '간판 가림',
+    'steep_slope': '급경사',
+    'floor_level': '층위',
+    'visibility': '보행 가시성'
+  };
+  const levelMap = {
+    'low': '낮음',
+    'medium': '중간',
+    'high': '높음',
+    'ground': '1층',
+    'half_basement': '반지하',
+    'second_floor': '2층 이상'
+  };
+  const name = riskNameMap[risk.type] || risk.type;
+  const level = levelMap[risk.level] || risk.level;
+  return `  - ${name}: ${level} - ${risk.description || ''}`;
+}).join('\n')}` : ''}
 
 【리스크 판단 기준】
 다음 기준을 반드시 고려하여 리스크를 식별해주세요:
@@ -170,6 +260,25 @@ ${monthlyCosts.etc ? `- 기타 고정비 (etc): ${(monthlyCosts.etc / 10000).toF
 
 4. 물리적 리스크:
    - 로드뷰 리스크 점수가 낮을수록(60점 미만) 리스크 증가
+   - 세부 항목별 리스크 평가:
+     * 간판 가림 (signage_obstruction):
+       - high → "high" 리스크 (자연 유입 고객 확보 어려움, 매출 직접 영향)
+       - medium → "medium" 리스크
+       - low → "low" 리스크
+     * 급경사 (steep_slope):
+       - high → "medium" 리스크 (접근성 저하, 일부 고객층 유치 제한)
+       - medium → "low" 리스크
+       - low → "low" 리스크 (접근성 양호)
+     * 층위 (floor_level):
+       - second_floor 이상 → "medium" 리스크 (접근성 저하)
+       - half_basement → "low" 리스크 (부분적 접근성 제한)
+       - ground → "low" 리스크 (접근성 우수)
+     * 보행 가시성 (visibility):
+       - low → "medium" 리스크 (자연 유입 고객 확보 어려움)
+       - medium → "low" 리스크
+       - high → "low" 리스크 (가시성 우수)
+   
+   💡 물리적 리스크는 매출에 직접적인 영향을 미치므로, 특히 간판 가림과 보행 가시성이 높을 경우 목표 판매량 달성에 어려움이 있을 수 있습니다.
 
 위 기준을 종합하여 가장 심각한 리스크부터 우선순위를 매겨주세요.
 
@@ -179,6 +288,33 @@ ${monthlyCosts.etc ? `- 기타 고정비 (etc): ${(monthlyCosts.etc / 10000).toF
 - 인건비 절감: "점주 근무 시간을 늘리거나 알바 인원을 조정하면 인건비를 X만원 절감할 수 있습니다"
 - 원재료비 절감: "원재료 구매처 협상 또는 대량 구매로 원재료비를 X% 절감 가능합니다"
 - 기타 지출 절감: 각 지출 항목별로 구체적인 절감 방안과 예상 효과를 제시해주세요
+
+【비교 분석 시나리오 작성 가이드】
+각 개선 제안에 대해 "만약 이렇게 변경하면?" 시나리오를 제공해주세요:
+1. 월세 변경 시나리오:
+   - 현재 월세: ${conditions?.monthlyRent || 0}원
+   - 시나리오: 월세 -10%, -20% 등으로 변경 시 예상 효과 계산
+   - 예시: "월세를 10% 낮추면 (${conditions?.monthlyRent ? (conditions.monthlyRent * 0.9 / 10000).toFixed(0) : '0'}만원) 월 순이익이 X만원 증가, 회수 기간 Y개월 단축"
+
+2. 판매량 변경 시나리오:
+   - 현재 목표 판매량: ${targetDailySales || 0}잔/일
+   - 시나리오: 판매량 ±10%, ±20% 변경 시 예상 효과 계산
+   - 예시: "판매량을 230잔/일로 조정하면 월 순이익 X만원, 회수 기간 Y개월"
+
+3. 상권 변경 시나리오 (경쟁 환경):
+   - 현재 경쟁 카페 수: ${market?.competitors?.total || 0}개
+   - 시나리오: 경쟁 카페 수가 적은 지역(예: 2-3개)으로 이동 시 예상 효과
+   - 예시: "경쟁 카페가 2-3개인 지역으로 이동하면 차별화 가능성 증가, 예상 판매량 증가"
+
+4. 원재료비 변경 시나리오:
+   - 현재 원재료비: ${monthlyCosts?.materials ? (monthlyCosts.materials / 10000).toFixed(0) : '0'}만원${finance?.monthlyRevenue && monthlyCosts?.materials ? ` (매출의 ${((monthlyCosts.materials / finance.monthlyRevenue) * 100).toFixed(1)}%)` : ''}
+   - 시나리오: 원재료비 -5%, -10% 절감 시 예상 효과
+   - 예시: "원재료비를 5% 절감하면 월 순이익 X만원 증가"
+
+각 시나리오는 구체적인 수치 계산 결과를 포함해야 합니다:
+- 변경 전: 월 순이익 X만원, 회수 기간 Y개월
+- 변경 후: 월 순이익 X만원, 회수 기간 Y개월
+- 개선 효과: 월 순이익 +Z만원, 회수 기간 -W개월
 
 【우선순위 정렬 기준】
 1. impact 레벨 우선: "high" > "medium" > "low"
@@ -207,7 +343,25 @@ ${monthlyCosts.etc ? `- 기타 고정비 (etc): ${(monthlyCosts.etc / 10000).toF
     {
       "title": "개선 제안 제목",
       "description": "상세 설명",
-      "expectedImpact": "기대 효과 (구체적 수치 포함)"
+      "expectedImpact": "기대 효과 (구체적 수치 포함)",
+      "scenarios": [
+        {
+          "type": "rent_reduction",  // rent_reduction | sales_adjustment | location_change | material_cost_reduction
+          "description": "시나리오 설명 (예: 월세 10% 감소)",
+          "before": {
+            "monthlyProfit": 숫자,  // 만원 단위
+            "paybackMonths": 숫자
+          },
+          "after": {
+            "monthlyProfit": 숫자,  // 만원 단위
+            "paybackMonths": 숫자
+          },
+          "improvement": {
+            "profitIncrease": 숫자,  // 만원 단위 (증가량)
+            "paybackReduction": 숫자  // 개월 단위 (감소량)
+          }
+        }
+      ]
     }
   ]
 }`;
@@ -225,12 +379,13 @@ function getCompetitiveAnalysisPrompt(data) {
   
   // 반경 정보 추출 (radiusM 또는 location.radius)
   const radiusM = market.radiusM || market.location?.radius || 500;
+  const competitorCount = market.competitors.total || 0;
 
   return `당신은 프랜차이즈 카페 창업 컨설턴트입니다.
 다음 상권 정보를 바탕으로 경쟁 환경을 분석해주세요:
 
 경쟁 정보:
-- 경쟁 카페 수: ${market.competitors.total}개 (주소지 기준 반경 ${radiusM}m 내)
+- 경쟁 카페 수: ${competitorCount}개 (주소지 기준 반경 ${radiusM}m 내)
 - 경쟁 밀도: ${market.competitors.density}
 - 브랜드: ${brand.name}
 
@@ -240,16 +395,42 @@ function getCompetitiveAnalysisPrompt(data) {
 - "medium": 경쟁 카페 수가 보통 (일반적으로 반경 ${radiusM}m 기준 4-6개)
 - "low": 경쟁 카페 수가 적음 (일반적으로 반경 ${radiusM}m 기준 0-3개)
 
+【기준선(Benchmark) 데이터】
+일반적인 프랜차이즈 카페 상권 기준 (반경 ${radiusM}m):
+- 도시 평균 경쟁 카페 수: 약 2.1개
+- 상위 20% 상권 경쟁 카페 수: 약 4.3개
+- 고경쟁 상권(상위 10%) 경쟁 카페 수: 약 6.5개 이상
+
 경쟁 밀도와 경쟁 카페 수를 종합하여 다음을 판단해주세요:
 - intensity: 경쟁 밀도가 "high"이면 "high", "medium"이면 "medium", "low"이면 "low"
 - differentiation: 경쟁 밀도가 "high"일수록 차별화가 어려움
 - priceStrategy: 경쟁 밀도가 "high"일수록 가격 경쟁이 치열하므로 "budget" 또는 "standard" 고려
 
+【reasoningRule 작성 가이드】
+각 판단(intensity, differentiation, priceStrategy)에 대해 다음 정보를 제공해주세요:
+- metric: 판단에 사용된 지표명 (예: "competitor_count_500m", "competitor_density")
+- userValue: 사용자의 실제 값 (예: 경쟁 카페 수 ${competitorCount}개)
+- benchmark: 비교 기준선
+  - cityAverage: 도시 평균값
+  - top20Percent: 상위 20% 기준값
+  - top10Percent: 상위 10% 기준값 (고경쟁 상권)
+- judgement: 판단 근거 설명 (예: "상위 15% 경쟁 밀도", "도시 평균의 2.4배 수준")
+
 다음 형식으로 JSON을 반환해주세요:
 {
   "intensity": "high",           // low | medium | high
   "differentiation": "possible", // possible | difficult | impossible
-  "priceStrategy": "premium"     // premium | standard | budget
+  "priceStrategy": "premium",    // premium | standard | budget
+  "reasoningRule": {
+    "metric": "competitor_count_500m",
+    "userValue": ${competitorCount},
+    "benchmark": {
+      "cityAverage": 2.1,
+      "top20Percent": 4.3,
+      "top10Percent": 6.5
+    },
+    "judgement": "상위 X% 경쟁 밀도" 또는 "도시 평균의 Y배 수준" 형식으로 작성
+  }
 }`;
 }
 

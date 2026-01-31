@@ -1,0 +1,50 @@
+# Git 한글 인코딩 설정
+# 모든 텍스트 파일을 UTF-8로 처리
+
+# 텍스트 파일 기본 설정 (UTF-8, LF line endings)
+* text=auto eol=lf
+
+# 소스 코드 파일들
+*.js text eol=lf charset=utf-8
+*.jsx text eol=lf charset=utf-8
+*.ts text eol=lf charset=utf-8
+*.tsx text eol=lf charset=utf-8
+*.json text eol=lf charset=utf-8
+*.md text eol=lf charset=utf-8
+*.txt text eol=lf charset=utf-8
+*.html text eol=lf charset=utf-8
+*.css text eol=lf charset=utf-8
+*.sql text eol=lf charset=utf-8
+*.yml text eol=lf charset=utf-8
+*.yaml text eol=lf charset=utf-8
+
+# 설정 파일들
+*.config.js text eol=lf charset=utf-8
+*.config.ts text eol=lf charset=utf-8
+.gitignore text eol=lf charset=utf-8
+.gitattributes text eol=lf charset=utf-8
+
+# 문서 파일들 (한글 포함)
+*.md text eol=lf charset=utf-8
+docs/**/*.md text eol=lf charset=utf-8
+**/*.md text eol=lf charset=utf-8
+
+# 바이너리 파일들
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# 이미 인덱스에 추가된 파일들의 인코딩 재설정
+*.js linguist-detectable=true
+*.md linguist-detectable=true
+
