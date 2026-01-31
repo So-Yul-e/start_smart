@@ -44,6 +44,27 @@ function getSalesScenarioPrompt(data) {
 물리적 리스크:
 - 전체 리스크: ${roadview.overallRisk}
 - 리스크 점수: ${roadview.riskScore}/100
+${roadview.risks && roadview.risks.length > 0 ? `
+- 세부 항목:
+${roadview.risks.map(risk => {
+  const riskNameMap = {
+    'signage_obstruction': '간판 가림',
+    'steep_slope': '급경사',
+    'floor_level': '층위',
+    'visibility': '보행 가시성'
+  };
+  const levelMap = {
+    'low': '낮음',
+    'medium': '중간',
+    'high': '높음',
+    'ground': '1층',
+    'half_basement': '반지하',
+    'second_floor': '2층 이상'
+  };
+  const name = riskNameMap[risk.type] || risk.type;
+  const level = levelMap[risk.level] || risk.level;
+  return `  - ${name}: ${level} - ${risk.description || ''}`;
+}).join('\n')}` : ''}
 
 다음 형식으로 JSON을 반환해주세요:
 {
@@ -180,6 +201,27 @@ ${decisionInfo}${gapInfo}${sensitivityInfo}재무 결과:
 물리적 리스크:
 - 전체 리스크: ${roadview.overallRisk}
 - 리스크 점수: ${roadview.riskScore}/100
+${roadview.risks && roadview.risks.length > 0 ? `
+- 세부 항목:
+${roadview.risks.map(risk => {
+  const riskNameMap = {
+    'signage_obstruction': '간판 가림',
+    'steep_slope': '급경사',
+    'floor_level': '층위',
+    'visibility': '보행 가시성'
+  };
+  const levelMap = {
+    'low': '낮음',
+    'medium': '중간',
+    'high': '높음',
+    'ground': '1층',
+    'half_basement': '반지하',
+    'second_floor': '2층 이상'
+  };
+  const name = riskNameMap[risk.type] || risk.type;
+  const level = levelMap[risk.level] || risk.level;
+  return `  - ${name}: ${level} - ${risk.description || ''}`;
+}).join('\n')}` : ''}
 
 【리스크 판단 기준】
 다음 기준을 반드시 고려하여 리스크를 식별해주세요:
@@ -218,6 +260,25 @@ ${decisionInfo}${gapInfo}${sensitivityInfo}재무 결과:
 
 4. 물리적 리스크:
    - 로드뷰 리스크 점수가 낮을수록(60점 미만) 리스크 증가
+   - 세부 항목별 리스크 평가:
+     * 간판 가림 (signage_obstruction):
+       - high → "high" 리스크 (자연 유입 고객 확보 어려움, 매출 직접 영향)
+       - medium → "medium" 리스크
+       - low → "low" 리스크
+     * 급경사 (steep_slope):
+       - high → "medium" 리스크 (접근성 저하, 일부 고객층 유치 제한)
+       - medium → "low" 리스크
+       - low → "low" 리스크 (접근성 양호)
+     * 층위 (floor_level):
+       - second_floor 이상 → "medium" 리스크 (접근성 저하)
+       - half_basement → "low" 리스크 (부분적 접근성 제한)
+       - ground → "low" 리스크 (접근성 우수)
+     * 보행 가시성 (visibility):
+       - low → "medium" 리스크 (자연 유입 고객 확보 어려움)
+       - medium → "low" 리스크
+       - high → "low" 리스크 (가시성 우수)
+   
+   💡 물리적 리스크는 매출에 직접적인 영향을 미치므로, 특히 간판 가림과 보행 가시성이 높을 경우 목표 판매량 달성에 어려움이 있을 수 있습니다.
 
 위 기준을 종합하여 가장 심각한 리스크부터 우선순위를 매겨주세요.
 
