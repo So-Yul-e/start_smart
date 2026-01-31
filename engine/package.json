@@ -1,0 +1,26 @@
+{
+  "name": "startsmart-engine",
+  "version": "0.1.0",
+  "description": "Finance & Decision 계산 엔진",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "**/*.js",
+      "!**/*.test.js",
+      "!**/node_modules/**",
+      "!**/fixtures/**"
+    ]
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
+  }
+}

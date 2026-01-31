@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StartSmart | AI 카페 창업 검증 플랫폼</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+</head>
+
+<body>
+
+  <!-- Floating Header -->
+  <header class="header" id="header">
+    <a href="#" class="logo">
+      <i class="fa-solid fa-leaf text-gold"></i> StartSmart
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="메뉴">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <nav class="nav" id="mainNav">
+      <a href="#home" class="active">홈</a>
+      <a href="#brands">브랜드</a>
+      <a href="#how">이용 방법</a>
+      <a href="dashboard/?tab=compare"><i class="fa-solid fa-clock-rotate-left" style="margin-right:4px;"></i>히스토리</a>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section id="home" class="hero">
+    <div class="hero-content">
+      <span class="badge-pill" data-aos="fade-down">AI 기반 컨설팅</span>
+      <h1 data-aos="fade-up" data-aos-delay="100">카페 창업의<br>미래</h1>
+      <p data-aos="fade-up" data-aos-delay="200">
+        빅데이터와 AI가 완벽하게 분석한 당신의 성공 창업.<br>
+        감각적인 인사이트를 지금 경험해보세요.
+      </p>
+      <a href="brand/" class="btn-cta" data-aos="zoom-in" data-aos-delay="300">
+        시작하기 <i class="fa-solid fa-arrow-right" style="margin-left:10px;"></i>
+      </a>
+    </div>
+  </section>
+
+  <!-- Brand Selection Section -->
+  <section id="brands" class="section">
+    <div class="container">
+      <div class="section-title" data-aos="fade-up">
+        <h2>지원 브랜드</h2>
+        <p>12개 카페 프랜차이즈 브랜드를 지원합니다</p>
+      </div>
+
+      <div class="brand-grid" id="brandGrid"></div>
+
+      <div style="text-align:center; margin-top:3rem;" data-aos="fade-up">
+        <a href="brand/" class="btn-cta" style="background:transparent; border:1px solid var(--gold); color:var(--gold);">
+          전체 브랜드 보기 <i class="fa-solid fa-arrow-right" style="margin-left:8px;"></i>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section id="how" class="section" style="background:var(--bg-section);">
+    <div class="container">
+      <div class="section-title" data-aos="fade-up">
+        <h2>이용 방법</h2>
+        <p>4단계로 완성되는 AI 창업 분석</p>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:2rem;">
+        <div class="glass-card" data-aos="fade-up" data-aos-delay="0" style="text-align:center; padding:2.5rem 2rem;">
+          <div style="font-size:2.5rem; color:var(--gold); margin-bottom:1rem;">
+            <i class="fa-solid fa-mug-hot"></i>
+          </div>
+          <h3 style="font-size:1.2rem; margin-bottom:0.5rem; font-family:'Outfit',sans-serif;">1. 브랜드 선택</h3>
+          <p style="color:var(--text-muted); font-size:0.9rem;">12개 카페 프랜차이즈 중 관심 브랜드를 선택합니다.</p>
+        </div>
+
+        <div class="glass-card" data-aos="fade-up" data-aos-delay="100" style="text-align:center; padding:2.5rem 2rem;">
+          <div style="font-size:2.5rem; color:var(--gold); margin-bottom:1rem;">
+            <i class="fa-solid fa-map-location-dot"></i>
+          </div>
+          <h3 style="font-size:1.2rem; margin-bottom:0.5rem; font-family:'Outfit',sans-serif;">2. 입지 & 조건</h3>
+          <p style="color:var(--text-muted); font-size:0.9rem;">카카오맵에서 위치 선택 + 투자금, 월세, 평수 입력</p>
+        </div>
+
+        <div class="glass-card" data-aos="fade-up" data-aos-delay="200" style="text-align:center; padding:2.5rem 2rem;">
+          <div style="font-size:2.5rem; color:var(--gold); margin-bottom:1rem;">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <h3 style="font-size:1.2rem; margin-bottom:0.5rem; font-family:'Outfit',sans-serif;">3. AI 분석</h3>
+          <p style="color:var(--text-muted); font-size:0.9rem;">상권분석 + 재무시뮬레이션 + AI 리스크 컨설팅</p>
+        </div>
+
+        <div class="glass-card" data-aos="fade-up" data-aos-delay="300" style="text-align:center; padding:2.5rem 2rem;">
+          <div style="font-size:2.5rem; color:var(--gold); margin-bottom:1rem;">
+            <i class="fa-solid fa-file-pdf"></i>
+          </div>
+          <h3 style="font-size:1.2rem; margin-bottom:0.5rem; font-family:'Outfit',sans-serif;">4. 리포트</h3>
+          <p style="color:var(--text-muted); font-size:0.9rem;">종합 대시보드 + PDF 리포트 다운로드</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="section" style="padding:6rem 0;">
+    <div class="container" style="text-align:center;">
+      <div data-aos="fade-up">
+        <i class="fa-solid fa-rocket" style="font-size:3rem; color:var(--gold); margin-bottom:1.5rem;"></i>
+        <h2 class="cta-heading" style="font-size:2rem; margin-bottom:1rem;">지금 바로 시작하세요</h2>
+        <p style="color:var(--text-muted); font-size:1.05rem; max-width:520px; margin:0 auto 2.5rem; line-height:1.7;">
+          데이터가 증명하는 창업 판단.<br>
+          AI가 분석하고, 당신이 결정합니다.
+        </p>
+      </div>
+      <div class="cta-buttons" data-aos="zoom-in" data-aos-delay="150" style="display:flex; justify-content:center; gap:1rem; flex-wrap:wrap;">
+        <a href="brand/" class="btn-cta" style="font-size:1.1rem; padding:1rem 2.5rem;">
+          브랜드 선택하기 <i class="fa-solid fa-arrow-right" style="margin-left:10px;"></i>
+        </a>
+        <a href="dashboard/?tab=compare" class="btn-cta" style="font-size:1.1rem; padding:1rem 2.5rem; background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--text-main);">
+          <i class="fa-solid fa-clock-rotate-left" style="margin-right:8px;"></i> 이전 분석 보기
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer style="text-align: center; padding: 4rem 0; color: var(--text-muted); opacity: 0.5;">
+    <p>&copy; 2024 StartSmart. Premium Intelligence.</p>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="js/mock-data.js"></script>
+  <script src="js/utils.js"></script>
+  <script>
+    // Initialize AOS
+    AOS.init({ duration: 1000, once: true });
+
+    // Hamburger Menu Toggle
+    (function() {
+      var toggle = document.getElementById('navToggle');
+      var nav = document.getElementById('mainNav');
+      if (!toggle || !nav) return;
+      toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        nav.classList.toggle('open');
+        toggle.querySelector('i').className = nav.classList.contains('open')
+          ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
+      });
+      nav.querySelectorAll('a').forEach(function(a) {
+        a.addEventListener('click', function() {
+          nav.classList.remove('open');
+          toggle.querySelector('i').className = 'fa-solid fa-bars';
+        });
+      });
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.header')) {
+          nav.classList.remove('open');
+          toggle.querySelector('i').className = 'fa-solid fa-bars';
+        }
+      });
+    })();
+
+    // Header Scroll Effect
+    window.addEventListener('scroll', function () {
+      var header = document.getElementById('header');
+      if (window.scrollY > 100) header.classList.add('scrolled');
+      else header.classList.remove('scrolled');
+    });
+
+    // Render first 6 brands
+    var brandGrid = document.getElementById('brandGrid');
+    // API에서 브랜드 목록 가져오기
+    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 
+                     (window.location.protocol + '//' + window.location.hostname + ':3000');
+    
+    fetch(apiBaseUrl + '/api/brands')
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        var brandsToShow = (data.success && data.brands) ? data.brands.slice(0, 8) : [];
+        if (brandsToShow.length === 0) {
+          console.warn('API에서 브랜드를 가져올 수 없어 빈 목록을 표시합니다.');
+          return;
+        }
+
+    brandsToShow.forEach(function (brand, index) {
+      var card = document.createElement('div');
+      card.className = 'brand-card';
+      card.setAttribute('data-aos', 'fade-up');
+      card.setAttribute('data-aos-delay', String(index * 100));
+
+      var logoHtml;
+      if (brand.logo) {
+        logoHtml = '<img src="images/logos/' + brand.logo + '" alt="' + brand.name + '" style="width:60px;height:60px;object-fit:contain;background:#fff;border-radius:50%;padding:4px;">';
+      } else {
+        logoHtml = '<i class="fa-solid fa-mug-hot" style="font-size:2.5rem;color:var(--gold);"></i>';
+      }
+
+      var posColor = brand.position === '프리미엄' ? 'var(--gold)' : brand.position === '저가' ? 'var(--primary-glow)' : 'var(--text-muted)';
+
+      function formatMoney(n) {
+        if (n >= 100000000) return (n / 100000000).toFixed(1).replace(/\.0$/, '') + '억';
+        if (n >= 10000) return Math.round(n / 10000).toLocaleString() + '만';
+        return n.toLocaleString() + '원';
+      }
+
+      card.innerHTML =
+        '<div class="brand-icon" style="height:70px;display:flex;align-items:center;justify-content:center;">' + logoHtml + '</div>' +
+        '<h3 class="brand-name">' + brand.name + '</h3>' +
+        '<span class="brand-tag" style="color:' + posColor + ';">' + brand.position + '</span>' +
+        '<div class="brand-stats">' +
+        '<div class="stat-item"><span>초기투자</span><strong>' + formatMoney(brand.initialInvestment) + '</strong></div>' +
+        '<div class="stat-item"><span>평균 판매</span><strong>' + brand.avgDailySales + '잔/일</strong></div>' +
+        '</div>';
+
+      card.onclick = function () {
+        Utils.saveSession('selectedBrand', brand);
+        window.location.href = 'brand/';
+      };
+
+      brandGrid.appendChild(card);
+        });
+      })
+      .catch(function(error) {
+        console.error('브랜드 목록 로드 실패:', error);
+        brandGrid.innerHTML = '<p style="text-align:center; color:var(--text-muted);">브랜드 목록을 불러올 수 없습니다.</p>';
+      });
+  </script>
+</body>
+
+</html>

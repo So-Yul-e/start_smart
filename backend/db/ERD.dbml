@@ -1,0 +1,47 @@
+// StartSmart 데이터베이스 ERD
+// dbdiagram.io에서 시각화 가능: https://dbdiagram.io/
+
+Table brands {
+  id varchar(50) [primary key]
+  name varchar(100) [not null]
+  position varchar(20) [not null]
+  initial_investment bigint [not null]
+  monthly_royalty decimal(5, 2) [not null]
+  monthly_marketing decimal(5, 2) [not null]
+  avg_daily_sales integer [not null]
+  pdf_source text
+  avg_monthly_revenue bigint
+  avg_revenue_per_area decimal(10, 2)
+  avg_store_count integer
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP`]
+  
+  Note: '프랜차이즈 브랜드의 기본 정보 및 평균 성과 데이터'
+}
+
+Table analyses {
+  id varchar(100) [primary key]
+  brand_id varchar(50) [not null, ref: > brands.id]
+  location_lat decimal(10, 7) [not null]
+  location_lng decimal(10, 7) [not null]
+  location_address text
+  radius integer [not null]
+  initial_investment bigint [not null]
+  monthly_rent bigint [not null]
+  area integer [not null]
+  owner_working boolean [not null]
+  target_daily_sales integer [not null]
+  status varchar(20) [not null, default: 'pending']
+  result jsonb
+  error_message text
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP`]
+  
+  Note: '사용자가 요청한 분석의 입력 조건 및 결과 저장'
+  
+  indexes {
+    brand_id [name: 'idx_analyses_brand_id']
+    status [name: 'idx_analyses_status']
+    created_at [name: 'idx_analyses_created_at']
+  }
+}
