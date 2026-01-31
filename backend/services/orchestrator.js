@@ -12,9 +12,9 @@ const { calculateFinance } = require('../../engine/finance');
 const { calculate: calculateDecision } = require('../../engine/decision');
 // Engine 브랜드 로더 (defaults 포함, 이름 기반 매핑)
 const { getBrandForEngine, getBrandForEngineByName } = require('../../engine/data_local/brandLoader');
-// TODO: 다른 모듈들이 구현되면 주석 해제
+// AI 모듈
 // const { analyzeRoadview } = require('../../ai/roadview');
-// const { generateConsulting } = require('../../ai/consulting');
+const { generateConsulting } = require('../../ai/consulting');
 
 /**
  * 분석 실행 함수
@@ -127,23 +127,22 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
     console.log(`[${analysisId}] 🤖 4/5 AI 컨설팅 생성 시작...`);
     let aiConsulting;
     try {
-      // const { generateConsulting } = require('../../ai/consulting');
-      // aiConsulting = await generateConsulting({
-      //   brand, location, conditions, targetDailySales,
-      //   finance, market, roadview
-      // });
-      // TODO: 실제 구현 후 주석 해제
+      aiConsulting = await generateConsulting({
+        brand, location, conditions, targetDailySales,
+        finance, market, roadview
+      });
+      console.log(`[${analysisId}] ✅ AI 컨설팅 생성 완료`);
+    } catch (error) {
+      console.error(`[${analysisId}] ❌ AI 컨설팅 생성 실패:`, error);
+      // AI 컨설팅 실패 시 기본값 사용 (전체 분석 실패로 이어지지 않도록)
       aiConsulting = {
         salesScenario: { conservative: 200, expected: 250, optimistic: 300 },
-        salesScenarioReason: '주변 경쟁 카페 밀도가 높고, 유동인구가 많아 기대 판매량은 250잔/일로 추정됩니다.',
+        salesScenarioReason: 'AI 컨설팅 생성 중 오류가 발생하여 기본값을 사용합니다.',
         topRisks: [],
         improvements: [],
         competitiveAnalysis: { intensity: 'medium', differentiation: 'possible', priceStrategy: 'standard' }
       };
-      console.log(`[${analysisId}] ✅ AI 컨설팅 생성 완료`);
-    } catch (error) {
-      console.error(`[${analysisId}] ❌ AI 컨설팅 생성 실패:`, error);
-      throw new Error(`AI 컨설팅 생성 실패: ${error.message}`);
+      console.warn(`[${analysisId}] ⚠️  AI 컨설팅 기본값 사용`);
     }
 
     // 5. 판단 계산
