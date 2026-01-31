@@ -60,6 +60,8 @@
   document.getElementById('rRent').textContent = Utils.formatKRWFull(finance.monthlyCosts.rent) + ' / 월';
   document.getElementById('rOwner').textContent = input && input.conditions.ownerWorking ? '직접 근무' : '고용 운영';
   document.getElementById('rTarget').textContent = (input ? input.targetDailySales : '-') + '잔/일';
+  
+  // 1일 방문객 수와 1인당 평균 구매비용 제거됨
 
   // Score (executive 우선 사용)
   var signal = executive?.signal ?? decision?.signal ?? 'yellow';
@@ -506,29 +508,23 @@
   }
   document.getElementById('rRiskList').innerHTML = riskHtml;
 
-  // Improvements (reportModel의 병합된 improvement cards 사용)
+  // Improvements (AI consulting 결과만 표시)
   var impHtml = '';
   var improvementsToShow = [];
   
   if (improvement && improvement.cards && improvement.cards.length > 0) {
-    // reportModel의 병합된 improvement cards 사용
-    improvementsToShow = improvement.cards.map(function(card) {
-      // engine과 ai가 모두 있으면 ai의 description을 우선 사용
-      if (card.ai) {
+    // AI consulting 결과가 있는 카드만 필터링
+    improvementsToShow = improvement.cards
+      .filter(function(card) { return card.ai !== null && card.ai !== undefined; })
+      .map(function(card) {
+        // ai가 있으면 ai의 description을 우선 사용
         return {
           title: card.ai.title || card.engine?.title || '',
           description: card.ai.description || card.engine?.description || '',
           expectedImpact: card.ai.expectedImpact || ''
         };
-      } else if (card.engine) {
-        return {
-          title: card.engine.title || '',
-          description: card.engine.description || '',
-          expectedImpact: ''
-        };
-      }
-      return null;
-    }).filter(function(imp) { return imp !== null; });
+      })
+      .filter(function(imp) { return imp !== null && (imp.title || imp.description); });
   } else if (ai && ai.improvements && ai.improvements.length > 0) {
     // fallback: 기존 ai.improvements 사용
     improvementsToShow = ai.improvements;
@@ -685,31 +681,229 @@
   renderExitPlan(exitPlan);
 
   // ═══════════════════════════════════════════
+  // PAGE 5: 손절 & 폐업 판단 리포트
+  // ═══════════════════════════════════════════
+  
+  // 손절 기준선 (Break-Down Line)
+  var breakdownVisitors = finance?.breakdownVisitors || null;
+  var breakdownHtml = '';
+  if (breakdownVisitors !== null && breakdownVisitors !== undefined) {
+    breakdownHtml = '<div style="padding:1.5rem; background:rgba(239,68,68,0.1); border-radius:var(--radius-sm); border-left:4px solid #f87171;">' +
+      '<div style="font-weight:600; margin-bottom:0.5rem;">손절 방문객 수</div>' +
+      '<div style="font-size:1.5rem; font-weight:700; color:#f87171; margin-bottom:1rem;">' + Math.round(breakdownVisitors) + '명/일</div>' +
+      '<div style="color:var(--text-muted); font-size:0.9rem; margin-bottom:0.5rem;">계산식:</div>' +
+      '<div style="font-family:monospace; font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">' +
+      '손절 방문객 수 = (고정비 + 최소 변동비) ÷ 1인당 평균 구매비용' +
+      '</div>' +
+      '<div style="color:var(--text-muted); font-size:0.9rem;">' +
+      '이 방문객 수 이하가 3개월 이상 지속되면 손절 검토가 필요합니다.' +
+      '</div>' +
+      '</div>';
+  } else {
+    breakdownHtml = '<div style="padding:1.5rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm); color:var(--text-muted);">손절 기준선 계산 데이터가 없습니다.</div>';
+  }
+  var breakdownLineEl = document.getElementById('rBreakdownLine');
+  if (breakdownLineEl) breakdownLineEl.innerHTML = breakdownHtml;
+
+  // 적자 지속 시 생존 개월 수
+  var monthlyProfit = executive?.monthlyProfit ?? finance?.monthlyProfit ?? 0;
+  var monthlyLoss = monthlyProfit < 0 ? Math.abs(monthlyProfit) : 0;
+  var availableCash = input ? input.conditions.initialInvestment : 0;
+  if (exitPlan && exitPlan.exitCostBreakdown) {
+    availableCash -= (exitPlan.exitCostBreakdown.exitCostTotal || exitPlan.exitCostBreakdown.totalLoss || 0);
+  }
+  var survivalMonthsOnLoss = monthlyLoss > 0 && availableCash > 0 ? Math.floor(availableCash / monthlyLoss) : null;
+  
+  var survivalHtml = '';
+  if (monthlyLoss > 0) {
+    survivalHtml = '<div style="padding:1.5rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm);">' +
+      '<div style="margin-bottom:1rem;">' +
+      '<div style="font-weight:600; margin-bottom:0.5rem;">월 적자</div>' +
+      '<div style="font-size:1.2rem; font-weight:700; color:#f87171;">' + Utils.formatKRW(monthlyLoss) + '</div>' +
+      '</div>' +
+      '<div style="margin-bottom:1rem;">' +
+      '<div style="font-weight:600; margin-bottom:0.5rem;">생존 개월</div>' +
+      '<div style="font-size:1.2rem; font-weight:700;">' + 
+      (survivalMonthsOnLoss !== null ? survivalMonthsOnLoss + '개월' : '계산 불가') +
+      '</div>' +
+      '</div>' +
+      '<div style="color:var(--text-muted); font-size:0.9rem;">' +
+      '생존 개월 = (초기 투자금 중 회수 불가 비용 제외 후 잔여 현금) ÷ 월 적자' +
+      '</div>' +
+      '</div>';
+  } else {
+    survivalHtml = '<div style="padding:1.5rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm); color:var(--text-muted);">현재 적자 상태가 아니므로 생존 개월 계산이 필요하지 않습니다.</div>';
+  }
+  var survivalOnLossEl = document.getElementById('rSurvivalOnLoss');
+  if (survivalOnLossEl) survivalOnLossEl.innerHTML = survivalHtml;
+
+  // ═══════════════════════════════════════════
   // jsPDF Generation
   // ═══════════════════════════════════════════
-  var btnPDF = document.getElementById('btnPDF');
-  if (btnPDF) {
-    btnPDF.addEventListener('click', generatePDF);
-  }
+  // PDF 다운로드 버튼 제거됨 - 더 이상 필요 없음
 
-  function generatePDF() {
+  async function generatePDF() {
     var jsPDF = window.jspdf.jsPDF;
+    // A4 용지 사이즈: 210mm x 297mm (세로 방향)
     var doc = new jsPDF('p', 'mm', 'a4');
-    var pageW = 210;
-    var pageH = 297;
-    var margin = 20;
-    var contentW = pageW - margin * 2;
+    var pageW = 210; // A4 가로: 210mm
+    var pageH = 297; // A4 세로: 297mm
+    var margin = 20; // 좌우 여백: 20mm
+    var contentW = pageW - margin * 2; // 콘텐츠 너비: 170mm
     var y = margin;
     var sectionNum = 0;
+    var currentPageNum = 1; // 페이지 번호 추적
+
+    // Noto Sans KR 한글 폰트 설정
+    // 폰트 파일을 로드하여 jsPDF에 등록
+    var koreanFontLoaded = false;
+    
+    // 폰트 파일을 base64로 변환하여 로드하는 함수
+    async function loadFontFile(filePath) {
+      try {
+        var response = await fetch(filePath);
+        if (!response.ok) {
+          throw new Error('폰트 파일 로드 실패: ' + filePath);
+        }
+        var blob = await response.blob();
+        return new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onloadend = function() {
+            // base64에서 data:application/octet-stream;base64, 부분 제거
+            var base64 = reader.result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.error('[폰트 로드] 오류:', error);
+        return null;
+      }
+    }
+    
+    // 폰트 등록 함수 (현재 doc에 폰트 등록)
+    async function setupKoreanFont() {
+      if (koreanFontLoaded) {
+        console.log('[폰트 설정] 이미 로드됨');
+        return; // 이미 로드된 경우 스킵
+      }
+      
+      try {
+        // Regular 폰트 등록
+        // 리포트 페이지(frontend/report/index.html) 기준으로 폰트 경로 설정
+        var regularBase64 = await loadFontFile('font/Noto_Sans_KR/static/NotoSansKR-Regular.ttf');
+        if (regularBase64) {
+          doc.addFileToVFS('NotoSansKR-Regular.ttf', regularBase64);
+          doc.addFont('NotoSansKR-Regular.ttf', 'NotoSansKR', 'normal');
+          console.log('[폰트 설정] Regular 폰트 등록 완료');
+        } else {
+          console.warn('[폰트 설정] Regular 폰트 로드 실패 - 경로: font/Noto_Sans_KR/static/NotoSansKR-Regular.ttf');
+        }
+        
+        // Bold 폰트 등록
+        var boldBase64 = await loadFontFile('font/Noto_Sans_KR/static/NotoSansKR-Bold.ttf');
+        if (boldBase64) {
+          doc.addFileToVFS('NotoSansKR-Bold.ttf', boldBase64);
+          doc.addFont('NotoSansKR-Bold.ttf', 'NotoSansKR', 'bold');
+          console.log('[폰트 설정] Bold 폰트 등록 완료');
+        } else {
+          console.warn('[폰트 설정] Bold 폰트 로드 실패 - 경로: font/Noto_Sans_KR/static/NotoSansKR-Bold.ttf');
+        }
+        
+        koreanFontLoaded = true;
+        console.log('[폰트 설정] Noto Sans KR 폰트 등록 완료');
+      } catch (error) {
+        console.warn('[폰트 설정] 폰트 등록 실패, 기본 폰트 사용:', error);
+        koreanFontLoaded = false;
+      }
+    }
+    
+    // 폰트 설정 초기화 (PDF 생성 전에 폰트 로드 완료 대기)
+    await setupKoreanFont();
 
     // Helper
-    function addText(text, x, yPos, size, bold, color) {
-      doc.setFontSize(size || 10);
-      if (bold) doc.setFont(undefined, 'bold');
-      else doc.setFont(undefined, 'normal');
-      if (color) doc.setTextColor(color[0], color[1], color[2]);
-      else doc.setTextColor(0, 0, 0);
-      doc.text(text, x, yPos);
+    // 상수 정의
+    var LINE_HEIGHT = 4.2; // 줄간격 (mm)
+
+    // addText: 옵션 기반 텍스트 추가 함수
+    function addText(text, x, yPos, opts) {
+      // 기존 호환성: size, bold, color를 직접 전달한 경우
+      if (typeof opts === 'number' || typeof opts === 'undefined') {
+        var size = arguments[3] || 10;
+        var bold = arguments[4] || false;
+        var color = arguments[5] || [0, 0, 0];
+        opts = { size: size, bold: bold, color: color };
+      }
+
+      var size = opts.size || 10;
+      var bold = opts.bold || false;
+      var color = opts.color || [0, 0, 0];
+      var align = opts.align || 'left';
+      var maxWidth = opts.maxWidth;
+
+      doc.setFontSize(size);
+      // 폰트 설정: Noto Sans KR이 등록되어 있으면 사용, 없으면 기본 폰트
+      if (koreanFontLoaded) {
+        try {
+          var fontStyle = bold ? 'bold' : 'normal';
+          doc.setFont('NotoSansKR', fontStyle);
+        } catch (e) {
+          // 폰트가 없으면 기본 폰트 사용
+          doc.setFont(undefined, bold ? 'bold' : 'normal');
+        }
+      } else {
+        // 폰트가 아직 로드되지 않았으면 기본 폰트 사용
+        doc.setFont(undefined, bold ? 'bold' : 'normal');
+      }
+      doc.setTextColor(color[0], color[1], color[2]);
+
+      var textOpts = { align: align };
+      if (maxWidth !== undefined) {
+        textOpts.maxWidth = maxWidth;
+      }
+
+      doc.text(String(text ?? ''), x, yPos, textOpts);
+    }
+
+    // addParagraph: 긴 텍스트를 여러 줄로 처리하는 함수
+    function addParagraph(text, x, yPos, opts) {
+      opts = opts || {};
+      var size = opts.size || 9;
+      var color = opts.color || [80, 80, 80];
+      var bold = opts.bold || false;
+      var width = opts.width !== undefined ? opts.width : contentW;
+      var lineH = opts.lineHeight || LINE_HEIGHT;
+      var maxLines = opts.maxLines || null;
+      var align = opts.align || 'left';
+
+      doc.setFontSize(size);
+      // 폰트 설정: Noto Sans KR이 등록되어 있으면 사용, 없으면 기본 폰트
+      if (koreanFontLoaded) {
+        try {
+          var fontStyle = bold ? 'bold' : 'normal';
+          doc.setFont('NotoSansKR', fontStyle);
+        } catch (e) {
+          doc.setFont(undefined, bold ? 'bold' : 'normal');
+        }
+      } else {
+        // 폰트가 아직 로드되지 않았으면 기본 폰트 사용
+        doc.setFont(undefined, bold ? 'bold' : 'normal');
+      }
+      doc.setTextColor(color[0], color[1], color[2]);
+
+      var lines = doc.splitTextToSize(String(text ?? ''), width);
+      var useLines = maxLines ? lines.slice(0, maxLines) : lines;
+
+      // 예상 높이 계산 후 페이지 넘김 확인
+      var needed = useLines.length * lineH + 2; // padding 포함
+      checkPage(needed);
+
+      // 텍스트 출력
+      doc.text(useLines, x, y, { align: align });
+      y += useLines.length * lineH;
+
+      return useLines.length;
     }
 
     function addLine(yPos) {
@@ -717,54 +911,130 @@
       doc.line(margin, yPos, pageW - margin, yPos);
     }
 
+    // 페이지 헤더 추가 함수
+    function addPageHeader() {
+      addLine(margin);
+      y += 3;
+      addText('StartSmart', margin, y, { size: 10, bold: true, color: [45, 90, 39] });
+      // 페이지 번호 추가
+      addText('Page ' + currentPageNum, pageW - margin, y, { size: 9, color: [150, 150, 150], align: 'right' });
+      y += 8;
+    }
+
     function checkPage(needed) {
-      if (y + (needed || 20) > pageH - 20) {
+      // 하단 기준을 margin으로 통일
+      if (y + (needed || 20) > pageH - margin) {
         doc.addPage();
+        currentPageNum++; // 페이지 번호 증가
         y = margin;
-        addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
-        y += 10;
+        addPageHeader();
       }
+    }
+
+    // ensureSpace: 공간 확보 헬퍼 (블록 단위 렌더링용)
+    function ensureSpace(mm) {
+      checkPage(mm);
     }
 
     function nextSection(title) {
       sectionNum++;
-      checkPage(25);
-      addText(sectionNum + '. ' + title, margin, y, 13, true);
+      ensureSpace(25);
+      addText(sectionNum + '. ' + title, margin, y, { size: 13, bold: true });
       y += 8;
     }
 
-    // ── Page 1: Overview + Evaluation ──
-    addText('StartSmart', margin, y, 18, true, [45, 90, 39]);
-    addText('Creation Feasibility Report', margin, y + 7, 12, false, [100, 100, 100]);
-    addText(Utils.formatDate(result.createdAt), pageW - margin, y, 9, false, [150, 150, 150]);
+    // ── Page 1: Executive Summary + 창업 조건 요약 통합 ──
+    addText('StartSmart', margin, y, { size: 18, bold: true, color: [45, 90, 39] });
+    addText('창업 타당성 검증 리포트', margin, y + 7, { size: 12, color: [100, 100, 100] });
+    // 날짜와 분석 ID 우측 정렬
+    var reportDate = '발행일: ' + Utils.formatDate(result.createdAt);
+    var reportId = '분석 ID: ' + (result.id || '');
+    addText(reportDate, pageW - margin, y, { size: 9, color: [150, 150, 150], align: 'right' });
+    addText(reportId, pageW - margin, y + 4, { size: 8, color: [150, 150, 150], align: 'right' });
+    addText('대외비', pageW - margin, y + 9, { size: 8, color: [150, 150, 150], align: 'right' });
     doc.setFont(undefined, 'normal');
-    y += 15;
+    y += 18;
     addLine(y);
     y += 8;
 
-    // Target Sales
-    var targetSales = gap?.targetDailySales ?? (input ? input.targetDailySales : null);
+    // Executive Summary 섹션
+    nextSection('Executive Summary');
+    
+    var pdfSignal = executive?.signal ?? decision?.signal ?? 'yellow';
+    var pdfScore = executive?.score ?? decision?.score ?? 0;
+    var pdfSummary = executive?.summary || summaryText || '';
 
-    nextSection('Analysis Overview');
+    var scoreColor = pdfSignal === 'green' ? [34, 197, 94] : pdfSignal === 'yellow' ? [245, 158, 11] : [239, 68, 68];
+    doc.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+    doc.circle(margin + 15, y + 10, 12, 'F');
+    addText(String(pdfScore), margin + 10, y + 13, { size: 16, bold: true, color: [255, 255, 255] });
+
+    var pdfSignalLabel = executive?.label || sigLabels[pdfSignal] || '주의 신호';
+    addText(pdfSignalLabel + ' (점수: ' + pdfScore + '점)', margin + 35, y + 8, { size: 11, bold: true });
+    // summary를 addParagraph로 처리
+    y += 6;
+    var summaryLines = addParagraph(pdfSummary, margin + 35, y, {
+      size: 8,
+      width: contentW - 35,
+      maxLines: 2,
+      color: [80, 80, 80]
+    });
+    y += 3;
+
+    // Decision Confidence
+    if (executive?.confidence) {
+      var pdfConfidence = executive.confidence;
+      ensureSpace(20);
+      addText('판정 신뢰도', margin, y, { size: 10, bold: true });
+      y += 5;
+      if (typeof pdfConfidence === 'object') {
+        var confData = [];
+        if (pdfConfidence.dataCoverage) confData.push(['데이터 커버리지', pdfConfidence.dataCoverage === 'high' ? '높음' : pdfConfidence.dataCoverage === 'medium' ? '보통' : '낮음']);
+        if (pdfConfidence.assumptionRisk) confData.push(['가정 리스크', pdfConfidence.assumptionRisk === 'high' ? '높음' : pdfConfidence.assumptionRisk === 'medium' ? '보통' : '낮음']);
+        if (pdfConfidence.stability) confData.push(['판정 안정성', pdfConfidence.stability === 'high' ? '높음' : pdfConfidence.stability === 'medium' ? '보통' : '낮음']);
+        if (confData.length > 0) {
+          doc.autoTable({
+            startY: y, head: [['항목', '레벨']], body: confData,
+            margin: { left: margin, right: margin },
+            styles: { fontSize: 8, cellPadding: 2, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+            headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+            theme: 'grid'
+          });
+          y = doc.lastAutoTable.finalY + 5;
+        }
+      } else {
+        var confValue = pdfConfidence.toString().toLowerCase();
+        var confLabel = confValue === 'high' ? '높음' : confValue === 'medium' ? '보통' : '낮음';
+        addText('신뢰도: ' + confLabel, margin, y, { size: 9, color: [80, 80, 80] });
+        y += 5;
+      }
+    }
+
+    // 창업 조건 요약 섹션
+    var targetSales = gap?.targetDailySales ?? (input ? input.targetDailySales : null);
+    ensureSpace(25);
+    nextSection('창업 조건 요약 (입력값 스냅샷)');
 
     var overviewData = [
-      ['Brand', result.brand.name],
-      ['Location', result.location.address || 'N/A'],
-      ['Area', (input ? input.conditions.area : '-') + ' pyeong'],
-      ['Investment', Utils.formatKRW(input ? input.conditions.initialInvestment : 0)],
-      ['Monthly Rent', Utils.formatKRW(finance.monthlyCosts.rent)],
-      ['Target Sales', (targetSales !== null ? targetSales : '-') + ' cups/day']
+      ['브랜드', result.brand.name],
+      ['입지 (지역/반경)', result.location.address || 'N/A'],
+      ['평수', (input ? input.conditions.area : '-') + '평'],
+      ['월세', Utils.formatKRWFull(finance.monthlyCosts.rent) + ' / 월'],
+      ['초기 투자금', Utils.formatKRWFull(input ? input.conditions.initialInvestment : 0)],
+      ['목표 일 판매량', (targetSales !== null ? targetSales : '-') + '잔/일'],
+      ['점주 근무', input && input.conditions.ownerWorking ? '직접 근무' : '고용 운영']
     ];
 
     doc.autoTable({
-      startY: y, head: [['Item', 'Value']], body: overviewData,
+      startY: y, head: [['항목', '값']], body: overviewData,
       margin: { left: margin, right: margin },
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+      styles: { fontSize: 9, cellPadding: 3, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+      headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+      theme: 'grid'
     });
     y = doc.lastAutoTable.finalY + 10;
 
-    nextSection('Overall Evaluation');
+    nextSection('종합 평가');
 
     var pdfSignal = executive?.signal ?? decision?.signal ?? 'yellow';
     var pdfScore = executive?.score ?? decision?.score ?? 0;
@@ -773,99 +1043,109 @@
     var scoreColor = pdfSignal === 'green' ? [34, 197, 94] : pdfSignal === 'yellow' ? [245, 158, 11] : [239, 68, 68];
     doc.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
     doc.circle(margin + 15, y + 10, 12, 'F');
-    addText(String(pdfScore), margin + 10, y + 13, 16, true, [255, 255, 255]);
+    addText(String(pdfScore), margin + 10, y + 13, { size: 16, bold: true, color: [255, 255, 255] });
 
-    var pdfSignalLabel = executive?.label || sigLabels[pdfSignal] || 'Caution';
-    addText(pdfSignalLabel + ' (Score: ' + pdfScore + ')', margin + 35, y + 8, 11, true);
-    // 긴 summary를 여러 줄로 분할
-    var summLines = doc.splitTextToSize(pdfSummary, contentW - 35);
-    for (var sl = 0; sl < Math.min(summLines.length, 3); sl++) {
-      addText(summLines[sl], margin + 35, y + 14 + sl * 4, 8, false, [80, 80, 80]);
-    }
-    y += 28 + Math.min(summLines.length, 3) * 4;
+    var pdfSignalLabel = executive?.label || sigLabels[pdfSignal] || '주의 신호';
+    addText(pdfSignalLabel + ' (점수: ' + pdfScore + ')', margin + 35, y + 8, { size: 11, bold: true });
+    // 긴 summary를 addParagraph로 처리 (1페이지와 2페이지 통합을 위해 줄 수 감소)
+    y += 6;
+    var summaryLines = addParagraph(pdfSummary, margin + 35, y, {
+      size: 8,
+      width: contentW - 35,
+      maxLines: 2, // 1페이지와 2페이지 통합을 위해 줄 수 감소
+      color: [80, 80, 80]
+    });
+    y += 3; // 추가 여백 감소
 
     // Decision Confidence
     if (executive?.confidence) {
       var pdfConfidence = executive.confidence;
-      checkPage(30);
-      addText('Decision Confidence', margin, y, 11, true);
+      ensureSpace(25); // 공간 조정
+      addText('판정 신뢰도', margin, y, { size: 11, bold: true });
       y += 6;
       if (typeof pdfConfidence === 'object') {
         var confData = [];
-        if (pdfConfidence.dataCoverage) confData.push(['Data Coverage', pdfConfidence.dataCoverage.toUpperCase()]);
-        if (pdfConfidence.assumptionRisk) confData.push(['Assumption Risk', pdfConfidence.assumptionRisk.toUpperCase()]);
-        if (pdfConfidence.stability) confData.push(['Stability', pdfConfidence.stability.toUpperCase()]);
+        if (pdfConfidence.dataCoverage) confData.push(['데이터 커버리지', pdfConfidence.dataCoverage === 'high' ? '높음' : pdfConfidence.dataCoverage === 'medium' ? '보통' : '낮음']);
+        if (pdfConfidence.assumptionRisk) confData.push(['가정 리스크', pdfConfidence.assumptionRisk === 'high' ? '높음' : pdfConfidence.assumptionRisk === 'medium' ? '보통' : '낮음']);
+        if (pdfConfidence.stability) confData.push(['판정 안정성', pdfConfidence.stability === 'high' ? '높음' : pdfConfidence.stability === 'medium' ? '보통' : '낮음']);
         if (confData.length > 0) {
           doc.autoTable({
-            startY: y, head: [['Item', 'Level']], body: confData,
+            startY: y, head: [['항목', '레벨']], body: confData,
             margin: { left: margin, right: margin },
-            styles: { fontSize: 8, cellPadding: 2.5 },
-            headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+            styles: { fontSize: 8, cellPadding: 2.5, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+            headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+            theme: 'grid'
           });
           y = doc.lastAutoTable.finalY + 5;
         }
       } else {
-        addText('Confidence: ' + pdfConfidence.toString().toUpperCase(), margin, y, 9, false, [80, 80, 80]);
+        var confValue = pdfConfidence.toString().toLowerCase();
+        var confLabel = confValue === 'high' ? '높음' : confValue === 'medium' ? '보통' : '낮음';
+        addText('신뢰도: ' + confLabel, margin, y, { size: 9, color: [80, 80, 80] });
         y += 5;
       }
     }
 
     // Hardcut Reasons
     if (executive?.nonNegotiable || (result.decision?.hardCutReasons && result.decision.hardCutReasons.length > 0)) {
-      checkPage(20);
-      addText('Hard Cut Reasons', margin, y, 11, true);
+      ensureSpace(15); // 공간 조정
+      addText('하드컷 판정 근거', margin, y, { size: 11, bold: true });
       y += 6;
       var hardCutReasons = result.decision?.hardCutReasons || [];
       for (var hc = 0; hc < hardCutReasons.length; hc++) {
-        checkPage(6);
-        addText((hc + 1) + '. ' + hardCutReasons[hc], margin, y, 9, false, [239, 68, 68]);
+        ensureSpace(6);
+        addText((hc + 1) + '. ' + hardCutReasons[hc], margin, y, { size: 9, color: [239, 68, 68] });
         y += 5;
       }
       y += 5;
     }
 
-    // ── Financial Analysis ──
-    checkPage(60);
-    nextSection('Financial Analysis');
+    // ── Financial Analysis (1페이지에 계속 표시 - 1페이지와 2페이지 통합) ──
+    // 페이지 넘김 없이 1페이지에 계속 표시하도록 공간 조정
+    ensureSpace(60);
+    nextSection('재무 분석');
 
     var finBody = finRows.map(function (row) {
       return [row[0], Utils.formatKRW(row[1]), row[2]];
     });
     doc.autoTable({
-      startY: y, head: [['Item', 'Amount (Monthly)', 'Ratio']], body: finBody,
+      startY: y, head: [['항목', '금액 (월)', '비율']], body: finBody,
       margin: { left: margin, right: margin },
-      styles: { fontSize: 8, cellPadding: 2.5 },
-      headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+      styles: { fontSize: 8, cellPadding: 2.5, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+      headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+      theme: 'grid'
     });
     y = doc.lastAutoTable.finalY + 10;
 
     // Key Metrics
-    checkPage(40);
-    nextSection('Key Metrics');
+    ensureSpace(35); // 공간 조정
+    nextSection('핵심 지표');
     var kpiBody = kpis.map(function (k) { return [k.label, k.value]; });
     doc.autoTable({
-      startY: y, head: [['Metric', 'Value']], body: kpiBody,
+      startY: y, head: [['지표', '값']], body: kpiBody,
       margin: { left: margin, right: margin },
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+      styles: { fontSize: 9, cellPadding: 3, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+      headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+      theme: 'grid'
     });
     y = doc.lastAutoTable.finalY + 10;
 
     // Sensitivity
-    checkPage(40);
-    nextSection('Sensitivity Analysis');
+    ensureSpace(35); // 공간 조정
+    nextSection('민감도 분석');
     doc.autoTable({
-      startY: y, head: [['Scenario', 'Monthly Profit', 'Payback']], body: sensRows,
+      startY: y, head: [['시나리오', '월 순이익', '회수 기간']], body: sensRows,
       margin: { left: margin, right: margin },
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+      styles: { fontSize: 9, cellPadding: 3, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+      headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+      theme: 'grid'
     });
     y = doc.lastAutoTable.finalY + 10;
 
     // Breakdown
     if (breakdown) {
-      checkPage(50);
-      nextSection('Score Breakdown');
+      ensureSpace(40); // 공간 조정
+      nextSection('점수 Breakdown');
       var breakdownItems = [
         { label: '회수 기간', value: breakdown.payback || breakdown.paybackMonths || 0 },
         { label: '수익성', value: breakdown.profitability || 0 },
@@ -877,14 +1157,15 @@
         { label: '로드뷰', value: breakdown.roadview || 0 }
       ];
       var breakdownBody = breakdownItems.map(function(item) {
-        var evaluation = item.value >= 80 ? 'Good' : item.value >= 60 ? 'Fair' : 'Caution';
+        var evaluation = item.value >= 80 ? '양호' : item.value >= 60 ? '보통' : '주의';
         return [item.label, item.value + '점', evaluation];
       });
       doc.autoTable({
-        startY: y, head: [['Item', 'Score', 'Evaluation']], body: breakdownBody,
+        startY: y, head: [['항목', '점수', '평가']], body: breakdownBody,
         margin: { left: margin, right: margin },
-        styles: { fontSize: 8, cellPadding: 2.5 },
-        headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+        styles: { fontSize: 8, cellPadding: 2.5, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+        headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+        theme: 'grid'
       });
       y = doc.lastAutoTable.finalY + 10;
     }
@@ -892,7 +1173,7 @@
     // ── Location Analysis ──
     var hasRoadview = roadviewData && roadviewData.risks && roadviewData.risks.length > 0;
     if (hasRoadview) {
-      checkPage(40);
+      ensureSpace(40);
       nextSection('Location Analysis (Roadview)');
       var rvRiskTypeMap = {
         signage_obstruction: '간판 가시성', steep_slope: '경사도',
@@ -903,20 +1184,23 @@
         ground: '1층', half_basement: '반지하', second_floor: '2층 이상'
       };
       for (var rv = 0; rv < roadviewData.risks.length; rv++) {
-        checkPage(15);
+        ensureSpace(20);
         var rvRisk = roadviewData.risks[rv];
-        addText((rv + 1) + '. ' + (rvRiskTypeMap[rvRisk.type] || rvRisk.type) + ' [' + (rvLevelLabelMap[rvRisk.level] || rvRisk.level) + ']', margin, y, 10, true);
+        addText((rv + 1) + '. ' + (rvRiskTypeMap[rvRisk.type] || rvRisk.type) + ' [' + (rvLevelLabelMap[rvRisk.level] || rvRisk.level) + ']', margin, y, { size: 10, bold: true });
         y += 5;
-        var rvLines = doc.splitTextToSize(rvRisk.description || '', contentW);
-        addText(rvLines, margin, y, 8, false, [80, 80, 80]);
-        y += rvLines.length * 4 + 5;
+        addParagraph(rvRisk.description || '', margin, y, {
+          size: 8,
+          width: contentW,
+          color: [80, 80, 80]
+        });
+        y += 3; // 항목 간 여백
       }
       if (roadviewData.overallRisk) {
-        checkPage(12);
-        addText('Overall Risk: ' + (roadviewData.overallRisk === 'low' ? '낮음' : roadviewData.overallRisk === 'high' ? '높음' : '보통'), margin, y, 10, true);
+        ensureSpace(12);
+        addText('Overall Risk: ' + (roadviewData.overallRisk === 'low' ? '낮음' : roadviewData.overallRisk === 'high' ? '높음' : '보통'), margin, y, { size: 10, bold: true });
         y += 5;
         if (roadviewData.riskScore !== null && roadviewData.riskScore !== undefined) {
-          addText('Risk Score: ' + roadviewData.riskScore + ' / 100', margin, y, 9, false, [80, 80, 80]);
+          addText('Risk Score: ' + roadviewData.riskScore + ' / 100', margin, y, { size: 9, color: [80, 80, 80] });
           y += 8;
         }
       }
@@ -924,7 +1208,7 @@
 
     // ── Market Analysis ──
     if (marketData) {
-      checkPage(40);
+      ensureSpace(40);
       nextSection('Market Analysis');
       var marketBody = [];
       if (marketData.location && marketData.location.radius) marketBody.push(['반경', marketData.location.radius + 'm']);
@@ -948,8 +1232,9 @@
         doc.autoTable({
           startY: y, head: [['항목', '값']], body: marketBody,
           margin: { left: margin, right: margin },
-          styles: { fontSize: 9, cellPadding: 3 },
-          headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+          styles: { fontSize: 9, cellPadding: 3, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+          headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+          theme: 'grid'
         });
         y = doc.lastAutoTable.finalY + 10;
       }
@@ -958,42 +1243,70 @@
     // ── AI Risk Analysis ──
     var pdfRisks = risksToShow || [];
     if (pdfRisks.length > 0) {
-      checkPage(30);
+      ensureSpace(30);
       nextSection('AI Risk Analysis');
       for (var r = 0; r < pdfRisks.length; r++) {
-        checkPage(15);
+        ensureSpace(20);
         var pdfRisk = pdfRisks[r];
-        addText((r + 1) + '. ' + (pdfRisk.title || '') + ' [' + ((pdfRisk.impact || 'medium').toUpperCase()) + ']', margin, y, 10, true);
+        addText((r + 1) + '. ' + (pdfRisk.title || '') + ' [' + ((pdfRisk.impact || 'medium').toUpperCase()) + ']', margin, y, { size: 10, bold: true });
         y += 5;
-        var rLines = doc.splitTextToSize(pdfRisk.description || '', contentW);
-        addText(rLines, margin, y, 8, false, [80, 80, 80]);
-        y += rLines.length * 4 + 5;
+        addParagraph(pdfRisk.description || '', margin, y, {
+          size: 8,
+          width: contentW,
+          color: [80, 80, 80]
+        });
+        y += 3; // 항목 간 여백
       }
     }
 
-    // ── AI Improvements ──
-    var pdfImps = improvementsToShow || [];
+    // ── AI Improvements (AI consulting 결과만 표시) ──
+    // improvement.cards에서 ai가 있는 것만 필터링
+    var pdfImps = [];
+    if (improvement && improvement.cards && improvement.cards.length > 0) {
+      // AI consulting 결과가 있는 카드만 필터링
+      pdfImps = improvement.cards
+        .filter(function(card) { return card.ai !== null && card.ai !== undefined; })
+        .map(function(card) {
+          return {
+            title: card.ai.title || card.engine?.title || '',
+            description: card.ai.description || card.engine?.description || '',
+            expectedImpact: card.ai.expectedImpact || ''
+          };
+        });
+    } else if (ai && ai.improvements && ai.improvements.length > 0) {
+      // fallback: 기존 ai.improvements 사용
+      pdfImps = ai.improvements;
+    }
+    
     if (pdfImps.length > 0) {
-      checkPage(30);
+      ensureSpace(30);
       nextSection('AI Improvement Suggestions');
       for (var im = 0; im < pdfImps.length; im++) {
-        checkPage(15);
+        ensureSpace(20);
         var pdfImp = pdfImps[im];
-        addText((im + 1) + '. ' + (pdfImp.title || ''), margin, y, 10, true);
+        if (!pdfImp.title && !pdfImp.description) continue; // 제목과 설명이 모두 없으면 스킵
+        addText((im + 1) + '. ' + (pdfImp.title || '개선 제안'), margin, y, { size: 10, bold: true });
         y += 5;
-        var impLines = doc.splitTextToSize(pdfImp.description || '', contentW);
-        addText(impLines, margin, y, 8, false, [80, 80, 80]);
-        y += impLines.length * 4 + 3;
+        if (pdfImp.description) {
+          addParagraph(pdfImp.description, margin, y, {
+            size: 8,
+            width: contentW,
+            color: [80, 80, 80]
+          });
+        }
         if (pdfImp.expectedImpact) {
-          addText('Expected: ' + pdfImp.expectedImpact, margin, y, 8, false, [45, 90, 39]);
-          y += 7;
+          y += 2;
+          addText('Expected: ' + pdfImp.expectedImpact, margin, y, { size: 8, color: [45, 90, 39] });
+          y += 5;
+        } else {
+          y += 3; // 항목 간 여백
         }
       }
     }
 
     // ── Competitive ──
     if (competitive || ai?.competitiveAnalysis) {
-      checkPage(30);
+      ensureSpace(30);
       nextSection('Competitive Analysis');
       var pdfComp = competitive || ai.competitiveAnalysis;
       var compBody = [];
@@ -1004,8 +1317,9 @@
         doc.autoTable({
           startY: y, head: [['항목', '평가']], body: compBody,
           margin: { left: margin, right: margin },
-          styles: { fontSize: 9, cellPadding: 3 },
-          headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+          styles: { fontSize: 9, cellPadding: 3, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+          headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+          theme: 'grid'
         });
         y = doc.lastAutoTable.finalY + 10;
       }
@@ -1013,33 +1327,81 @@
 
     // ── Failure Triggers ──
     if (failureTriggers && failureTriggers.length > 0) {
-      checkPage(30);
+      ensureSpace(30);
       nextSection('Failure Triggers');
       for (var ft = 0; ft < failureTriggers.length; ft++) {
-        checkPage(20);
+        ensureSpace(25);
         var trigger = failureTriggers[ft];
-        addText((ft + 1) + '. ' + (trigger.triggerName || trigger.trigger || '') + ' [' + (trigger.impact || 'medium').toUpperCase() + ']', margin, y, 10, true);
+        addText((ft + 1) + '. ' + (trigger.triggerName || trigger.trigger || '') + ' [' + (trigger.impact || 'medium').toUpperCase() + ']', margin, y, { size: 10, bold: true });
         y += 5;
         if (trigger.outcome || trigger.result) {
-          addText('Outcome: ' + (trigger.outcome || trigger.result), margin, y, 8, false, [80, 80, 80]);
-          y += 4;
+          addParagraph((trigger.outcome || trigger.result), margin, y, {
+            size: 8,
+            width: contentW,
+            color: [80, 80, 80]
+          });
         }
         if (trigger.estimatedFailureWindow) {
-          addText('Failure Window: ' + trigger.estimatedFailureWindow, margin, y, 8, false, [239, 68, 68]);
+          y += 2;
+          addText('Failure Window: ' + trigger.estimatedFailureWindow, margin, y, { size: 8, color: [239, 68, 68] });
           y += 4;
         }
         if (trigger.totalLossAtFailure !== undefined) {
-          addText('Total Loss: ' + Utils.formatKRW(trigger.totalLossAtFailure), margin, y, 8, false, [239, 68, 68]);
+          addText('Total Loss: ' + Utils.formatKRW(trigger.totalLossAtFailure), margin, y, { size: 8, color: [239, 68, 68] });
           y += 4;
         }
-        y += 3;
+        y += 3; // 항목 간 여백
       }
     }
 
-    // ── Exit Plan ──
+    // ── Exit Plan & 손절 판단 ──
+    ensureSpace(30);
+    nextSection('Exit Plan & 손절 판단');
+
+    // 손절 기준선 (Break-Down Line)
+    var pdfBreakdownVisitors = finance?.breakdownVisitors || null;
+    if (pdfBreakdownVisitors !== null && pdfBreakdownVisitors !== undefined) {
+      ensureSpace(25);
+      addText('손절 기준선 (Break-Down Line)', margin, y, { size: 11, bold: true });
+      y += 6;
+      addText('손절 방문객 수: ' + Math.round(pdfBreakdownVisitors) + '명/일', margin, y, { size: 10, bold: true, color: [239, 68, 68] });
+      y += 5;
+      addParagraph('손절 방문객 수 = (고정비 + 최소 변동비) ÷ 1인당 평균 구매비용', margin, y, {
+        size: 8,
+        width: contentW,
+        color: [80, 80, 80]
+      });
+      y += 2;
+      addText('이 방문객 수 이하가 3개월 이상 지속되면 손절 검토가 필요합니다.', margin, y, { size: 8, color: [80, 80, 80] });
+      y += 8;
+    }
+
+    // 적자 지속 시 생존 개월 수
+    var pdfMonthlyProfit = executive?.monthlyProfit ?? finance?.monthlyProfit ?? 0;
+    var pdfMonthlyLoss = pdfMonthlyProfit < 0 ? Math.abs(pdfMonthlyProfit) : 0;
+    var pdfAvailableCash = input ? input.conditions.initialInvestment : 0;
+    if (exitPlan && exitPlan.exitCostBreakdown) {
+      pdfAvailableCash -= (exitPlan.exitCostBreakdown.exitCostTotal || exitPlan.exitCostBreakdown.totalLoss || 0);
+    }
+    var pdfSurvivalMonthsOnLoss = pdfMonthlyLoss > 0 && pdfAvailableCash > 0 ? Math.floor(pdfAvailableCash / pdfMonthlyLoss) : null;
+    
+    if (pdfMonthlyLoss > 0) {
+      ensureSpace(25);
+      addText('적자 지속 시 생존 개월 수', margin, y, { size: 11, bold: true });
+      y += 6;
+      addText('월 적자: ' + Utils.formatKRW(pdfMonthlyLoss), margin, y, { size: 10, bold: true, color: [239, 68, 68] });
+      y += 5;
+      addText('생존 개월: ' + (pdfSurvivalMonthsOnLoss !== null ? pdfSurvivalMonthsOnLoss + '개월' : '계산 불가'), margin, y, { size: 10, bold: true });
+      y += 5;
+      addText('생존 개월 = (초기 투자금 중 회수 불가 비용 제외 후 잔여 현금) ÷ 월 적자', margin, y, { size: 8, color: [80, 80, 80] });
+      y += 8;
+    }
+
+    // 폐업 시 회수 구조 (Exit Plan)
     if (exitPlan && (exitPlan.optimalExitMonth || exitPlan.warningMonth || exitPlan.exitCostBreakdown)) {
-      checkPage(30);
-      nextSection('Exit Plan');
+      ensureSpace(30);
+      addText('폐업 시 회수 구조', margin, y, { size: 11, bold: true });
+      y += 6;
 
       if (exitPlan.optimalExitMonth || exitPlan.warningMonth) {
         var exitTimingData = [];
@@ -1048,19 +1410,20 @@
         if (exitPlan.lossExplosionMonth) exitTimingData.push(['Loss Explosion', exitPlan.lossExplosionMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtExplosion || 0)]);
         if (exitTimingData.length > 0) {
           doc.autoTable({
-            startY: y, head: [['Period', 'Timing', 'Total Loss']], body: exitTimingData,
+            startY: y, head: [['구분', '시점', '총손실']], body: exitTimingData,
             margin: { left: margin, right: margin },
-            styles: { fontSize: 8, cellPadding: 2.5 },
-            headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+            styles: { fontSize: 8, cellPadding: 2.5, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+            headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+            theme: 'grid'
           });
           y = doc.lastAutoTable.finalY + 8;
         }
       }
 
       if (exitPlan.exitCostBreakdown) {
-        checkPage(30);
+        ensureSpace(30);
         var eb = exitPlan.exitCostBreakdown;
-        addText('Exit Cost Breakdown', margin, y, 11, true);
+        addText('Exit Cost Breakdown', margin, y, { size: 11, bold: true });
         y += 6;
         var exitCostData = [];
         if (eb.penaltyCost !== undefined) exitCostData.push(['Penalty', Utils.formatKRW(eb.penaltyCost || 0)]);
@@ -1071,10 +1434,11 @@
         if (exitPlan.totalLossAtOptimal !== undefined) exitCostData.push(['Final Total Loss', Utils.formatKRW(exitPlan.totalLossAtOptimal)]);
         if (exitCostData.length > 0) {
           doc.autoTable({
-            startY: y, head: [['Item', 'Amount']], body: exitCostData,
+            startY: y, head: [['항목', '금액']], body: exitCostData,
             margin: { left: margin, right: margin },
-            styles: { fontSize: 8, cellPadding: 2.5 },
-            headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+            styles: { fontSize: 8, cellPadding: 2.5, font: koreanFontLoaded ? 'NotoSansKR' : undefined },
+            headStyles: { fillColor: [45, 90, 39], font: koreanFontLoaded ? 'NotoSansKR' : undefined, fontStyle: 'bold' }, 
+            theme: 'grid'
           });
           y = doc.lastAutoTable.finalY + 10;
         }
@@ -1082,11 +1446,11 @@
     }
 
     // Disclaimer
-    checkPage(15);
+    ensureSpace(15);
     y += 5;
     addLine(y);
     y += 5;
-    addText('* This report is based on AI simulation models and may differ from actual results.', margin, y, 7, false, [150, 150, 150]);
+    addText('* This report is based on AI simulation models and may differ from actual results.', margin, y, { size: 7, color: [150, 150, 150] });
 
     // Save
     var filename = 'StartSmart_' + result.brand.name + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
