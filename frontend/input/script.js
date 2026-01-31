@@ -222,6 +222,109 @@
     });
   }
 
+  // ── Capture: html2canvas helpers ──
+
+  /**
+   * Capture a single DOM element to JPEG Blob via html2canvas.
+   * Handles WebGL canvas (Kakao Maps) by manually copying via drawImage in onclone.
+   */
+  function captureElement(el, cb) {
+    if (typeof html2canvas === 'undefined') {
+      console.warn('html2canvas not loaded, skipping capture');
+      return cb(null);
+    }
+    html2canvas(el, {
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null,
+      onclone: function (clonedDoc) {
+        // Copy WebGL / hardware-accelerated canvases that html2canvas can't read
+        var origCanvases = el.querySelectorAll('canvas');
+        var clonedEl = clonedDoc.getElementById(el.id) || clonedDoc.querySelector('[data-capture="' + el.id + '"]');
+        if (!clonedEl) return;
+        var clonedCanvases = clonedEl.querySelectorAll('canvas');
+        for (var i = 0; i < origCanvases.length; i++) {
+          try {
+            clonedCanvases[i].width = origCanvases[i].width;
+            clonedCanvases[i].height = origCanvases[i].height;
+            var ctx = clonedCanvases[i].getContext('2d');
+            ctx.drawImage(origCanvases[i], 0, 0);
+          } catch (e) {
+            console.warn('Canvas copy failed:', e);
+          }
+        }
+      }
+    }).then(function (canvas) {
+      canvas.toBlob(function (blob) {
+        cb(blob);
+      }, 'image/jpeg', 0.85);
+    }).catch(function (err) {
+      console.warn('html2canvas capture failed:', err);
+      cb(null);
+    });
+  }
+
+  /**
+   * Orchestrate capture of roadview + map images.
+   * Skips captures that aren't available (fallback states).
+   * cb(roadviewBlob, roadmapBlob)
+   */
+  function captureAllImages(cb) {
+    var roadviewBlob = null;
+    var roadmapBlob = null;
+    var done = 0;
+    var total = 0;
+
+    var isFallbackMode = document.getElementById('mapContainer').classList.contains('fallback-mode');
+    var roadviewHidden = document.getElementById('roadviewFallback').style.display !== 'none';
+
+    // Determine what to capture
+    var captureRoadview = !isFallbackMode && !roadviewHidden && roadview;
+    var captureMap = !isFallbackMode && mapLoaded;
+
+    if (!captureRoadview && !captureMap) {
+      console.log('Capture: nothing to capture (fallback mode)');
+      return cb(null, null);
+    }
+
+    function checkDone() {
+      done++;
+      if (done >= total) {
+        cb(roadviewBlob, roadmapBlob);
+      }
+    }
+
+    if (captureRoadview) {
+      total++;
+      var rvEl = document.getElementById('roadviewPreview');
+      captureElement(rvEl, function (blob) {
+        roadviewBlob = blob;
+        console.log('Capture roadview:', blob ? (blob.size + ' bytes') : 'skipped');
+        checkDone();
+      });
+    }
+
+    if (captureMap) {
+      total++;
+      var mapEl = document.getElementById('mapContainer');
+      captureElement(mapEl, function (blob) {
+        roadmapBlob = blob;
+        console.log('Capture map:', blob ? (blob.size + ' bytes') : 'skipped');
+        checkDone();
+      });
+    }
+  }
+
+  /**
+   * Fallback to mock data when backend is unavailable.
+   */
+  function fallbackToMock(input) {
+    console.log('Falling back to mock data');
+    var result = MockData.generateResult(input);
+    Utils.saveSession('analysisResult', result);
+    window.location.href = '../dashboard/';
+  }
+
   // ── Radius Buttons ──
   var radiusBtns = document.querySelectorAll('.radius-btn[data-radius]');
   for (var i = 0; i < radiusBtns.length; i++) {
@@ -394,27 +497,96 @@
 
     var steps = document.querySelectorAll('.loading-step');
     var current = 0;
-    var delays = [800, 1200, 1000, 1500];
+    // 5 steps: capture(0), data(1), simulation(2), roadview AI(3), consulting(4)
+    var delays = [600, 800, 1200, 1000, 1500];
+    var animationDone = false;
+    var apiDone = false;
+    var apiResult = null;
+    var apiFailed = false;
+
+    function markStep(idx) {
+      if (idx >= 0 && idx < steps.length) {
+        steps[idx].classList.remove('active');
+        steps[idx].classList.add('done');
+        steps[idx].querySelector('i').className = 'fa-solid fa-circle-check';
+      }
+    }
 
     function nextStep() {
-      if (current > 0) {
-        steps[current - 1].classList.remove('active');
-        steps[current - 1].classList.add('done');
-        steps[current - 1].querySelector('i').className = 'fa-solid fa-circle-check';
-      }
+      if (current > 0) markStep(current - 1);
       if (current < steps.length) {
         steps[current].classList.add('active');
         current++;
         setTimeout(nextStep, delays[current - 1]);
       } else {
-        var result = MockData.generateResult(input);
-        Utils.saveSession('analysisResult', result);
-        setTimeout(function () {
-          window.location.href = '../dashboard/';
-        }, 500);
+        animationDone = true;
+        tryNavigate();
       }
     }
+
+    function tryNavigate() {
+      if (!animationDone || !apiDone) return;
+      setTimeout(function () {
+        window.location.href = '../dashboard/';
+      }, 400);
+    }
+
+    // Start animation
     nextStep();
+
+    // Start capture → API flow
+    captureAllImages(function (roadviewBlob, roadmapBlob) {
+      var formData = new FormData();
+      formData.append('data', JSON.stringify(input));
+      if (roadviewBlob) formData.append('roadview', roadviewBlob, 'roadview.jpg');
+      if (roadmapBlob) formData.append('roadmap', roadmapBlob, 'roadmap.jpg');
+
+      // Attempt backend API call with timeout
+      var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timeoutId = setTimeout(function () {
+        if (controller) controller.abort();
+        console.warn('API timeout, falling back to mock');
+        if (!apiDone) {
+          apiDone = true;
+          fallbackToMock(input);
+        }
+      }, 15000);
+
+      var fetchOptions = {
+        method: 'POST',
+        body: formData
+      };
+      if (controller) fetchOptions.signal = controller.signal;
+
+      fetch('/api/analyze', fetchOptions)
+        .then(function (res) {
+          clearTimeout(timeoutId);
+          if (!res.ok) throw new Error('API returned ' + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          console.log('API success:', data);
+          // If backend returns a full result, use it; otherwise mock
+          if (data.result) {
+            Utils.saveSession('analysisResult', data.result);
+          } else {
+            var result = MockData.generateResult(input);
+            Utils.saveSession('analysisResult', result);
+          }
+          apiDone = true;
+          tryNavigate();
+        })
+        .catch(function (err) {
+          clearTimeout(timeoutId);
+          console.warn('API failed:', err.message);
+          if (!apiDone) {
+            apiDone = true;
+            var result = MockData.generateResult(input);
+            Utils.saveSession('analysisResult', result);
+            tryNavigate();
+          }
+        });
+    });
   }
 
   // ── Header Scroll ──

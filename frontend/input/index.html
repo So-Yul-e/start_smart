@@ -168,6 +168,7 @@
   <div id="loadingOverlay" class="loading-overlay">
     <div class="loading-spinner"></div>
     <div class="loading-steps" id="loadingSteps">
+      <div class="loading-step" data-step="0"><i class="fa-solid fa-camera"></i> 로드뷰/지도 캡처 중...</div>
       <div class="loading-step" data-step="1"><i class="fa-solid fa-map-location-dot"></i> 상권 데이터 수집 중...</div>
       <div class="loading-step" data-step="2"><i class="fa-solid fa-calculator"></i> 손익 시뮬레이션 중...</div>
       <div class="loading-step" data-step="3"><i class="fa-solid fa-eye"></i> AI 로드뷰 분석 중...</div>
@@ -181,6 +182,8 @@
 
   <!-- Kakao Map SDK -->
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2ff501fa54ad54b13eb7914e077ac876&libraries=services"></script>
+  <!-- html2canvas for roadview/map capture -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="../js/mock-data.js"></script>
   <script src="../js/utils.js"></script>
   <script src="script.js"></script>
