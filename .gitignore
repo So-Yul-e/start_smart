@@ -34,3 +34,20 @@ temp/
 # Test files
 test.js
 *.test.js
+
+# Ralph agent
+.ralph/
+.ralphrc
+
+# Stackdumps
+*.stackdump
+
+# Agent/AI generated docs
+AGENT.md
+PROMPT.md
+fix_plan.md
+status.json
+
+# Local workspace
+my-project/
+docs/권동영_Frontend_가이드.md
