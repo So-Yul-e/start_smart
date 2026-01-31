@@ -91,6 +91,62 @@
   }
   document.getElementById('rDecisionSummary').textContent = summaryText;
 
+  // Decision Confidence 렌더링
+  function renderConfidence(confidence) {
+    if (!confidence) {
+      document.getElementById('rConfidence').innerHTML = '';
+      return;
+    }
+
+    var html = '<div style="padding:1rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm);">' +
+      '<h3 style="font-size:1rem; margin-bottom:0.75rem; color:var(--text-muted);">판정 신뢰도</h3>';
+    
+    // confidence가 객체인 경우
+    if (typeof confidence === 'object') {
+      var coverageMap = { high: '높음', medium: '보통', low: '낮음' };
+      var coverageColor = { high: '#4ade80', medium: '#facc15', low: '#f87171' };
+      
+      if (confidence.dataCoverage) {
+        var coverage = confidence.dataCoverage.toLowerCase();
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
+          '<span style="font-size:0.9rem; color:var(--text-muted);">데이터 커버리지</span>' +
+          '<span style="padding:0.3rem 0.8rem; border-radius:20px; background:' + coverageColor[coverage] + '22; color:' + coverageColor[coverage] + '; font-size:0.9rem; font-weight:600;">' + (coverageMap[coverage] || coverage) + '</span>' +
+          '</div>';
+      }
+      
+      if (confidence.assumptionRisk) {
+        var risk = confidence.assumptionRisk.toLowerCase();
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
+          '<span style="font-size:0.9rem; color:var(--text-muted);">가정 리스크</span>' +
+          '<span style="padding:0.3rem 0.8rem; border-radius:20px; background:' + coverageColor[risk] + '22; color:' + coverageColor[risk] + '; font-size:0.9rem; font-weight:600;">' + (coverageMap[risk] || risk) + '</span>' +
+          '</div>';
+      }
+      
+      if (confidence.stability) {
+        var stability = confidence.stability.toLowerCase();
+        html += '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+          '<span style="font-size:0.9rem; color:var(--text-muted);">판정 안정성</span>' +
+          '<span style="padding:0.3rem 0.8rem; border-radius:20px; background:' + coverageColor[stability] + '22; color:' + coverageColor[stability] + '; font-size:0.9rem; font-weight:600;">' + (coverageMap[stability] || stability) + '</span>' +
+          '</div>';
+      }
+    } else {
+      // confidence가 단순 값인 경우
+      var confValue = confidence.toString().toLowerCase();
+      var confMap = { high: '높음', medium: '보통', low: '낮음' };
+      var confColor = { high: '#4ade80', medium: '#facc15', low: '#f87171' };
+      
+      html += '<div style="text-align:center;">' +
+        '<span style="padding:0.5rem 1.5rem; border-radius:20px; background:' + (confColor[confValue] || '#94a3b8') + '22; color:' + (confColor[confValue] || '#94a3b8') + '; font-size:1rem; font-weight:600;">' + (confMap[confValue] || confValue) + '</span>' +
+        '</div>';
+    }
+    
+    html += '</div>';
+    document.getElementById('rConfidence').innerHTML = html;
+  }
+
+  // Confidence 렌더링 실행
+  renderConfidence(executive?.confidence);
+
   // ═══════════════════════════════════════════
   // PAGE 2: Financial
   // ═══════════════════════════════════════════
@@ -151,6 +207,47 @@
     sensHtml += '<tr' + rowStyle + '><td>' + sensRows[s][0] + '</td><td>' + sensRows[s][1] + '</td><td>' + sensRows[s][2] + '</td></tr>';
   }
   document.getElementById('rSensBody').innerHTML = sensHtml;
+
+  // Breakdown 렌더링
+  function renderBreakdown(breakdown) {
+    if (!breakdown) {
+      document.getElementById('rBreakdown').innerHTML =
+        '<p style="color:var(--text-muted); text-align:center; padding:1rem;">Breakdown 데이터가 없습니다.</p>';
+      return;
+    }
+
+    var items = [
+      { label: '회수 기간', value: breakdown.payback || breakdown.paybackMonths || 0 },
+      { label: '수익성', value: breakdown.profitability || 0 },
+      { label: 'GAP', value: breakdown.gap || 0 },
+      { label: '민감도', value: breakdown.sensitivity || 0 },
+      { label: '고정비', value: breakdown.fixedCost || breakdown.fixedCosts || 0 },
+      { label: 'DSCR', value: breakdown.dscr || 0 },
+      { label: '상권', value: breakdown.market || 0 },
+      { label: '로드뷰', value: breakdown.roadview || 0 }
+    ];
+
+    var html = '<table class="report-table">';
+    html += '<thead><tr><th>항목</th><th>점수</th><th>평가</th></tr></thead><tbody>';
+    
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var evaluation = item.value >= 80 ? '양호' : item.value >= 60 ? '보통' : '주의';
+      var color = item.value >= 80 ? '#4ade80' : item.value >= 60 ? '#facc15' : '#f87171';
+      
+      html += '<tr>' +
+        '<td>' + item.label + '</td>' +
+        '<td style="text-align:right; font-weight:600; color:' + color + ';">' + item.value + '점</td>' +
+        '<td style="color:' + color + ';">' + evaluation + '</td>' +
+        '</tr>';
+    }
+    
+    html += '</tbody></table>';
+    document.getElementById('rBreakdown').innerHTML = html;
+  }
+
+  // Breakdown 렌더링 실행
+  renderBreakdown(breakdown);
 
   // ═══════════════════════════════════════════
   // PAGE 3: 입지-상권분석
@@ -398,6 +495,129 @@
     '<tr><th>권장 가격 전략</th><td>' + (priceKR[comp.priceStrategy] || comp.priceStrategy) + '</td></tr>' +
     '</table>';
 
+  // Failure Triggers 렌더링
+  var failureTriggersHtml = '';
+  if (failureTriggers && failureTriggers.length > 0) {
+    var impactColorMap = {
+      critical: '#f87171',
+      high: '#fb923c',
+      medium: '#facc15',
+      low: '#94a3b8'
+    };
+    var impactLabelMap = {
+      critical: '치명적',
+      high: '높음',
+      medium: '보통',
+      low: '낮음'
+    };
+    
+    for (var ft = 0; ft < failureTriggers.length; ft++) {
+      var trigger = failureTriggers[ft];
+      var impactColor = impactColorMap[trigger.impact] || '#94a3b8';
+      var impactLabel = impactLabelMap[trigger.impact] || trigger.impact;
+      
+      failureTriggersHtml += '<div class="report-risk-item ' + (trigger.impact === 'critical' ? 'high' : trigger.impact === 'high' ? 'medium' : 'low') + '">' +
+        '<h4>' + (ft + 1) + '. ' + (trigger.trigger || '') + ' <span style="font-size:0.8rem; color:' + impactColor + ';">(' + impactLabel + ')</span></h4>' +
+        '<p><strong>결과:</strong> ' + (trigger.outcome || trigger.result || '') + '</p>' +
+        (trigger.estimatedFailureWindow ? '<p style="color:var(--text-muted); font-size:0.9rem;"><strong>예상 실패 시점:</strong> ' + trigger.estimatedFailureWindow + '</p>' : '') +
+        (trigger.totalLossAtFailure !== undefined ? '<p style="color:var(--text-muted); font-size:0.9rem;"><strong>그때 총손실:</strong> ' + Utils.formatKRW(trigger.totalLossAtFailure) + '</p>' : '') +
+        (trigger.exitCostAtFailure !== undefined ? '<p style="color:var(--text-muted); font-size:0.9rem;"><strong>그때 Exit 비용:</strong> ' + Utils.formatKRW(trigger.exitCostAtFailure) + '</p>' : '') +
+        '</div>';
+    }
+  } else {
+    failureTriggersHtml = '<p style="color:var(--text-muted); text-align:center; padding:2rem;">실패 트리거가 없습니다.</p>';
+  }
+  document.getElementById('rFailureTriggers').innerHTML = failureTriggersHtml;
+
+  // Exit Plan 렌더링
+  function renderExitPlan(exitPlan) {
+    if (!exitPlan) {
+      document.getElementById('rExitPlan').innerHTML =
+        '<p style="color:var(--text-muted); text-align:center; padding:2rem;">Exit Plan 데이터가 없습니다.</p>';
+      return;
+    }
+
+    var html = '';
+    
+    // 손절 타이밍 테이블
+    if (exitPlan.optimalExitMonth || exitPlan.warningMonth) {
+      html += '<div style="margin-bottom:2rem;">' +
+        '<h3 style="margin-bottom:1rem; font-size:1.1rem;">손절 타이밍 설계</h3>' +
+        '<table class="report-table">' +
+        '<thead><tr><th>구분</th><th>시점</th><th>총손실</th></tr></thead><tbody>';
+
+      if (exitPlan.warningMonth) {
+        html += '<tr>' +
+          '<td>경고 구간</td>' +
+          '<td>' + exitPlan.warningMonth + '개월</td>' +
+          '<td>' + Utils.formatKRW(exitPlan.totalLossAtWarning || 0) + '</td>' +
+          '</tr>';
+      }
+
+      if (exitPlan.optimalExitMonth) {
+        html += '<tr style="background:rgba(74,222,128,0.1);">' +
+          '<td><strong>최적 손절</strong></td>' +
+          '<td><strong>' + exitPlan.optimalExitMonth + '개월</strong></td>' +
+          '<td><strong>' + Utils.formatKRW(exitPlan.totalLossAtOptimal || 0) + '</strong></td>' +
+          '</tr>';
+      }
+
+      if (exitPlan.lossExplosionMonth) {
+        html += '<tr>' +
+          '<td>손실 폭증</td>' +
+          '<td>' + exitPlan.lossExplosionMonth + '개월</td>' +
+          '<td>' + Utils.formatKRW(exitPlan.totalLossAtExplosion || 0) + '</td>' +
+          '</tr>';
+      }
+
+      html += '</tbody></table></div>';
+    }
+
+    // 폐업 비용 상세
+    if (exitPlan.exitCostBreakdown) {
+      var breakdown = exitPlan.exitCostBreakdown;
+      html += '<div>' +
+        '<h3 style="margin-bottom:1rem; font-size:1.1rem;">폐업 비용 상세 (' + (exitPlan.optimalExitMonth || 0) + '개월 기준)</h3>' +
+        '<table class="report-table">' +
+        '<thead><tr><th>항목</th><th>금액</th></tr></thead><tbody>';
+
+      if (breakdown.penaltyCost !== undefined) {
+        html += '<tr><td>가맹 위약금</td><td>' + Utils.formatKRW(breakdown.penaltyCost || 0) + '</td></tr>';
+      }
+      if (breakdown.demolitionCost !== undefined) {
+        html += '<tr><td>철거/원상복구</td><td>' + Utils.formatKRW(breakdown.demolitionCost || 0) + '</td></tr>';
+      }
+      if (breakdown.interiorLoss !== undefined) {
+        html += '<tr><td>인테리어/설비 손실(비회수)</td><td>' + Utils.formatKRW(breakdown.interiorLoss || 0) + '</td></tr>';
+      }
+      if (breakdown.goodwillRecovered !== undefined && breakdown.goodwillRecovered !== 0) {
+        html += '<tr><td>권리금 회수(감액)</td><td style="color:#4ade80;">-' + Utils.formatKRW(Math.abs(breakdown.goodwillRecovered || 0)) + '</td></tr>';
+      }
+      if (breakdown.exitCostTotal !== undefined) {
+        html += '<tr style="background:rgba(255,255,255,0.05);">' +
+          '<td><strong>Exit Cost 합계</strong></td>' +
+          '<td><strong>' + Utils.formatKRW(breakdown.exitCostTotal || 0) + '</strong></td>' +
+          '</tr>';
+      }
+      if (breakdown.cumOperatingLoss !== undefined) {
+        html += '<tr><td>운영손실 누적(폐업 시점까지)</td><td>' + Utils.formatKRW(breakdown.cumOperatingLoss || 0) + '</td></tr>';
+      }
+      if (exitPlan.totalLossAtOptimal !== undefined) {
+        html += '<tr style="background:rgba(239,68,68,0.1);">' +
+          '<td><strong>최종 총손실</strong></td>' +
+          '<td><strong style="color:#f87171;">' + Utils.formatKRW(exitPlan.totalLossAtOptimal) + '</strong></td>' +
+          '</tr>';
+      }
+
+      html += '</tbody></table></div>';
+    }
+
+    document.getElementById('rExitPlan').innerHTML = html || '<p style="color:var(--text-muted); text-align:center; padding:2rem;">Exit Plan 데이터가 없습니다.</p>';
+  }
+
+  // Exit Plan 렌더링 실행
+  renderExitPlan(exitPlan);
+
   // ═══════════════════════════════════════════
   // jsPDF Generation
   // ═══════════════════════════════════════════
@@ -483,11 +703,65 @@
     addText(pdfSummary.substring(0, 90), margin + 35, y + 14, 8, false, [80, 80, 80]);
     y += 30;
 
+    // Decision Confidence
+    if (executive?.confidence) {
+      var pdfConfidence = executive.confidence;
+      y += 5;
+      addText('Decision Confidence', margin, y, 11, true);
+      y += 6;
+      
+      if (typeof pdfConfidence === 'object') {
+        var confData = [];
+        if (pdfConfidence.dataCoverage) {
+          confData.push(['Data Coverage', pdfConfidence.dataCoverage.toUpperCase()]);
+        }
+        if (pdfConfidence.assumptionRisk) {
+          confData.push(['Assumption Risk', pdfConfidence.assumptionRisk.toUpperCase()]);
+        }
+        if (pdfConfidence.stability) {
+          confData.push(['Stability', pdfConfidence.stability.toUpperCase()]);
+        }
+        
+        if (confData.length > 0) {
+          doc.autoTable({
+            startY: y,
+            head: [['Item', 'Level']],
+            body: confData,
+            margin: { left: margin, right: margin },
+            styles: { fontSize: 8, cellPadding: 2.5 },
+            headStyles: { fillColor: [45, 90, 39] },
+            theme: 'grid'
+          });
+          y = doc.lastAutoTable.finalY + 5;
+        }
+      } else {
+        addText('Confidence: ' + pdfConfidence.toString().toUpperCase(), margin, y, 9, false, [80, 80, 80]);
+        y += 5;
+      }
+    }
+
     // ── Page 2: Financial ──
     doc.addPage();
     y = margin;
     addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
     y += 10;
+
+    // Hardcut Reasons (있는 경우)
+    if (executive?.nonNegotiable || (result.decision?.hardCutReasons && result.decision.hardCutReasons.length > 0)) {
+      addText('Hard Cut Reasons', margin, y, 11, true);
+      y += 6;
+      var hardCutReasons = result.decision?.hardCutReasons || [];
+      if (hardCutReasons.length > 0) {
+        for (var hc = 0; hc < hardCutReasons.length; hc++) {
+          addText((hc + 1) + '. ' + hardCutReasons[hc], margin, y, 9, false, [239, 68, 68]);
+          y += 5;
+        }
+      } else {
+        addText('No hard cut reasons', margin, y, 9, false, [150, 150, 150]);
+        y += 5;
+      }
+      y += 5;
+    }
 
     addText('3. Financial Analysis', margin, y, 13, true);
     y += 8;
@@ -536,6 +810,41 @@
       headStyles: { fillColor: [45, 90, 39] },
       theme: 'grid'
     });
+
+    y = doc.lastAutoTable.finalY + 10;
+
+    // Breakdown
+    if (breakdown) {
+      addText('6. Score Breakdown', margin, y, 13, true);
+      y += 8;
+
+      var breakdownItems = [
+        { label: '회수 기간', value: breakdown.payback || breakdown.paybackMonths || 0 },
+        { label: '수익성', value: breakdown.profitability || 0 },
+        { label: 'GAP', value: breakdown.gap || 0 },
+        { label: '민감도', value: breakdown.sensitivity || 0 },
+        { label: '고정비', value: breakdown.fixedCost || breakdown.fixedCosts || 0 },
+        { label: 'DSCR', value: breakdown.dscr || 0 },
+        { label: '상권', value: breakdown.market || 0 },
+        { label: '로드뷰', value: breakdown.roadview || 0 }
+      ];
+
+      var breakdownBody = breakdownItems.map(function(item) {
+        var evaluation = item.value >= 80 ? 'Good' : item.value >= 60 ? 'Fair' : 'Caution';
+        return [item.label, item.value + '점', evaluation];
+      });
+
+      doc.autoTable({
+        startY: y,
+        head: [['Item', 'Score', 'Evaluation']],
+        body: breakdownBody,
+        margin: { left: margin, right: margin },
+        styles: { fontSize: 8, cellPadding: 2.5 },
+        headStyles: { fillColor: [45, 90, 39] },
+        theme: 'grid'
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
 
     // ── Page 3: 입지-상권분석 ──
     doc.addPage();
@@ -661,6 +970,189 @@
       y += impLines.length * 4 + 3;
       addText('Expected: ' + ai.improvements[im].expectedImpact, margin, y, 8, false, [45, 90, 39]);
       y += 7;
+    }
+
+    // Improvement Simulations 상세
+    if (improvement && improvement.cards && improvement.cards.length > 0) {
+      y += 5;
+      addText('10. Improvement Simulations', margin, y, 13, true);
+      y += 8;
+
+      var simCount = 0;
+      for (var sim = 0; sim < improvement.cards.length; sim++) {
+        var simCard = improvement.cards[sim];
+        if (simCard.engine && simCard.engine.delta) {
+          simCount++;
+          var delta = simCard.engine.delta;
+          var deltaLabel = '';
+          if (delta.includes && delta.includes('rent')) {
+            deltaLabel = '임대료 ' + (delta.includes('-') ? '절감' : '증가');
+          } else if (delta.includes && (delta.includes('sales') || delta.includes('target'))) {
+            deltaLabel = '목표 판매량 ' + (delta.includes('-') ? '감소' : '증가');
+          } else {
+            deltaLabel = delta.toString();
+          }
+
+          addText('Simulation ' + simCount + ': ' + deltaLabel, margin, y, 10, true);
+          y += 5;
+
+          if (simCard.engine.monthlyProfit !== undefined) {
+            addText('Monthly Profit: ' + Utils.formatKRW(simCard.engine.monthlyProfit), margin, y, 8, false, [80, 80, 80]);
+            y += 4;
+          }
+          if (simCard.engine.survivalMonths !== undefined) {
+            addText('Survival Months: ' + simCard.engine.survivalMonths, margin, y, 8, false, [80, 80, 80]);
+            y += 4;
+          }
+          if (simCard.engine.signalChange) {
+            addText('Signal Change: ' + simCard.engine.signalChange, margin, y, 8, false, [45, 90, 39]);
+            y += 4;
+          }
+          if (simCard.engine.thresholdCrossed) {
+            addText('Threshold Crossed: ' + simCard.engine.thresholdCrossed, margin, y, 8, false, [45, 90, 39]);
+            y += 4;
+          }
+          if (simCard.ai && simCard.ai.description) {
+            var aiLines = doc.splitTextToSize(simCard.ai.description, contentW);
+            addText(aiLines, margin, y, 7, false, [100, 100, 100]);
+            y += aiLines.length * 3 + 3;
+          }
+          y += 3;
+        }
+      }
+
+      if (simCount === 0) {
+        addText('No improvement simulations available', margin, y, 8, false, [150, 150, 150]);
+        y += 5;
+      }
+    }
+
+    // Failure Triggers
+    if (failureTriggers && failureTriggers.length > 0) {
+      // 페이지가 부족하면 새 페이지 추가
+      if (y > 250) {
+        doc.addPage();
+        y = margin;
+        addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
+        y += 10;
+      }
+
+      y += 5;
+      addText('11. Failure Triggers', margin, y, 13, true);
+      y += 8;
+
+      for (var ft = 0; ft < failureTriggers.length; ft++) {
+        var trigger = failureTriggers[ft];
+        var impactLabel = trigger.impact ? trigger.impact.toUpperCase() : 'MEDIUM';
+        addText((ft + 1) + '. ' + (trigger.trigger || '') + ' [' + impactLabel + ']', margin, y, 10, true);
+        y += 5;
+        
+        if (trigger.outcome || trigger.result) {
+          addText('Outcome: ' + (trigger.outcome || trigger.result), margin, y, 8, false, [80, 80, 80]);
+          y += 4;
+        }
+        if (trigger.estimatedFailureWindow) {
+          addText('Estimated Failure Window: ' + trigger.estimatedFailureWindow, margin, y, 8, false, [239, 68, 68]);
+          y += 4;
+        }
+        if (trigger.totalLossAtFailure !== undefined) {
+          addText('Total Loss at Failure: ' + Utils.formatKRW(trigger.totalLossAtFailure), margin, y, 8, false, [239, 68, 68]);
+          y += 4;
+        }
+        if (trigger.exitCostAtFailure !== undefined) {
+          addText('Exit Cost at Failure: ' + Utils.formatKRW(trigger.exitCostAtFailure), margin, y, 8, false, [239, 68, 68]);
+          y += 4;
+        }
+        y += 3;
+      }
+    }
+
+    // Exit Plan
+    if (exitPlan) {
+      // 페이지가 부족하면 새 페이지 추가
+      if (y > 250) {
+        doc.addPage();
+        y = margin;
+        addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
+        y += 10;
+      }
+
+      y += 5;
+      addText('12. Exit Plan (Exit Timing & Cost)', margin, y, 13, true);
+      y += 8;
+
+      // 손절 타이밍
+      if (exitPlan.optimalExitMonth || exitPlan.warningMonth) {
+        addText('Exit Timing', margin, y, 11, true);
+        y += 6;
+
+        var exitTimingData = [];
+        if (exitPlan.warningMonth) {
+          exitTimingData.push(['Warning Period', exitPlan.warningMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtWarning || 0)]);
+        }
+        if (exitPlan.optimalExitMonth) {
+          exitTimingData.push(['Optimal Exit', exitPlan.optimalExitMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtOptimal || 0)]);
+        }
+        if (exitPlan.lossExplosionMonth) {
+          exitTimingData.push(['Loss Explosion', exitPlan.lossExplosionMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtExplosion || 0)]);
+        }
+
+        if (exitTimingData.length > 0) {
+          doc.autoTable({
+            startY: y,
+            head: [['Period', 'Timing', 'Total Loss']],
+            body: exitTimingData,
+            margin: { left: margin, right: margin },
+            styles: { fontSize: 8, cellPadding: 2.5 },
+            headStyles: { fillColor: [45, 90, 39] },
+            theme: 'grid'
+          });
+          y = doc.lastAutoTable.finalY + 10;
+        }
+      }
+
+      // 폐업 비용 상세
+      if (exitPlan.exitCostBreakdown) {
+        var exitBreakdown = exitPlan.exitCostBreakdown;
+        addText('Exit Cost Breakdown (' + (exitPlan.optimalExitMonth || 0) + ' months)', margin, y, 11, true);
+        y += 6;
+
+        var exitCostData = [];
+        if (exitBreakdown.penaltyCost !== undefined) {
+          exitCostData.push(['Penalty', Utils.formatKRW(exitBreakdown.penaltyCost || 0)]);
+        }
+        if (exitBreakdown.demolitionCost !== undefined) {
+          exitCostData.push(['Demolition/Restoration', Utils.formatKRW(exitBreakdown.demolitionCost || 0)]);
+        }
+        if (exitBreakdown.interiorLoss !== undefined) {
+          exitCostData.push(['Interior Loss (Non-recoverable)', Utils.formatKRW(exitBreakdown.interiorLoss || 0)]);
+        }
+        if (exitBreakdown.goodwillRecovered !== undefined && exitBreakdown.goodwillRecovered !== 0) {
+          exitCostData.push(['Goodwill Recovery (Deduction)', '-' + Utils.formatKRW(Math.abs(exitBreakdown.goodwillRecovered || 0))]);
+        }
+        if (exitBreakdown.exitCostTotal !== undefined) {
+          exitCostData.push(['Exit Cost Total', Utils.formatKRW(exitBreakdown.exitCostTotal || 0)]);
+        }
+        if (exitBreakdown.cumOperatingLoss !== undefined) {
+          exitCostData.push(['Cumulative Operating Loss', Utils.formatKRW(exitBreakdown.cumOperatingLoss || 0)]);
+        }
+        if (exitPlan.totalLossAtOptimal !== undefined) {
+          exitCostData.push(['Final Total Loss', Utils.formatKRW(exitPlan.totalLossAtOptimal)]);
+        }
+
+        if (exitCostData.length > 0) {
+          doc.autoTable({
+            startY: y,
+            head: [['Item', 'Amount']],
+            body: exitCostData,
+            margin: { left: margin, right: margin },
+            styles: { fontSize: 8, cellPadding: 2.5 },
+            headStyles: { fillColor: [45, 90, 39] },
+            theme: 'grid'
+          });
+          y = doc.lastAutoTable.finalY + 10;
+        }
+      }
     }
 
     // Disclaimer

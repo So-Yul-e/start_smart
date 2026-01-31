@@ -95,6 +95,18 @@
         <!-- Hardcut Warnings -->
         <div id="hardcutWarnings"></div>
 
+        <!-- Breakdown Chart -->
+        <div class="glass-card" id="breakdownCard" style="display:none;">
+          <h3><i class="fa-solid fa-chart-pie" style="color:var(--gold); margin-right:0.5rem;"></i> 점수 Breakdown</h3>
+          <div id="breakdownChart" style="margin-top:1rem;"></div>
+        </div>
+
+        <!-- Decision Confidence -->
+        <div class="glass-card" id="confidenceCard" style="display:none;">
+          <h3><i class="fa-solid fa-shield-halved" style="color:var(--gold); margin-right:0.5rem;"></i> 판정 신뢰도</h3>
+          <div id="confidenceInfo" style="margin-top:1rem;"></div>
+        </div>
+
         <!-- Cost Stack Chart -->
         <div class="glass-card">
           <h3><i class="fa-solid fa-chart-bar" style="color:var(--gold); margin-right:0.5rem;"></i> 월 손익 구조</h3>
@@ -126,6 +138,13 @@
         <div class="glass-card">
           <h3><i class="fa-solid fa-users" style="color:var(--gold); margin-right:0.5rem;"></i> 경쟁 환경 해석</h3>
           <div id="competitiveInfo" style="margin-top:1rem;"></div>
+        </div>
+
+        <!-- Failure Triggers -->
+        <div class="glass-card">
+          <h3><i class="fa-solid fa-exclamation-circle" style="color:#f87171; margin-right:0.5rem;"></i> 실패 트리거</h3>
+          <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">특정 조건 발생 시 실패로 이어질 수 있는 상황</p>
+          <div id="failureTriggersList" style="margin-top:1rem;"></div>
         </div>
       </div>
 
