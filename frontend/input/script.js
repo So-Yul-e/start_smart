@@ -669,7 +669,10 @@
       formattedLoans = loans
         .filter(function(loan) {
           // 유효한 대출만 포함 (원금, 이자율, 기간이 모두 입력된 경우)
-          return loan.principal && loan.apr && loan.termMonths;
+          var principal = parseInt(loan.principal);
+          var apr = parseFloat(loan.apr);
+          var termMonths = parseInt(loan.termMonths);
+          return principal > 0 && apr > 0 && apr <= 100 && termMonths > 0;
         })
         .map(function(loan) {
           return {
@@ -684,13 +687,21 @@
     // Exit Plan 입력값을 API 형식으로 변환 (원 단위)
     var exitInputs = null;
     if (exitPlanExpanded && inputKeyMoney && inputDemolitionBase && inputDemolitionPerPyeong) {
-      exitInputs = {
-        keyMoney: (inputKeyMoney.value ? parseInt(inputKeyMoney.value) * 10000 : 0),
-        pyeong: parseInt(inputArea.value) || 10,
-        demolitionBase: (inputDemolitionBase.value ? parseInt(inputDemolitionBase.value) * 10000 : 15000000),
-        demolitionPerPyeong: (inputDemolitionPerPyeong.value ? parseInt(inputDemolitionPerPyeong.value) * 10000 : 1000000),
-        workingCapital: (inputWorkingCapital.value ? parseInt(inputWorkingCapital.value) * 10000 : 0)
-      };
+      // 실제로 값이 입력되었는지 확인 (하나라도 입력되면 exitInputs 생성)
+      var hasKeyMoney = inputKeyMoney.value && parseInt(inputKeyMoney.value) > 0;
+      var hasDemolitionBase = inputDemolitionBase.value && parseInt(inputDemolitionBase.value) > 0;
+      var hasDemolitionPerPyeong = inputDemolitionPerPyeong.value && parseInt(inputDemolitionPerPyeong.value) > 0;
+      var hasWorkingCapital = inputWorkingCapital.value && parseInt(inputWorkingCapital.value) > 0;
+      
+      if (hasKeyMoney || hasDemolitionBase || hasDemolitionPerPyeong || hasWorkingCapital) {
+        exitInputs = {
+          keyMoney: (inputKeyMoney.value ? parseInt(inputKeyMoney.value) * 10000 : 0),
+          pyeong: parseInt(inputArea.value) || 10,
+          demolitionBase: (inputDemolitionBase.value ? parseInt(inputDemolitionBase.value) * 10000 : 15000000),
+          demolitionPerPyeong: (inputDemolitionPerPyeong.value ? parseInt(inputDemolitionPerPyeong.value) * 10000 : 1000000),
+          workingCapital: (inputWorkingCapital.value ? parseInt(inputWorkingCapital.value) * 10000 : 0)
+        };
+      }
     }
 
     var conditions = {

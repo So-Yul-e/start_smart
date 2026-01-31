@@ -109,6 +109,24 @@
         <div class="report-kpi-grid" id="rKpiGrid"></div>
       </div>
 
+      <!-- 대출 상환 스케줄 (있는 경우) -->
+      <div id="rDebtScheduleSection" class="report-section" style="display:none;">
+        <h2 class="report-h2">대출 상환 스케줄</h2>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">월별 원리금 상환 내역 (12개월 미리보기)</p>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>개월</th>
+              <th>월 상환액</th>
+              <th>이자</th>
+              <th>원금</th>
+              <th>잔액</th>
+            </tr>
+          </thead>
+          <tbody id="rDebtScheduleBody"></tbody>
+        </table>
+      </div>
+
       <div class="report-section">
         <h2 class="report-h2">민감도 분석</h2>
         <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">방문객 수 ±10%, 구매비용 ±5%</p>

@@ -126,6 +126,9 @@ function buildReportModel(finalResult) {
       paybackMonths: toNum(finance?.paybackMonths),
       sensitivity: finance?.sensitivity ?? null,
       breakEvenDailySales: toNum(finance?.breakEvenDailySales),
+      breakEvenDailyVisitors: toNum(finance?.breakEvenDailyVisitors),
+      breakdownVisitors: toNum(finance?.breakdownVisitors), // 손절 기준선
+      operatingProfit: toMoney(finance?.operatingProfit), // 영업 이익 (대출 상환 전)
       // 대출 정보 추가
       debt: finance?.debt ?? null,
     },
