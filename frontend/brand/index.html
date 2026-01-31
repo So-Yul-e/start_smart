@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>브랜드 선택 - StartSmart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header" id="header">
+    <a href="../" class="logo">
+      <i class="fa-solid fa-leaf text-gold"></i> StartSmart
+    </a>
+    <nav class="nav">
+      <a href="../brand/" class="active">브랜드 선택</a>
+      <a href="../input/">조건 입력</a>
+      <a href="../dashboard/">대시보드</a>
+    </nav>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="container">
+      <!-- Page Header -->
+      <div class="page-header" style="text-align:center; margin-bottom:3rem;">
+        <span class="badge-pill">Step 1</span>
+        <h1 style="margin-top:1rem;">Select Your Brand</h1>
+        <p>분석할 카페 프랜차이즈 브랜드를 선택하세요</p>
+      </div>
+
+      <!-- Filter -->
+      <div style="display:flex; justify-content:center; gap:0.5rem; margin-bottom:2.5rem;" id="filterWrap">
+        <button class="radius-btn active" data-filter="all">전체</button>
+        <button class="radius-btn" data-filter="저가">저가</button>
+        <button class="radius-btn" data-filter="표준">표준</button>
+        <button class="radius-btn" data-filter="프리미엄">프리미엄</button>
+      </div>
+
+      <!-- Brand Grid -->
+      <div class="brand-grid" id="brandGrid"></div>
+    </div>
+  </div>
+
+  <footer class="sub-footer">
+    <p>&copy; 2024 StartSmart. Premium Intelligence.</p>
+  </footer>
+
+  <script src="../js/mock-data.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>
