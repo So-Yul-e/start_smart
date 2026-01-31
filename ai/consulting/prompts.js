@@ -180,6 +180,33 @@ ${monthlyCosts.etc ? `- 기타 고정비 (etc): ${(monthlyCosts.etc / 10000).toF
 - 원재료비 절감: "원재료 구매처 협상 또는 대량 구매로 원재료비를 X% 절감 가능합니다"
 - 기타 지출 절감: 각 지출 항목별로 구체적인 절감 방안과 예상 효과를 제시해주세요
 
+【비교 분석 시나리오 작성 가이드】
+각 개선 제안에 대해 "만약 이렇게 변경하면?" 시나리오를 제공해주세요:
+1. 월세 변경 시나리오:
+   - 현재 월세: ${conditions?.monthlyRent || 0}원
+   - 시나리오: 월세 -10%, -20% 등으로 변경 시 예상 효과 계산
+   - 예시: "월세를 10% 낮추면 (${conditions?.monthlyRent ? (conditions.monthlyRent * 0.9 / 10000).toFixed(0) : '0'}만원) 월 순이익이 X만원 증가, 회수 기간 Y개월 단축"
+
+2. 판매량 변경 시나리오:
+   - 현재 목표 판매량: ${targetDailySales || 0}잔/일
+   - 시나리오: 판매량 ±10%, ±20% 변경 시 예상 효과 계산
+   - 예시: "판매량을 230잔/일로 조정하면 월 순이익 X만원, 회수 기간 Y개월"
+
+3. 상권 변경 시나리오 (경쟁 환경):
+   - 현재 경쟁 카페 수: ${market?.competitors?.total || 0}개
+   - 시나리오: 경쟁 카페 수가 적은 지역(예: 2-3개)으로 이동 시 예상 효과
+   - 예시: "경쟁 카페가 2-3개인 지역으로 이동하면 차별화 가능성 증가, 예상 판매량 증가"
+
+4. 원재료비 변경 시나리오:
+   - 현재 원재료비: ${monthlyCosts?.materials ? (monthlyCosts.materials / 10000).toFixed(0) : '0'}만원${finance?.monthlyRevenue && monthlyCosts?.materials ? ` (매출의 ${((monthlyCosts.materials / finance.monthlyRevenue) * 100).toFixed(1)}%)` : ''}
+   - 시나리오: 원재료비 -5%, -10% 절감 시 예상 효과
+   - 예시: "원재료비를 5% 절감하면 월 순이익 X만원 증가"
+
+각 시나리오는 구체적인 수치 계산 결과를 포함해야 합니다:
+- 변경 전: 월 순이익 X만원, 회수 기간 Y개월
+- 변경 후: 월 순이익 X만원, 회수 기간 Y개월
+- 개선 효과: 월 순이익 +Z만원, 회수 기간 -W개월
+
 【우선순위 정렬 기준】
 1. impact 레벨 우선: "high" > "medium" > "low"
 2. 같은 impact 레벨 내에서는:
@@ -207,7 +234,25 @@ ${monthlyCosts.etc ? `- 기타 고정비 (etc): ${(monthlyCosts.etc / 10000).toF
     {
       "title": "개선 제안 제목",
       "description": "상세 설명",
-      "expectedImpact": "기대 효과 (구체적 수치 포함)"
+      "expectedImpact": "기대 효과 (구체적 수치 포함)",
+      "scenarios": [
+        {
+          "type": "rent_reduction",  // rent_reduction | sales_adjustment | location_change | material_cost_reduction
+          "description": "시나리오 설명 (예: 월세 10% 감소)",
+          "before": {
+            "monthlyProfit": 숫자,  // 만원 단위
+            "paybackMonths": 숫자
+          },
+          "after": {
+            "monthlyProfit": 숫자,  // 만원 단위
+            "paybackMonths": 숫자
+          },
+          "improvement": {
+            "profitIncrease": 숫자,  // 만원 단위 (증가량)
+            "paybackReduction": 숫자  // 개월 단위 (감소량)
+          }
+        }
+      ]
     }
   ]
 }`;
@@ -225,12 +270,13 @@ function getCompetitiveAnalysisPrompt(data) {
   
   // 반경 정보 추출 (radiusM 또는 location.radius)
   const radiusM = market.radiusM || market.location?.radius || 500;
+  const competitorCount = market.competitors.total || 0;
 
   return `당신은 프랜차이즈 카페 창업 컨설턴트입니다.
 다음 상권 정보를 바탕으로 경쟁 환경을 분석해주세요:
 
 경쟁 정보:
-- 경쟁 카페 수: ${market.competitors.total}개 (주소지 기준 반경 ${radiusM}m 내)
+- 경쟁 카페 수: ${competitorCount}개 (주소지 기준 반경 ${radiusM}m 내)
 - 경쟁 밀도: ${market.competitors.density}
 - 브랜드: ${brand.name}
 
@@ -240,16 +286,42 @@ function getCompetitiveAnalysisPrompt(data) {
 - "medium": 경쟁 카페 수가 보통 (일반적으로 반경 ${radiusM}m 기준 4-6개)
 - "low": 경쟁 카페 수가 적음 (일반적으로 반경 ${radiusM}m 기준 0-3개)
 
+【기준선(Benchmark) 데이터】
+일반적인 프랜차이즈 카페 상권 기준 (반경 ${radiusM}m):
+- 도시 평균 경쟁 카페 수: 약 2.1개
+- 상위 20% 상권 경쟁 카페 수: 약 4.3개
+- 고경쟁 상권(상위 10%) 경쟁 카페 수: 약 6.5개 이상
+
 경쟁 밀도와 경쟁 카페 수를 종합하여 다음을 판단해주세요:
 - intensity: 경쟁 밀도가 "high"이면 "high", "medium"이면 "medium", "low"이면 "low"
 - differentiation: 경쟁 밀도가 "high"일수록 차별화가 어려움
 - priceStrategy: 경쟁 밀도가 "high"일수록 가격 경쟁이 치열하므로 "budget" 또는 "standard" 고려
 
+【reasoningRule 작성 가이드】
+각 판단(intensity, differentiation, priceStrategy)에 대해 다음 정보를 제공해주세요:
+- metric: 판단에 사용된 지표명 (예: "competitor_count_500m", "competitor_density")
+- userValue: 사용자의 실제 값 (예: 경쟁 카페 수 ${competitorCount}개)
+- benchmark: 비교 기준선
+  - cityAverage: 도시 평균값
+  - top20Percent: 상위 20% 기준값
+  - top10Percent: 상위 10% 기준값 (고경쟁 상권)
+- judgement: 판단 근거 설명 (예: "상위 15% 경쟁 밀도", "도시 평균의 2.4배 수준")
+
 다음 형식으로 JSON을 반환해주세요:
 {
   "intensity": "high",           // low | medium | high
   "differentiation": "possible", // possible | difficult | impossible
-  "priceStrategy": "premium"     // premium | standard | budget
+  "priceStrategy": "premium",    // premium | standard | budget
+  "reasoningRule": {
+    "metric": "competitor_count_500m",
+    "userValue": ${competitorCount},
+    "benchmark": {
+      "cityAverage": 2.1,
+      "top20Percent": 4.3,
+      "top10Percent": 6.5
+    },
+    "judgement": "상위 X% 경쟁 밀도" 또는 "도시 평균의 Y배 수준" 형식으로 작성
+  }
 }`;
 }
 
