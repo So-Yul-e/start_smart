@@ -14,6 +14,7 @@
   var kakaoRoadview = null; // 카카오 로드뷰 객체
   var kakaoRoadviewClient = null; // 카카오 로드뷰 클라이언트
   var capturedRoadviewImage = null; // 캡처한 로드뷰 이미지 (base64)
+  var capturedMapImage = null; // 캡처한 지도 이미지 (base64)
   var mapLoaded = false;
 
   // ── DOM ──
@@ -261,6 +262,7 @@
     
     console.log('[위치 설정] selectedLocation:', selectedLocation);
 
+    captureMapImage();
     showMockCards();
     validateForm();
   }
@@ -386,6 +388,47 @@
       });
     } catch (e) {
       console.error('[로드뷰 캡처] 예외:', e);
+    }
+  }
+
+  // ── 지도 정적 이미지 캡처 (StaticMap URL 추출) ──
+  function captureMapImage() {
+    if (!selectedLocation) return;
+
+    var lat = selectedLocation.lat;
+    var lng = selectedLocation.lng;
+
+    var staticContainer = document.createElement('div');
+    staticContainer.style.cssText = 'width:600px;height:400px;position:absolute;left:-9999px;top:-9999px;';
+    document.body.appendChild(staticContainer);
+
+    try {
+      var staticMap = new kakao.maps.StaticMap(staticContainer, {
+        center: new kakao.maps.LatLng(lat, lng),
+        level: 5,
+        marker: {
+          position: new kakao.maps.LatLng(lat, lng)
+        }
+      });
+
+      // StaticMap이 생성한 img src URL을 직접 저장 (CORS 우회)
+      setTimeout(function() {
+        try {
+          var img = staticContainer.querySelector('img');
+          if (img && img.src) {
+            capturedMapImage = img.src;
+            console.log('[지도 캡처] 완료 (URL 방식):', capturedMapImage.substring(0, 80) + '...');
+          } else {
+            console.warn('[지도 캡처] StaticMap img 태그를 찾을 수 없습니다.');
+          }
+        } catch (e) {
+          console.error('[지도 캡처] URL 추출 오류:', e);
+        }
+        document.body.removeChild(staticContainer);
+      }, 1500);
+    } catch (e) {
+      console.error('[지도 캡처] StaticMap 생성 오류:', e);
+      document.body.removeChild(staticContainer);
     }
   }
 
@@ -612,12 +655,20 @@
         area: parseInt(inputArea.value),
         ownerWorking: inputOwnerWork.checked
       },
-      targetDailySales: parseInt(inputDailySales.value)
+      targetDailySales: parseInt(inputDailySales.value),
+      mapImage: capturedMapImage || null,
+      roadviewImage: capturedRoadviewImage || null
     };
 
     console.log('[분석 실행] 분석 입력 데이터:', analysisInput);
     Utils.saveSession('analysisInput', analysisInput);
-    startLoading(analysisInput);
+
+    // 백엔드 전송용: 이미지 데이터 제외 (세션에만 저장)
+    var apiInput = {};
+    for (var key in analysisInput) {
+      if (key !== 'mapImage' && key !== 'roadviewImage') apiInput[key] = analysisInput[key];
+    }
+    startLoading(apiInput);
   });
 
   // ── Loading Animation & API Call ──
@@ -630,8 +681,7 @@
     var delays = [800, 1200, 1000, 1500];
 
     // API Base URL 가져오기
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 
-                     (window.location.protocol + '//' + window.location.hostname + ':3000');
+    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
 
     function nextStep() {
       if (current > 0) {

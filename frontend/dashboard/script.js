@@ -640,29 +640,27 @@
   var scenarios = reportModel?.scenario?.aiSalesScenario ?? ai?.salesScenario ?? { conservative: 200, expected: 250, optimistic: 300 };
   // result.brand에 이미 정보가 있거나, API에서 가져오기
   var brand = result.brand;
-  var brandPosition = brand.position || (brand.id ? null : '스탠다드'); // 기본값
-  
-  // 브랜드 정보가 부족하면 API에서 가져오기
-  if (!brandPosition && brand.id) {
-    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 
-                     (window.location.protocol + '//' + window.location.hostname + ':3000');
+  var brandPosition = brand.position || '스탠다드';
+
+  // 항상 차트 먼저 렌더링 (기본값으로)
+  updateScenarioChart(brandPosition);
+
+  // 브랜드 position이 없으면 API에서 가져와서 업데이트
+  if (!brand.position && brand.id) {
+    var apiBaseUrl = window.API_CONFIG ? window.API_CONFIG.API_BASE_URL : 'http://localhost:3000';
     fetch(apiBaseUrl + '/api/brands')
       .then(function(response) { return response.json(); })
       .then(function(data) {
         if (data.success && data.brands) {
           var foundBrand = data.brands.find(function(b) { return b.id === brand.id; });
-          if (foundBrand) {
-            brandPosition = foundBrand.position;
+          if (foundBrand && foundBrand.position) {
             updateScenarioChart(foundBrand.position);
           }
         }
       })
       .catch(function(error) {
-        console.warn('브랜드 정보를 가져올 수 없어 기본값 사용:', error);
-        updateScenarioChart('스탠다드');
+        console.warn('[대시보드] 브랜드 API 호출 실패, 기본값 유지:', error.message);
       });
-  } else {
-    updateScenarioChart(brandPosition || '스탠다드');
   }
   
   function updateScenarioChart(position) {
@@ -715,21 +713,22 @@
   var scenColors = ['#94a3b8', 'var(--gold)', '#4ade80'];
   for (var sc = 0; sc < scenRevs.length; sc++) {
     // 매출 기준으로 차트 높이 계산
-    var hPct = maxValue > 0 ? scenRevs[sc].revenue / maxValue * 80 : 10;
-    var profitHPct = maxValue > 0 && scenRevs[sc].profit > 0 ? scenRevs[sc].profit / maxValue * 80 : 0;
-    
-    scenHtml += '<div class="bar-col" style="position:relative;">' +
-      '<div class="bar-value" style="margin-bottom:0.5rem;">' +
+    var maxBarH = 100; // px
+    var hPx = maxValue > 0 ? Math.round(scenRevs[sc].revenue / maxValue * maxBarH) : 8;
+    var profitPx = maxValue > 0 && scenRevs[sc].profit > 0 ? Math.round(scenRevs[sc].profit / maxValue * maxBarH) : 4;
+
+    scenHtml += '<div style="flex:1; display:flex; flex-direction:column; align-items:center;">' +
+      '<div style="text-align:center; margin-bottom:0.5rem;">' +
         '<div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.2rem;">총 매출</div>' +
         '<div style="font-weight:600; color:' + scenColors[sc] + ';">' + Utils.formatKRW(scenRevs[sc].revenue) + '</div>' +
         '<div style="font-size:0.75rem; color:' + (scenRevs[sc].profit > 0 ? '#4ade80' : '#f87171') + '; margin-top:0.3rem;">순이익 ' + Utils.formatKRW(scenRevs[sc].profit) + '</div>' +
       '</div>' +
-      '<div style="position:relative; height:150px; display:flex; align-items:flex-end; justify-content:center; gap:4px;">' +
-        '<div class="bar" style="height:' + hPct + '%; width:45%; background:' + scenColors[sc] + '80; border-radius:4px 4px 0 0;" title="총 매출"></div>' +
-        '<div class="bar" style="height:' + profitHPct + '%; width:45%; background:' + (scenRevs[sc].profit > 0 ? '#4ade80' : '#f87171') + '80; border-radius:4px 4px 0 0;" title="순이익"></div>' +
+      '<div style="display:flex; align-items:flex-end; justify-content:center; gap:4px; height:' + maxBarH + 'px;">' +
+        '<div style="height:' + hPx + 'px; width:30px; background:' + scenColors[sc] + '; opacity:0.6; border-radius:4px 4px 0 0;"></div>' +
+        '<div style="height:' + profitPx + 'px; width:30px; background:' + (scenRevs[sc].profit > 0 ? '#4ade80' : '#f87171') + '; opacity:0.6; border-radius:4px 4px 0 0;"></div>' +
       '</div>' +
-      '<div class="bar-label" style="margin-top:0.5rem;">' + scenRevs[sc].label + '</div>' +
-      '<div class="bar-label" style="font-size:0.7rem; color:var(--text-muted);">' + scenRevs[sc].daily + '잔/일</div>' +
+      '<div style="margin-top:0.5rem; font-size:0.75rem; color:var(--text-muted);">' + scenRevs[sc].label + '</div>' +
+      '<div style="font-size:0.7rem; color:var(--text-muted);">' + scenRevs[sc].daily + '잔/일</div>' +
       '</div>';
   }
   document.getElementById('scenarioChart').innerHTML = scenHtml;

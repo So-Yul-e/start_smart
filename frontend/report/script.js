@@ -65,13 +65,18 @@
   var signal = executive?.signal ?? decision?.signal ?? 'yellow';
   var score = executive?.score ?? decision?.score ?? 0;
   var scoreCircle = document.getElementById('rScoreCircle');
-  if (signal === 'yellow') scoreCircle.classList.add('yellow');
-  if (signal === 'red') scoreCircle.classList.add('red');
-  document.getElementById('rScoreNum').textContent = score;
+  if (scoreCircle) {
+    if (signal === 'green') scoreCircle.style.background = '#4ade80';
+    if (signal === 'yellow') { scoreCircle.classList.add('yellow'); scoreCircle.style.background = '#f59e0b'; }
+    if (signal === 'red') { scoreCircle.classList.add('red'); scoreCircle.style.background = '#ef4444'; }
+  }
+  var scoreNum = document.getElementById('rScoreNum');
+  if (scoreNum) scoreNum.textContent = score;
 
   var sigLabels = { green: '긍정 신호', yellow: '주의 신호', red: '부정 신호' };
   var signalLabel = executive?.label || sigLabels[signal] || '주의 신호';
-  document.getElementById('rSignalText').textContent = '창업 ' + signalLabel + ' (Score: ' + score + '점)';
+  var signalTextEl = document.getElementById('rSignalText');
+  if (signalTextEl) signalTextEl.textContent = '창업 ' + signalLabel + ' (Score: ' + score + '점)';
 
   // Summary (executive.summary 우선 사용)
   var summaryText = '';
@@ -89,12 +94,15 @@
     }
     summaryText = summaryParts.join(' ');
   }
-  document.getElementById('rDecisionSummary').textContent = summaryText;
+  var decSummaryEl = document.getElementById('rDecisionSummary');
+  if (decSummaryEl) decSummaryEl.textContent = summaryText;
 
   // Decision Confidence 렌더링
   function renderConfidence(confidence) {
+    var confEl = document.getElementById('rConfidence');
+    if (!confEl) return;
     if (!confidence) {
-      document.getElementById('rConfidence').innerHTML = '';
+      confEl.innerHTML = '';
       return;
     }
 
@@ -141,7 +149,7 @@
     }
     
     html += '</div>';
-    document.getElementById('rConfidence').innerHTML = html;
+    confEl.innerHTML = html;
   }
 
   // Confidence 렌더링 실행
@@ -210,8 +218,10 @@
 
   // Breakdown 렌더링
   function renderBreakdown(breakdown) {
+    var breakdownEl = document.getElementById('rBreakdown');
+    if (!breakdownEl) return;
     if (!breakdown) {
-      document.getElementById('rBreakdown').innerHTML =
+      breakdownEl.innerHTML =
         '<p style="color:var(--text-muted); text-align:center; padding:1rem;">Breakdown 데이터가 없습니다.</p>';
       return;
     }
@@ -243,7 +253,7 @@
     }
     
     html += '</tbody></table>';
-    document.getElementById('rBreakdown').innerHTML = html;
+    breakdownEl.innerHTML = html;
   }
 
   // Breakdown 렌더링 실행
@@ -260,14 +270,26 @@
   // 입지 분석 (Roadview) 렌더링
   function renderRoadviewAnalysis(roadview) {
     if (!roadview) {
-      document.getElementById('rRoadviewRisks').innerHTML =
-        '<p style="color:var(--text-muted); text-align:center; padding:2rem;">입지 분석 데이터가 없습니다.</p>';
-      document.getElementById('rRoadviewSummary').innerHTML = '';
+      // roadview 데이터 없어도 캡처 이미지가 있으면 표시
+      if (input && input.roadviewImage) {
+        document.getElementById('rRoadviewRisks').innerHTML =
+          '<div style="margin-bottom:2rem;">' +
+          '<h4 style="margin-bottom:1rem; font-size:1rem; color:var(--text-main);">주소지 로드뷰</h4>' +
+          '<div style="border-radius:var(--radius-sm); overflow:hidden; border:1px solid rgba(0,0,0,0.1);">' +
+          '<img src="' + input.roadviewImage + '" alt="로드뷰 이미지" style="width:100%; max-width:100%; height:auto; display:block;" />' +
+          '</div></div>' +
+          '<p style="color:var(--text-muted); text-align:center; padding:1rem;">입지 분석 상세 데이터가 없습니다.</p>';
+      } else {
+        document.getElementById('rRoadviewRisks').innerHTML =
+          '<p style="color:var(--text-muted); text-align:center; padding:2rem;">입지 분석 데이터가 없습니다.</p>';
+      }
+      var summaryEl = document.getElementById('rRoadviewSummary');
+      if (summaryEl) summaryEl.innerHTML = '';
       return;
     }
 
-    // 로드뷰 이미지 표시 (있는 경우)
-    var roadviewImageUrl = roadview.roadviewUrl || roadview.imageUrl || null;
+    // 로드뷰 이미지 표시 (있는 경우: API 결과 또는 input에서 캡처한 이미지)
+    var roadviewImageUrl = roadview.roadviewUrl || roadview.imageUrl || (input && input.roadviewImage) || null;
     var imageHtml = '';
     if (roadviewImageUrl) {
       imageHtml = '<div style="margin-bottom:2rem;">' +
@@ -343,16 +365,43 @@
     }
 
     summaryHtml += '</div>';
-    document.getElementById('rRoadviewSummary').innerHTML = summaryHtml;
+    var rvSummaryEl = document.getElementById('rRoadviewSummary');
+    if (rvSummaryEl) rvSummaryEl.innerHTML = summaryHtml;
   }
 
   // 상권 분석 (Market) 렌더링
   function renderMarketAnalysis(market) {
+    // 지도 이미지 렌더링 (URL 방식)
+    var mapImageEl = document.getElementById('rMapImage');
+    if (mapImageEl && input && input.mapImage) {
+      var mapImg = document.createElement('img');
+      mapImg.alt = '선택 위치 지도';
+      mapImg.style.cssText = 'width:100%; max-width:100%; height:auto; display:block;';
+      mapImg.src = input.mapImage;
+      mapImg.onerror = function() {
+        mapImageEl.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:1rem;">지도 이미지를 불러올 수 없습니다.</p>';
+      };
+
+      var wrapper = document.createElement('div');
+      wrapper.style.cssText = 'margin-bottom:2rem;';
+      var title = document.createElement('h4');
+      title.style.cssText = 'margin-bottom:1rem; font-size:1rem;';
+      title.textContent = '선택 위치 지도';
+      var imgBox = document.createElement('div');
+      imgBox.style.cssText = 'border-radius:var(--radius-sm); overflow:hidden; border:1px solid rgba(0,0,0,0.1);';
+      imgBox.appendChild(mapImg);
+      wrapper.appendChild(title);
+      wrapper.appendChild(imgBox);
+      mapImageEl.appendChild(wrapper);
+    }
+
     if (!market) {
       document.getElementById('rMarketCompetitors').innerHTML =
         '<p style="color:var(--text-muted); text-align:center; padding:2rem;">상권 분석 데이터가 없습니다.</p>';
-      document.getElementById('rMarketFootTraffic').innerHTML = '';
-      document.getElementById('rMarketScore').innerHTML = '';
+      var ftEl = document.getElementById('rMarketFootTraffic');
+      if (ftEl) ftEl.innerHTML = '';
+      var msEl = document.getElementById('rMarketScore');
+      if (msEl) msEl.innerHTML = '';
       return;
     }
 
@@ -396,7 +445,8 @@
     }
 
     footTrafficHtml += '</tbody></table>';
-    document.getElementById('rMarketFootTraffic').innerHTML = footTrafficHtml;
+    var ftEl2 = document.getElementById('rMarketFootTraffic');
+    if (ftEl2) ftEl2.innerHTML = footTrafficHtml;
 
     // 상권 점수
     var marketScore = market.marketScore !== null && market.marketScore !== undefined ? market.marketScore : 50;
@@ -408,7 +458,8 @@
       '<div style="font-size:1rem; color:var(--text-muted);">' + scoreLabel + '</div>' +
       '</div>';
 
-    document.getElementById('rMarketScore').innerHTML = scoreHtml;
+    var msEl2 = document.getElementById('rMarketScore');
+    if (msEl2) msEl2.innerHTML = scoreHtml;
   }
 
   // 입지-상권분석 렌더링 실행
@@ -499,7 +550,8 @@
   var diffKR = { possible: '차별화 가능', difficult: '차별화 어려움', impossible: '차별화 불가' };
   var priceKR = { premium: '프리미엄 전략', standard: '표준 가격', budget: '저가 전략' };
 
-  document.getElementById('rCompetitive').innerHTML =
+  var compEl = document.getElementById('rCompetitive');
+  if (compEl) compEl.innerHTML =
     '<table class="report-table">' +
     '<tr><th>경쟁 강도</th><td>' + (intensityKR[comp.intensity] || comp.intensity) + '</td></tr>' +
     '<tr><th>차별화 가능성</th><td>' + (diffKR[comp.differentiation] || comp.differentiation) + '</td></tr>' +
@@ -644,9 +696,11 @@
     var jsPDF = window.jspdf.jsPDF;
     var doc = new jsPDF('p', 'mm', 'a4');
     var pageW = 210;
+    var pageH = 297;
     var margin = 20;
     var contentW = pageW - margin * 2;
     var y = margin;
+    var sectionNum = 0;
 
     // Helper
     function addText(text, x, yPos, size, bold, color) {
@@ -663,7 +717,23 @@
       doc.line(margin, yPos, pageW - margin, yPos);
     }
 
-    // ── Page 1 ──
+    function checkPage(needed) {
+      if (y + (needed || 20) > pageH - 20) {
+        doc.addPage();
+        y = margin;
+        addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
+        y += 10;
+      }
+    }
+
+    function nextSection(title) {
+      sectionNum++;
+      checkPage(25);
+      addText(sectionNum + '. ' + title, margin, y, 13, true);
+      y += 8;
+    }
+
+    // ── Page 1: Overview + Evaluation ──
     addText('StartSmart', margin, y, 18, true, [45, 90, 39]);
     addText('Creation Feasibility Report', margin, y + 7, 12, false, [100, 100, 100]);
     addText(Utils.formatDate(result.createdAt), pageW - margin, y, 9, false, [150, 150, 150]);
@@ -672,12 +742,11 @@
     addLine(y);
     y += 8;
 
-    addText('1. Analysis Overview', margin, y, 13, true);
-    y += 8;
-
-    // Target Sales는 gap에서 가져오거나 input에서 가져옴
+    // Target Sales
     var targetSales = gap?.targetDailySales ?? (input ? input.targetDailySales : null);
-    
+
+    nextSection('Analysis Overview');
+
     var overviewData = [
       ['Brand', result.brand.name],
       ['Location', result.location.address || 'N/A'],
@@ -688,25 +757,19 @@
     ];
 
     doc.autoTable({
-      startY: y,
-      head: [['Item', 'Value']],
-      body: overviewData,
+      startY: y, head: [['Item', 'Value']], body: overviewData,
       margin: { left: margin, right: margin },
       styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [45, 90, 39] },
-      theme: 'grid'
+      headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
     });
-
     y = doc.lastAutoTable.finalY + 10;
 
-    addText('2. Overall Evaluation', margin, y, 13, true);
-    y += 8;
+    nextSection('Overall Evaluation');
 
-    // PDF에서도 executive 우선 사용
     var pdfSignal = executive?.signal ?? decision?.signal ?? 'yellow';
     var pdfScore = executive?.score ?? decision?.score ?? 0;
-    var pdfSummary = executive?.summary || summaryParts.join(' ');
-    
+    var pdfSummary = executive?.summary || summaryText || '';
+
     var scoreColor = pdfSignal === 'green' ? [34, 197, 94] : pdfSignal === 'yellow' ? [245, 158, 11] : [239, 68, 68];
     doc.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
     doc.circle(margin + 15, y + 10, 12, 'F');
@@ -714,37 +777,30 @@
 
     var pdfSignalLabel = executive?.label || sigLabels[pdfSignal] || 'Caution';
     addText(pdfSignalLabel + ' (Score: ' + pdfScore + ')', margin + 35, y + 8, 11, true);
-    addText(pdfSummary.substring(0, 90), margin + 35, y + 14, 8, false, [80, 80, 80]);
-    y += 30;
+    // 긴 summary를 여러 줄로 분할
+    var summLines = doc.splitTextToSize(pdfSummary, contentW - 35);
+    for (var sl = 0; sl < Math.min(summLines.length, 3); sl++) {
+      addText(summLines[sl], margin + 35, y + 14 + sl * 4, 8, false, [80, 80, 80]);
+    }
+    y += 28 + Math.min(summLines.length, 3) * 4;
 
     // Decision Confidence
     if (executive?.confidence) {
       var pdfConfidence = executive.confidence;
-      y += 5;
+      checkPage(30);
       addText('Decision Confidence', margin, y, 11, true);
       y += 6;
-      
       if (typeof pdfConfidence === 'object') {
         var confData = [];
-        if (pdfConfidence.dataCoverage) {
-          confData.push(['Data Coverage', pdfConfidence.dataCoverage.toUpperCase()]);
-        }
-        if (pdfConfidence.assumptionRisk) {
-          confData.push(['Assumption Risk', pdfConfidence.assumptionRisk.toUpperCase()]);
-        }
-        if (pdfConfidence.stability) {
-          confData.push(['Stability', pdfConfidence.stability.toUpperCase()]);
-        }
-        
+        if (pdfConfidence.dataCoverage) confData.push(['Data Coverage', pdfConfidence.dataCoverage.toUpperCase()]);
+        if (pdfConfidence.assumptionRisk) confData.push(['Assumption Risk', pdfConfidence.assumptionRisk.toUpperCase()]);
+        if (pdfConfidence.stability) confData.push(['Stability', pdfConfidence.stability.toUpperCase()]);
         if (confData.length > 0) {
           doc.autoTable({
-            startY: y,
-            head: [['Item', 'Level']],
-            body: confData,
+            startY: y, head: [['Item', 'Level']], body: confData,
             margin: { left: margin, right: margin },
             styles: { fontSize: 8, cellPadding: 2.5 },
-            headStyles: { fillColor: [45, 90, 39] },
-            theme: 'grid'
+            headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
           });
           y = doc.lastAutoTable.finalY + 5;
         }
@@ -754,84 +810,62 @@
       }
     }
 
-    // ── Page 2: Financial ──
-    doc.addPage();
-    y = margin;
-    addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
-    y += 10;
-
-    // Hardcut Reasons (있는 경우)
+    // Hardcut Reasons
     if (executive?.nonNegotiable || (result.decision?.hardCutReasons && result.decision.hardCutReasons.length > 0)) {
+      checkPage(20);
       addText('Hard Cut Reasons', margin, y, 11, true);
       y += 6;
       var hardCutReasons = result.decision?.hardCutReasons || [];
-      if (hardCutReasons.length > 0) {
-        for (var hc = 0; hc < hardCutReasons.length; hc++) {
-          addText((hc + 1) + '. ' + hardCutReasons[hc], margin, y, 9, false, [239, 68, 68]);
-          y += 5;
-        }
-      } else {
-        addText('No hard cut reasons', margin, y, 9, false, [150, 150, 150]);
+      for (var hc = 0; hc < hardCutReasons.length; hc++) {
+        checkPage(6);
+        addText((hc + 1) + '. ' + hardCutReasons[hc], margin, y, 9, false, [239, 68, 68]);
         y += 5;
       }
       y += 5;
     }
 
-    addText('3. Financial Analysis', margin, y, 13, true);
-    y += 8;
+    // ── Financial Analysis ──
+    checkPage(60);
+    nextSection('Financial Analysis');
 
     var finBody = finRows.map(function (row) {
       return [row[0], Utils.formatKRW(row[1]), row[2]];
     });
-
     doc.autoTable({
-      startY: y,
-      head: [['Item', 'Amount (Monthly)', 'Ratio']],
-      body: finBody,
+      startY: y, head: [['Item', 'Amount (Monthly)', 'Ratio']], body: finBody,
       margin: { left: margin, right: margin },
       styles: { fontSize: 8, cellPadding: 2.5 },
-      headStyles: { fillColor: [45, 90, 39] },
-      theme: 'grid'
+      headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
     });
-
     y = doc.lastAutoTable.finalY + 10;
 
-    addText('4. Key Metrics', margin, y, 13, true);
-    y += 8;
-
+    // Key Metrics
+    checkPage(40);
+    nextSection('Key Metrics');
     var kpiBody = kpis.map(function (k) { return [k.label, k.value]; });
     doc.autoTable({
-      startY: y,
-      head: [['Metric', 'Value']],
-      body: kpiBody,
+      startY: y, head: [['Metric', 'Value']], body: kpiBody,
       margin: { left: margin, right: margin },
       styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [45, 90, 39] },
-      theme: 'grid'
+      headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
     });
-
     y = doc.lastAutoTable.finalY + 10;
 
-    addText('5. Sensitivity Analysis', margin, y, 13, true);
-    y += 8;
-
+    // Sensitivity
+    checkPage(40);
+    nextSection('Sensitivity Analysis');
     doc.autoTable({
-      startY: y,
-      head: [['Scenario', 'Monthly Profit', 'Payback']],
-      body: sensRows,
+      startY: y, head: [['Scenario', 'Monthly Profit', 'Payback']], body: sensRows,
       margin: { left: margin, right: margin },
       styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [45, 90, 39] },
-      theme: 'grid'
+      headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
     });
-
     y = doc.lastAutoTable.finalY + 10;
 
     // Breakdown
     if (breakdown) {
-      addText('6. Score Breakdown', margin, y, 13, true);
-      y += 8;
-
+      checkPage(50);
+      nextSection('Score Breakdown');
       var breakdownItems = [
         { label: '회수 기간', value: breakdown.payback || breakdown.paybackMonths || 0 },
         { label: '수익성', value: breakdown.profitability || 0 },
@@ -842,327 +876,205 @@
         { label: '상권', value: breakdown.market || 0 },
         { label: '로드뷰', value: breakdown.roadview || 0 }
       ];
-
       var breakdownBody = breakdownItems.map(function(item) {
         var evaluation = item.value >= 80 ? 'Good' : item.value >= 60 ? 'Fair' : 'Caution';
         return [item.label, item.value + '점', evaluation];
       });
-
       doc.autoTable({
-        startY: y,
-        head: [['Item', 'Score', 'Evaluation']],
-        body: breakdownBody,
+        startY: y, head: [['Item', 'Score', 'Evaluation']], body: breakdownBody,
         margin: { left: margin, right: margin },
         styles: { fontSize: 8, cellPadding: 2.5 },
-        headStyles: { fillColor: [45, 90, 39] },
-        theme: 'grid'
+        headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
       });
       y = doc.lastAutoTable.finalY + 10;
     }
 
-    // ── Page 3: 입지-상권분석 ──
-    doc.addPage();
-    y = margin;
-    addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
-    y += 10;
-
-    addText('6. Location Analysis (Roadview)', margin, y, 13, true);
-    y += 8;
-
-    // 입지 분석 데이터
-    if (roadviewData && roadviewData.risks && roadviewData.risks.length > 0) {
-      var riskTypeMap = {
-        signage_obstruction: '간판 가시성',
-        steep_slope: '경사도',
-        floor_level: '층위',
-        visibility: '보행 가시성'
+    // ── Location Analysis ──
+    var hasRoadview = roadviewData && roadviewData.risks && roadviewData.risks.length > 0;
+    if (hasRoadview) {
+      checkPage(40);
+      nextSection('Location Analysis (Roadview)');
+      var rvRiskTypeMap = {
+        signage_obstruction: '간판 가시성', steep_slope: '경사도',
+        floor_level: '층위', visibility: '보행 가시성'
       };
-      var levelLabelMap = {
+      var rvLevelLabelMap = {
         low: '낮음', medium: '보통', high: '높음',
         ground: '1층', half_basement: '반지하', second_floor: '2층 이상'
       };
-
       for (var rv = 0; rv < roadviewData.risks.length; rv++) {
+        checkPage(15);
         var rvRisk = roadviewData.risks[rv];
-        var rvTypeLabel = riskTypeMap[rvRisk.type] || rvRisk.type;
-        var rvLevelLabel = levelLabelMap[rvRisk.level] || rvRisk.level;
-        
-        addText((rv + 1) + '. ' + rvTypeLabel + ' [' + rvLevelLabel + ']', margin, y, 10, true);
+        addText((rv + 1) + '. ' + (rvRiskTypeMap[rvRisk.type] || rvRisk.type) + ' [' + (rvLevelLabelMap[rvRisk.level] || rvRisk.level) + ']', margin, y, 10, true);
         y += 5;
         var rvLines = doc.splitTextToSize(rvRisk.description || '', contentW);
         addText(rvLines, margin, y, 8, false, [80, 80, 80]);
         y += rvLines.length * 4 + 5;
       }
-
-      // 종합 평가
       if (roadviewData.overallRisk) {
-        y += 3;
+        checkPage(12);
         addText('Overall Risk: ' + (roadviewData.overallRisk === 'low' ? '낮음' : roadviewData.overallRisk === 'high' ? '높음' : '보통'), margin, y, 10, true);
         y += 5;
-        if (roadviewData.riskScore !== null) {
+        if (roadviewData.riskScore !== null && roadviewData.riskScore !== undefined) {
           addText('Risk Score: ' + roadviewData.riskScore + ' / 100', margin, y, 9, false, [80, 80, 80]);
-          y += 5;
+          y += 8;
         }
       }
-    } else {
-      addText('입지 분석 데이터가 없습니다.', margin, y, 9, false, [150, 150, 150]);
-      y += 5;
     }
 
-    y += 5;
-    addText('7. Market Analysis', margin, y, 13, true);
-    y += 8;
-
-    // 상권 분석 데이터
+    // ── Market Analysis ──
     if (marketData) {
+      checkPage(40);
+      nextSection('Market Analysis');
       var marketBody = [];
-      if (marketData.location && marketData.location.radius) {
-        marketBody.push(['반경', marketData.location.radius + 'm']);
-      }
+      if (marketData.location && marketData.location.radius) marketBody.push(['반경', marketData.location.radius + 'm']);
       if (marketData.competitors) {
         marketBody.push(['총 경쟁 카페', (marketData.competitors.total || 0) + '개']);
         marketBody.push(['동일 브랜드', (marketData.competitors.sameBrand || 0) + '개']);
         marketBody.push(['타 브랜드', (marketData.competitors.otherBrands || 0) + '개']);
         if (marketData.competitors.density) {
-          var densityLabel = marketData.competitors.density === 'high' ? '높음' : 
-                            marketData.competitors.density === 'low' ? '낮음' : '보통';
-          marketBody.push(['경쟁 밀도', densityLabel]);
+          marketBody.push(['경쟁 밀도', marketData.competitors.density === 'high' ? '높음' : marketData.competitors.density === 'low' ? '낮음' : '보통']);
         }
       }
       if (marketData.footTraffic) {
-        var trafficLabelMap = { low: '낮음', medium: '보통', high: '높음' };
-        marketBody.push(['평일 유동인구', trafficLabelMap[marketData.footTraffic.weekday] || '보통']);
-        marketBody.push(['주말 유동인구', trafficLabelMap[marketData.footTraffic.weekend] || '보통']);
+        var tfMap = { low: '낮음', medium: '보통', high: '높음' };
+        marketBody.push(['평일 유동인구', tfMap[marketData.footTraffic.weekday] || '보통']);
+        marketBody.push(['주말 유동인구', tfMap[marketData.footTraffic.weekend] || '보통']);
       }
       if (marketData.marketScore !== null && marketData.marketScore !== undefined) {
         marketBody.push(['상권 종합 점수', marketData.marketScore + '점']);
       }
-
       if (marketBody.length > 0) {
         doc.autoTable({
-          startY: y,
-          head: [['항목', '값']],
-          body: marketBody,
+          startY: y, head: [['항목', '값']], body: marketBody,
           margin: { left: margin, right: margin },
           styles: { fontSize: 9, cellPadding: 3 },
-          headStyles: { fillColor: [45, 90, 39] },
-          theme: 'grid'
+          headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
         });
         y = doc.lastAutoTable.finalY + 10;
       }
-    } else {
-      addText('상권 분석 데이터가 없습니다.', margin, y, 9, false, [150, 150, 150]);
-      y += 5;
     }
 
-    // ── Page 4: AI ──
-    doc.addPage();
-    y = margin;
-    addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
-    y += 10;
-
-    addText('8. AI Risk Analysis', margin, y, 13, true);
-    y += 8;
-
-    for (var r = 0; r < ai.topRisks.length; r++) {
-      addText((r + 1) + '. ' + ai.topRisks[r].title + ' [' + ai.topRisks[r].impact.toUpperCase() + ']', margin, y, 10, true);
-      y += 5;
-      var lines = doc.splitTextToSize(ai.topRisks[r].description, contentW);
-      addText(lines, margin, y, 8, false, [80, 80, 80]);
-      y += lines.length * 4 + 5;
+    // ── AI Risk Analysis ──
+    var pdfRisks = risksToShow || [];
+    if (pdfRisks.length > 0) {
+      checkPage(30);
+      nextSection('AI Risk Analysis');
+      for (var r = 0; r < pdfRisks.length; r++) {
+        checkPage(15);
+        var pdfRisk = pdfRisks[r];
+        addText((r + 1) + '. ' + (pdfRisk.title || '') + ' [' + ((pdfRisk.impact || 'medium').toUpperCase()) + ']', margin, y, 10, true);
+        y += 5;
+        var rLines = doc.splitTextToSize(pdfRisk.description || '', contentW);
+        addText(rLines, margin, y, 8, false, [80, 80, 80]);
+        y += rLines.length * 4 + 5;
+      }
     }
 
-    y += 5;
-    addText('9. AI Improvement Suggestions', margin, y, 13, true);
-    y += 8;
-
-    for (var im = 0; im < ai.improvements.length; im++) {
-      addText((im + 1) + '. ' + ai.improvements[im].title, margin, y, 10, true);
-      y += 5;
-      var impLines = doc.splitTextToSize(ai.improvements[im].description, contentW);
-      addText(impLines, margin, y, 8, false, [80, 80, 80]);
-      y += impLines.length * 4 + 3;
-      addText('Expected: ' + ai.improvements[im].expectedImpact, margin, y, 8, false, [45, 90, 39]);
-      y += 7;
-    }
-
-    // Improvement Simulations 상세
-    if (improvement && improvement.cards && improvement.cards.length > 0) {
-      y += 5;
-      addText('10. Improvement Simulations', margin, y, 13, true);
-      y += 8;
-
-      var simCount = 0;
-      for (var sim = 0; sim < improvement.cards.length; sim++) {
-        var simCard = improvement.cards[sim];
-        if (simCard.engine && simCard.engine.delta) {
-          simCount++;
-          var delta = simCard.engine.delta;
-          var deltaLabel = '';
-          if (delta.includes && delta.includes('rent')) {
-            deltaLabel = '임대료 ' + (delta.includes('-') ? '절감' : '증가');
-          } else if (delta.includes && (delta.includes('sales') || delta.includes('target'))) {
-            deltaLabel = '목표 판매량 ' + (delta.includes('-') ? '감소' : '증가');
-          } else {
-            deltaLabel = delta.toString();
-          }
-
-          addText('Simulation ' + simCount + ': ' + deltaLabel, margin, y, 10, true);
-          y += 5;
-
-          if (simCard.engine.monthlyProfit !== undefined) {
-            addText('Monthly Profit: ' + Utils.formatKRW(simCard.engine.monthlyProfit), margin, y, 8, false, [80, 80, 80]);
-            y += 4;
-          }
-          if (simCard.engine.survivalMonths !== undefined) {
-            addText('Survival Months: ' + simCard.engine.survivalMonths, margin, y, 8, false, [80, 80, 80]);
-            y += 4;
-          }
-          if (simCard.engine.signalChange) {
-            addText('Signal Change: ' + simCard.engine.signalChange, margin, y, 8, false, [45, 90, 39]);
-            y += 4;
-          }
-          if (simCard.engine.thresholdCrossed) {
-            addText('Threshold Crossed: ' + simCard.engine.thresholdCrossed, margin, y, 8, false, [45, 90, 39]);
-            y += 4;
-          }
-          if (simCard.ai && simCard.ai.description) {
-            var aiLines = doc.splitTextToSize(simCard.ai.description, contentW);
-            addText(aiLines, margin, y, 7, false, [100, 100, 100]);
-            y += aiLines.length * 3 + 3;
-          }
-          y += 3;
+    // ── AI Improvements ──
+    var pdfImps = improvementsToShow || [];
+    if (pdfImps.length > 0) {
+      checkPage(30);
+      nextSection('AI Improvement Suggestions');
+      for (var im = 0; im < pdfImps.length; im++) {
+        checkPage(15);
+        var pdfImp = pdfImps[im];
+        addText((im + 1) + '. ' + (pdfImp.title || ''), margin, y, 10, true);
+        y += 5;
+        var impLines = doc.splitTextToSize(pdfImp.description || '', contentW);
+        addText(impLines, margin, y, 8, false, [80, 80, 80]);
+        y += impLines.length * 4 + 3;
+        if (pdfImp.expectedImpact) {
+          addText('Expected: ' + pdfImp.expectedImpact, margin, y, 8, false, [45, 90, 39]);
+          y += 7;
         }
       }
+    }
 
-      if (simCount === 0) {
-        addText('No improvement simulations available', margin, y, 8, false, [150, 150, 150]);
-        y += 5;
+    // ── Competitive ──
+    if (competitive || ai?.competitiveAnalysis) {
+      checkPage(30);
+      nextSection('Competitive Analysis');
+      var pdfComp = competitive || ai.competitiveAnalysis;
+      var compBody = [];
+      if (pdfComp.intensity) compBody.push(['경쟁 강도', { high: '높음', medium: '보통', low: '낮음' }[pdfComp.intensity] || pdfComp.intensity]);
+      if (pdfComp.differentiation) compBody.push(['차별화', { possible: '가능', difficult: '어려움' }[pdfComp.differentiation] || pdfComp.differentiation]);
+      if (pdfComp.priceStrategy) compBody.push(['가격 전략', { premium: '프리미엄', standard: '표준', budget: '저가' }[pdfComp.priceStrategy] || pdfComp.priceStrategy]);
+      if (compBody.length > 0) {
+        doc.autoTable({
+          startY: y, head: [['항목', '평가']], body: compBody,
+          margin: { left: margin, right: margin },
+          styles: { fontSize: 9, cellPadding: 3 },
+          headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
+        });
+        y = doc.lastAutoTable.finalY + 10;
       }
     }
 
-    // Failure Triggers
+    // ── Failure Triggers ──
     if (failureTriggers && failureTriggers.length > 0) {
-      // 페이지가 부족하면 새 페이지 추가
-      if (y > 250) {
-        doc.addPage();
-        y = margin;
-        addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
-        y += 10;
-      }
-
-      y += 5;
-      addText('11. Failure Triggers', margin, y, 13, true);
-      y += 8;
-
+      checkPage(30);
+      nextSection('Failure Triggers');
       for (var ft = 0; ft < failureTriggers.length; ft++) {
+        checkPage(20);
         var trigger = failureTriggers[ft];
-        var impactLabel = trigger.impact ? trigger.impact.toUpperCase() : 'MEDIUM';
-        addText((ft + 1) + '. ' + (trigger.trigger || '') + ' [' + impactLabel + ']', margin, y, 10, true);
+        addText((ft + 1) + '. ' + (trigger.triggerName || trigger.trigger || '') + ' [' + (trigger.impact || 'medium').toUpperCase() + ']', margin, y, 10, true);
         y += 5;
-        
         if (trigger.outcome || trigger.result) {
           addText('Outcome: ' + (trigger.outcome || trigger.result), margin, y, 8, false, [80, 80, 80]);
           y += 4;
         }
         if (trigger.estimatedFailureWindow) {
-          addText('Estimated Failure Window: ' + trigger.estimatedFailureWindow, margin, y, 8, false, [239, 68, 68]);
+          addText('Failure Window: ' + trigger.estimatedFailureWindow, margin, y, 8, false, [239, 68, 68]);
           y += 4;
         }
         if (trigger.totalLossAtFailure !== undefined) {
-          addText('Total Loss at Failure: ' + Utils.formatKRW(trigger.totalLossAtFailure), margin, y, 8, false, [239, 68, 68]);
-          y += 4;
-        }
-        if (trigger.exitCostAtFailure !== undefined) {
-          addText('Exit Cost at Failure: ' + Utils.formatKRW(trigger.exitCostAtFailure), margin, y, 8, false, [239, 68, 68]);
+          addText('Total Loss: ' + Utils.formatKRW(trigger.totalLossAtFailure), margin, y, 8, false, [239, 68, 68]);
           y += 4;
         }
         y += 3;
       }
     }
 
-    // Exit Plan
-    if (exitPlan) {
-      // 페이지가 부족하면 새 페이지 추가
-      if (y > 250) {
-        doc.addPage();
-        y = margin;
-        addText('StartSmart', margin, y, 10, true, [45, 90, 39]);
-        y += 10;
-      }
+    // ── Exit Plan ──
+    if (exitPlan && (exitPlan.optimalExitMonth || exitPlan.warningMonth || exitPlan.exitCostBreakdown)) {
+      checkPage(30);
+      nextSection('Exit Plan');
 
-      y += 5;
-      addText('12. Exit Plan (Exit Timing & Cost)', margin, y, 13, true);
-      y += 8;
-
-      // 손절 타이밍
       if (exitPlan.optimalExitMonth || exitPlan.warningMonth) {
-        addText('Exit Timing', margin, y, 11, true);
-        y += 6;
-
         var exitTimingData = [];
-        if (exitPlan.warningMonth) {
-          exitTimingData.push(['Warning Period', exitPlan.warningMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtWarning || 0)]);
-        }
-        if (exitPlan.optimalExitMonth) {
-          exitTimingData.push(['Optimal Exit', exitPlan.optimalExitMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtOptimal || 0)]);
-        }
-        if (exitPlan.lossExplosionMonth) {
-          exitTimingData.push(['Loss Explosion', exitPlan.lossExplosionMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtExplosion || 0)]);
-        }
-
+        if (exitPlan.warningMonth) exitTimingData.push(['Warning', exitPlan.warningMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtWarning || 0)]);
+        if (exitPlan.optimalExitMonth) exitTimingData.push(['Optimal Exit', exitPlan.optimalExitMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtOptimal || 0)]);
+        if (exitPlan.lossExplosionMonth) exitTimingData.push(['Loss Explosion', exitPlan.lossExplosionMonth + ' months', Utils.formatKRW(exitPlan.totalLossAtExplosion || 0)]);
         if (exitTimingData.length > 0) {
           doc.autoTable({
-            startY: y,
-            head: [['Period', 'Timing', 'Total Loss']],
-            body: exitTimingData,
+            startY: y, head: [['Period', 'Timing', 'Total Loss']], body: exitTimingData,
             margin: { left: margin, right: margin },
             styles: { fontSize: 8, cellPadding: 2.5 },
-            headStyles: { fillColor: [45, 90, 39] },
-            theme: 'grid'
+            headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
           });
-          y = doc.lastAutoTable.finalY + 10;
+          y = doc.lastAutoTable.finalY + 8;
         }
       }
 
-      // 폐업 비용 상세
       if (exitPlan.exitCostBreakdown) {
-        var exitBreakdown = exitPlan.exitCostBreakdown;
-        addText('Exit Cost Breakdown (' + (exitPlan.optimalExitMonth || 0) + ' months)', margin, y, 11, true);
+        checkPage(30);
+        var eb = exitPlan.exitCostBreakdown;
+        addText('Exit Cost Breakdown', margin, y, 11, true);
         y += 6;
-
         var exitCostData = [];
-        if (exitBreakdown.penaltyCost !== undefined) {
-          exitCostData.push(['Penalty', Utils.formatKRW(exitBreakdown.penaltyCost || 0)]);
-        }
-        if (exitBreakdown.demolitionCost !== undefined) {
-          exitCostData.push(['Demolition/Restoration', Utils.formatKRW(exitBreakdown.demolitionCost || 0)]);
-        }
-        if (exitBreakdown.interiorLoss !== undefined) {
-          exitCostData.push(['Interior Loss (Non-recoverable)', Utils.formatKRW(exitBreakdown.interiorLoss || 0)]);
-        }
-        if (exitBreakdown.goodwillRecovered !== undefined && exitBreakdown.goodwillRecovered !== 0) {
-          exitCostData.push(['Goodwill Recovery (Deduction)', '-' + Utils.formatKRW(Math.abs(exitBreakdown.goodwillRecovered || 0))]);
-        }
-        if (exitBreakdown.exitCostTotal !== undefined) {
-          exitCostData.push(['Exit Cost Total', Utils.formatKRW(exitBreakdown.exitCostTotal || 0)]);
-        }
-        if (exitBreakdown.cumOperatingLoss !== undefined) {
-          exitCostData.push(['Cumulative Operating Loss', Utils.formatKRW(exitBreakdown.cumOperatingLoss || 0)]);
-        }
-        if (exitPlan.totalLossAtOptimal !== undefined) {
-          exitCostData.push(['Final Total Loss', Utils.formatKRW(exitPlan.totalLossAtOptimal)]);
-        }
-
+        if (eb.penaltyCost !== undefined) exitCostData.push(['Penalty', Utils.formatKRW(eb.penaltyCost || 0)]);
+        if (eb.demolitionCost !== undefined) exitCostData.push(['Demolition', Utils.formatKRW(eb.demolitionCost || 0)]);
+        if (eb.interiorLoss !== undefined) exitCostData.push(['Interior Loss', Utils.formatKRW(eb.interiorLoss || 0)]);
+        if (eb.goodwillRecovered && eb.goodwillRecovered !== 0) exitCostData.push(['Goodwill Recovery', '-' + Utils.formatKRW(Math.abs(eb.goodwillRecovered))]);
+        if (eb.exitCostTotal !== undefined) exitCostData.push(['Exit Cost Total', Utils.formatKRW(eb.exitCostTotal || 0)]);
+        if (exitPlan.totalLossAtOptimal !== undefined) exitCostData.push(['Final Total Loss', Utils.formatKRW(exitPlan.totalLossAtOptimal)]);
         if (exitCostData.length > 0) {
           doc.autoTable({
-            startY: y,
-            head: [['Item', 'Amount']],
-            body: exitCostData,
+            startY: y, head: [['Item', 'Amount']], body: exitCostData,
             margin: { left: margin, right: margin },
             styles: { fontSize: 8, cellPadding: 2.5 },
-            headStyles: { fillColor: [45, 90, 39] },
-            theme: 'grid'
+            headStyles: { fillColor: [45, 90, 39] }, theme: 'grid'
           });
           y = doc.lastAutoTable.finalY + 10;
         }
@@ -1170,7 +1082,8 @@
     }
 
     // Disclaimer
-    y += 10;
+    checkPage(15);
+    y += 5;
     addLine(y);
     y += 5;
     addText('* This report is based on AI simulation models and may differ from actual results.', margin, y, 7, false, [150, 150, 150]);
@@ -1184,6 +1097,34 @@
     if (!total) return '0%';
     return Math.round(val / total * 100) + '%';
   }
+
+  // ═══════════════════════════════════════════
+  // 빈 페이지 숨기기
+  // ═══════════════════════════════════════════
+  function hideEmptyPages() {
+    var pages = document.querySelectorAll('.report-page');
+    var pageNum = 0;
+    for (var i = 0; i < pages.length; i++) {
+      var page = pages[i];
+      // 항상 표시하는 페이지
+      if (page.id === 'page0-executive' || page.id === 'page1-conditions' || page.id === 'page-disclaimer') {
+        pageNum++;
+        var footer = page.querySelector('.report-page-footer');
+        if (footer) footer.textContent = 'StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page ' + pageNum;
+        continue;
+      }
+      // 실제 콘텐츠 확인: table rows, risk items, kpis, images 등
+      var contentEls = page.querySelectorAll('table tbody tr, .report-risk-item, .report-kpi, img');
+      if (contentEls.length === 0) {
+        page.style.display = 'none';
+      } else {
+        pageNum++;
+        var footer = page.querySelector('.report-page-footer');
+        if (footer) footer.textContent = 'StartSmart Inc. | AI 기반 창업 검증 플랫폼 | Page ' + pageNum;
+      }
+    }
+  }
+  setTimeout(hideEmptyPages, 100);
 
   // Header scroll
   window.addEventListener('scroll', function () {
