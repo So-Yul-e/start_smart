@@ -909,6 +909,20 @@
     var attempt = 0;
     var pollInterval = 1000; // 1초마다 확인
     var currentStep = 0; // 현재 표시 중인 단계
+    
+    // 각 단계의 예상 소요 시간 (밀리초) - 기본값
+    // 서버에서 estimatedDuration을 전달하면 그것을 사용, 없으면 기본값 사용
+    var stepDurations = {
+      1: 30000, // 상권 분석: 30초 (가장 오래 걸림)
+      2: 2000,  // 손익 계산: 2초 (빠름)
+      3: 5000,  // 로드뷰 분석: 5초 (프론트엔드에서 이미 완료된 경우 빠름)
+      4: 25000, // AI 컨설팅: 25초 (오래 걸림)
+      5: 1500   // 판단 계산: 1.5초 (가장 빠름)
+    };
+    
+    // 단계별 진행 애니메이션 관리
+    var stepAnimations = {};
+    var stepStartTimes = {};
 
     function poll() {
       attempt++;
@@ -928,29 +942,145 @@
           if (data.progress && data.progress.step) {
             var step = data.progress.step;
             var message = data.progress.message || '';
+            var isCompleted = data.progress.completed === true;
             
-            console.log('[분석 실행] Progress 업데이트:', step + '/' + data.progress.total, message);
+            console.log('[분석 실행] Progress 업데이트:', step + '/' + data.progress.total, message, '완료:', isCompleted, '현재 단계:', currentStep);
             
-            // 이전 단계들을 완료로 표시
-            var steps = document.querySelectorAll('.loading-step');
-            for (var i = 0; i < steps.length; i++) {
-              if (i < step - 1) {
-                steps[i].classList.remove('active');
-                steps[i].classList.add('done');
-                steps[i].querySelector('i').className = 'fa-solid fa-circle-check';
-              } else if (i === step - 1) {
-                steps[i].classList.add('active');
-                steps[i].classList.remove('done');
-                // 메시지 업데이트 (원래 텍스트 유지하거나 서버 메시지 사용)
-                var textNode = steps[i].childNodes[steps[i].childNodes.length - 1];
-                if (textNode && textNode.nodeType === Node.TEXT_NODE && message) {
-                  // 기존 텍스트를 서버 메시지로 대체하지 않고, 진행률만 표시
-                  // textNode.nodeValue = ' ' + message;
+            // 단계가 완료되었으면 프로그래스 바를 100%로 설정하고 다음 단계로 진행
+            if (isCompleted && currentStep === step) {
+              console.log('[분석 실행] 단계', step, '완료됨');
+              var steps = document.querySelectorAll('.loading-step');
+              if (steps[currentStep - 1]) {
+                var progressFill = steps[currentStep - 1].querySelector('.step-progress-fill');
+                if (progressFill) {
+                  progressFill.style.width = '100%';
+                  progressFill.style.transition = 'width 0.5s ease';
+                }
+                // 애니메이션 정지
+                if (stepAnimations[currentStep]) {
+                  clearInterval(stepAnimations[currentStep]);
+                  delete stepAnimations[currentStep];
+                }
+                // 완료 표시
+                steps[currentStep - 1].classList.remove('active');
+                steps[currentStep - 1].classList.add('done');
+                steps[currentStep - 1].querySelector('i').className = 'fa-solid fa-circle-check';
+              }
+              // 다음 단계로 진행 (서버에서 다음 단계가 시작되면 자동으로 업데이트됨)
+              currentStep = 0; // 다음 단계를 위해 리셋
+            }
+            
+            // 새로운 단계가 시작되면 애니메이션 시작
+            // step이 변경되었거나, currentStep이 0이면 (이전 단계 완료 후 리셋됨)
+            if (step !== currentStep || currentStep === 0) {
+              console.log('[분석 실행] 단계 변경:', currentStep, '→', step);
+              
+              // 이전 단계 애니메이션 정지
+              if (currentStep > 0 && stepAnimations[currentStep]) {
+                clearInterval(stepAnimations[currentStep]);
+                delete stepAnimations[currentStep];
+              }
+              
+              // 이전 단계들을 완료로 표시
+              var steps = document.querySelectorAll('.loading-step');
+              for (var i = 0; i < steps.length; i++) {
+                if (i < step - 1) {
+                  // 완료된 단계 (이미 완료된 단계들)
+                  steps[i].classList.remove('active');
+                  steps[i].classList.add('done');
+                  steps[i].querySelector('i').className = 'fa-solid fa-circle-check';
+                  // 프로그래스 바를 100%로 완료
+                  var existingProgress = steps[i].querySelector('.step-progress-fill');
+                  if (existingProgress) {
+                    existingProgress.style.width = '100%';
+                  } else {
+                    // 프로그래스 바가 없으면 추가하고 100%로 설정
+                    var progressBar = document.createElement('div');
+                    progressBar.className = 'step-progress';
+                    progressBar.style.cssText = 'width:100%; height:2px; background:rgba(255,255,255,0.1); border-radius:1px; margin-top:0.5rem; overflow:hidden;';
+                    var progressFill = document.createElement('div');
+                    progressFill.className = 'step-progress-fill';
+                    progressFill.style.cssText = 'height:100%; background:var(--primary-glow); width:100%; transition:width 0.5s ease;';
+                    progressBar.appendChild(progressFill);
+                    steps[i].appendChild(progressBar);
+                  }
+                } else if (i === step - 1) {
+                  // 현재 진행 중인 단계
+                  steps[i].classList.add('active');
+                  steps[i].classList.remove('done');
+                  
+                  // 프로그래스 바 추가 (없는 경우만)
+                  var stepEl = steps[i];
+                  var existingProgressBar = stepEl.querySelector('.step-progress');
+                  if (!existingProgressBar) {
+                    var progressBar = document.createElement('div');
+                    progressBar.className = 'step-progress';
+                    progressBar.style.cssText = 'width:100%; height:2px; background:rgba(255,255,255,0.1); border-radius:1px; margin-top:0.5rem; overflow:hidden;';
+                    var progressFill = document.createElement('div');
+                    progressFill.className = 'step-progress-fill';
+                    progressFill.style.cssText = 'height:100%; background:var(--primary-glow); width:0%; transition:width 0.3s ease;';
+                    progressBar.appendChild(progressFill);
+                    stepEl.appendChild(progressBar);
+                  }
+                  
+                  // 단계 시작 시간 기록
+                  if (!stepStartTimes[step]) {
+                    stepStartTimes[step] = Date.now();
+                    console.log('[분석 실행] 단계', step, '시작 시간 기록');
+                  }
+                  
+                  // 예상 시간에 맞춰 프로그래스 바 애니메이션 시작
+                  // 서버에서 estimatedDuration을 전달하면 그것을 사용, 없으면 기본값 사용
+                  var serverEstimatedDuration = data.progress && data.progress.estimatedDuration;
+                  var expectedDuration = serverEstimatedDuration || stepDurations[step] || 5000;
+                  console.log('[분석 실행] 단계', step, '예상 시간:', expectedDuration + 'ms', '(서버:', serverEstimatedDuration ? serverEstimatedDuration + 'ms' : '없음', ', 기본:', stepDurations[step] + 'ms)');
+                  var progressFill = steps[i].querySelector('.step-progress-fill');
+                  var startTime = stepStartTimes[step];
+                  
+                  // 기존 애니메이션이 있으면 정지
+                  if (stepAnimations[step]) {
+                    clearInterval(stepAnimations[step]);
+                  }
+                  
+                  var progressInterval = setInterval(function() {
+                    var elapsed = Date.now() - startTime;
+                    var progress = Math.min((elapsed / expectedDuration) * 100, 95); // 최대 95%까지 (실제 완료 대기)
+                    if (progressFill) {
+                      progressFill.style.width = progress + '%';
+                    }
+                  }, 100); // 100ms마다 업데이트
+                  
+                  stepAnimations[step] = progressInterval;
+                  console.log('[분석 실행] 단계', step, '애니메이션 시작, 예상 시간:', expectedDuration + 'ms');
+                } else {
+                  // 아직 시작하지 않은 단계는 비활성화
+                  steps[i].classList.remove('active');
+                  steps[i].classList.remove('done');
+                  var existingProgress = steps[i].querySelector('.step-progress');
+                  if (existingProgress) {
+                    existingProgress.remove();
+                  }
+                }
+              }
+              
+              currentStep = step;
+            } else {
+              // 같은 단계가 계속 진행 중이면 프로그래스 바 업데이트
+              var steps = document.querySelectorAll('.loading-step');
+              if (steps[currentStep - 1]) {
+                var progressFill = steps[currentStep - 1].querySelector('.step-progress-fill');
+                if (progressFill) {
+                  // 서버 응답이 오면 약간 더 진행 (실제 진행 중임을 표시)
+                  var currentWidth = parseFloat(progressFill.style.width) || 0;
+                  // 애니메이션이 95%에 도달하지 않았으면 계속 진행
+                  if (currentWidth < 95) {
+                    // 서버 응답이 오는 동안 조금씩 증가 (최대 95%)
+                    var increment = 0.5; // 0.5%씩 증가
+                    progressFill.style.width = Math.min(currentWidth + increment, 95) + '%';
+                  }
                 }
               }
             }
-            
-            currentStep = step;
           }
           
           if (data.status === 'completed' && data.result) {
@@ -968,12 +1098,25 @@
               resultKeys: Object.keys(data.result || {})
             });
             
+            // 모든 애니메이션 정지
+            for (var step in stepAnimations) {
+              clearInterval(stepAnimations[step]);
+            }
+            stepAnimations = {};
+            
             // 모든 단계를 완료로 표시
             var steps = document.querySelectorAll('.loading-step');
             for (var i = 0; i < steps.length; i++) {
               steps[i].classList.remove('active');
               steps[i].classList.add('done');
               steps[i].querySelector('i').className = 'fa-solid fa-circle-check';
+              
+              // 프로그래스 바를 100%로 완료
+              var progressFill = steps[i].querySelector('.step-progress-fill');
+              if (progressFill) {
+                progressFill.style.width = '100%';
+                progressFill.style.transition = 'width 0.5s ease';
+              }
             }
             
             // 결과 저장
@@ -999,6 +1142,12 @@
         })
         .catch(function(error) {
           console.error('[분석 실행] 폴링 오류:', error);
+          
+          // 에러 발생 시 모든 애니메이션 정지
+          for (var step in stepAnimations) {
+            clearInterval(stepAnimations[step]);
+          }
+          stepAnimations = {};
           
           if (attempt < maxAttempts) {
             setTimeout(poll, pollInterval);

@@ -29,6 +29,11 @@
       return null;
     }
     
+    // 한글 유니코드 정규화 (NFD → NFC 변환, macOS 호환성)
+    if (brandName.normalize) {
+      brandName = brandName.normalize('NFC');
+    }
+    
     // 브랜드 이름 정규화
     var normalizedName = normalizeBrandName(brandName);
     console.log('[getLogoFileName] 입력:', brandName, '→ 정규화:', normalizedName);

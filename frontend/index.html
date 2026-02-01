@@ -171,6 +171,79 @@
       else header.classList.remove('scrolled');
     });
 
+    // 브랜드 이름 정규화 (괄호, 공백 제거 등)
+    function normalizeBrandName(brandName) {
+      if (!brandName) return '';
+      // 괄호와 내용 제거: "컴포즈(2024)" → "컴포즈"
+      var normalized = brandName.replace(/\([^)]*\)/g, '').trim();
+      // 공백 제거
+      normalized = normalized.replace(/\s+/g, '');
+      return normalized;
+    }
+    
+    // 브랜드 이름을 로고 파일명으로 매핑
+    function getLogoFileName(brandName) {
+      if (!brandName) {
+        return null;
+      }
+      
+      // 한글 유니코드 정규화 (NFD → NFC 변환, macOS 호환성)
+      if (brandName.normalize) {
+        brandName = brandName.normalize('NFC');
+      }
+      
+      // 브랜드 이름 정규화
+      var normalizedName = normalizeBrandName(brandName);
+      
+      // 실제 존재하는 로고 파일만 매핑 (frontend/images/logos/ 기준)
+      var logoMap = {
+        // DB 브랜드 → 실제 파일
+        '이디야': 'EDIYA.png',
+        '이디야커피': 'EDIYA.png',
+        '메가커피': 'megamgcoffee_BI.png',
+        '빽다방': 'paik.png',
+        '탐앤탐스': 'tomntoms.png',
+        '투썸플레이스': 'atwosomeplace.png',
+        '할리스': 'hollys.png',
+        '할리스커피': 'hollys.png',
+        '컴포즈': 'compose.png',
+        '컴포즈커피': 'compose.png',
+        // 새로 추가된 로고
+        '던킨도너츠': 'dunkin.png',
+        '뚜레쥬르': 'tous.jpg',
+        '만렙커피': '10000.png',
+        '바나프레소': 'bana.jpg',
+        '파리바게트': 'paris.png'
+      };
+      
+      // 1. 원본 이름으로 정확한 매칭
+      if (logoMap[brandName]) {
+        return logoMap[brandName];
+      }
+      
+      // 2. 정규화된 이름으로 정확한 매칭
+      if (logoMap[normalizedName]) {
+        return logoMap[normalizedName];
+      }
+      
+      // 3. 부분 매칭 (원본 이름 기준)
+      for (var key in logoMap) {
+        if (brandName.includes(key) || key.includes(brandName)) {
+          return logoMap[key];
+        }
+      }
+      
+      // 4. 부분 매칭 (정규화된 이름 기준)
+      for (var key in logoMap) {
+        if (normalizedName.includes(key) || key.includes(normalizedName)) {
+          return logoMap[key];
+        }
+      }
+      
+      // 5. 매핑 실패 → null 반환 (아이콘으로 대체됨)
+      return null;
+    }
+
     // Render first 6 brands
     var brandGrid = document.getElementById('brandGrid');
     // API에서 브랜드 목록 가져오기
@@ -192,9 +265,15 @@
       card.setAttribute('data-aos-delay', String(index * 100));
 
       var logoHtml;
-      if (brand.logo) {
-        logoHtml = '<img src="/images/logos/' + brand.logo + '" alt="' + brand.name + '" style="width:60px;height:60px;object-fit:contain;background:#fff;border-radius:50%;padding:4px;">';
+      // 브랜드 이름으로 로고 파일명 매핑
+      var logoFileName = getLogoFileName(brand.name);
+      
+      if (logoFileName) {
+        // 절대 경로 사용 (로컬 및 배포 환경 모두 지원)
+        var logoPath = '/images/logos/' + logoFileName;
+        logoHtml = '<img src="' + logoPath + '" alt="' + brand.name + '" style="width:60px;height:60px;object-fit:contain;background:#fff;border-radius:50%;padding:4px;" onerror="console.warn(\'이미지 로드 실패:\', this.src); var icon=document.createElement(\'i\'); icon.className=\'fa-solid fa-mug-hot\'; icon.style.cssText=\'font-size:2.5rem;color:var(--gold);\'; this.parentNode.replaceChild(icon, this);">';
       } else {
+        // 로고 파일이 없는 브랜드는 아이콘 표시
         logoHtml = '<i class="fa-solid fa-mug-hot" style="font-size:2.5rem;color:var(--gold);"></i>';
       }
 

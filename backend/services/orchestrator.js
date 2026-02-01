@@ -115,7 +115,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         step: 1, 
         total: 5, 
         message: '상권 데이터 수집 중...', 
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
+        estimatedDuration: 30000 // 예상 소요 시간 (밀리초)
       } 
     });
     
@@ -124,6 +125,18 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
       market = await analyzeMarket(location, radius, brandId);
       const step1Time = ((Date.now() - step1Start) / 1000).toFixed(2);
       console.log(`[${analysisId}] ✅ 상권 분석 완료 (${step1Time}초)`);
+      // 단계 완료 시 progress 업데이트
+      await updateAnalysis(analysisId, { 
+        progress: { 
+          step: 1, 
+          total: 5, 
+          message: '상권 데이터 수집 완료', 
+          timestamp: new Date().toISOString(),
+          completed: true
+        } 
+      });
+      // 다음 단계 시작 전에 잠시 대기 (클라이언트가 progress를 받을 시간 확보)
+      await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
       const step1Time = ((Date.now() - step1Start) / 1000).toFixed(2);
       console.error(`[${analysisId}] ❌ 상권 분석 실패 (${step1Time}초):`, error);
@@ -141,7 +154,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         step: 2, 
         total: 5, 
         message: '손익 시뮬레이션 중...', 
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
+        estimatedDuration: 2000 // 예상 소요 시간 (밀리초)
       } 
     });
     
@@ -155,6 +169,18 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
       });
       const step2Time = ((Date.now() - step2Start) / 1000).toFixed(2);
       console.log(`[${analysisId}] ✅ 손익 계산 완료 (${step2Time}초)`);
+      // 단계 완료 시 progress 업데이트
+      await updateAnalysis(analysisId, { 
+        progress: { 
+          step: 2, 
+          total: 5, 
+          message: '손익 시뮬레이션 완료', 
+          timestamp: new Date().toISOString(),
+          completed: true
+        } 
+      });
+      // 다음 단계 시작 전에 잠시 대기
+      await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
       const step2Time = ((Date.now() - step2Start) / 1000).toFixed(2);
       console.error(`[${analysisId}] ❌ 손익 계산 실패 (${step2Time}초):`, error);
@@ -174,7 +200,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         step: 3, 
         total: 5, 
         message: 'AI 로드뷰 분석 중...', 
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
+        estimatedDuration: 5000 // 예상 소요 시간 (밀리초)
       } 
     });
     
@@ -213,6 +240,18 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         
         const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
         console.log(`[${analysisId}] ✅ 로드뷰 분석 완료 (${step3Time}초, 소스: 프론트엔드 카카오 로드뷰)`);
+        // 단계 완료 시 progress 업데이트
+        await updateAnalysis(analysisId, { 
+          progress: { 
+            step: 3, 
+            total: 5, 
+            message: 'AI 로드뷰 분석 완료', 
+            timestamp: new Date().toISOString(),
+            completed: true
+          } 
+        });
+        // 다음 단계 시작 전에 잠시 대기
+        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (convertError) {
         console.warn(`[${analysisId}] ⚠️  로드뷰 분석 결과 변환 실패: ${convertError.message}`);
         console.warn(`[${analysisId}] ⚠️  스택:`, convertError.stack);
@@ -247,6 +286,18 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
           // 이는 제한사항으로 남겨두고, 향후 개선 가능
           const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
           console.log(`[${analysisId}] ✅ 로드뷰 분석 완료 (${step3Time}초, 소스: ${roadviewInfo.source})`);
+          // 단계 완료 시 progress 업데이트
+          await updateAnalysis(analysisId, { 
+            progress: { 
+              step: 3, 
+              total: 5, 
+              message: 'AI 로드뷰 분석 완료', 
+              timestamp: new Date().toISOString(),
+              completed: true
+            } 
+          });
+          // 다음 단계 시작 전에 잠시 대기
+          await new Promise(resolve => setTimeout(resolve, 500));
         } catch (roadviewError) {
           const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
           console.warn(`[${analysisId}] ⚠️  ai/roadview 모듈 호출 실패 (${step3Time}초): ${roadviewError.message}`);
@@ -285,7 +336,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         step: 4, 
         total: 5, 
         message: 'AI 컨설팅 생성 중...', 
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
+        estimatedDuration: 25000 // 예상 소요 시간 (밀리초)
       } 
     });
     
@@ -304,6 +356,18 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
       aiConsulting = await Promise.race([consultingPromise, timeoutPromise]);
       const step4Time = ((Date.now() - step4Start) / 1000).toFixed(2);
       console.log(`[${analysisId}] ✅ AI 컨설팅 생성 완료 (${step4Time}초)`);
+      // 단계 완료 시 progress 업데이트
+      await updateAnalysis(analysisId, { 
+        progress: { 
+          step: 4, 
+          total: 5, 
+          message: 'AI 컨설팅 생성 완료', 
+          timestamp: new Date().toISOString(),
+          completed: true
+        } 
+      });
+      // 다음 단계 시작 전에 잠시 대기
+      await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
       const step4Time = ((Date.now() - step4Start) / 1000).toFixed(2);
       console.error(`[${analysisId}] ❌ AI 컨설팅 생성 실패 (${step4Time}초):`, error);
@@ -326,7 +390,8 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
         step: 5, 
         total: 5, 
         message: '최종 판단 계산 중...', 
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
+        estimatedDuration: 1500 // 예상 소요 시간 (밀리초)
       } 
     });
     
@@ -342,6 +407,18 @@ async function runAnalysis(analysisRequest, updateAnalysis) {
       });
       const step5Time = ((Date.now() - step5Start) / 1000).toFixed(2);
       console.log(`[${analysisId}] ✅ 판단 계산 완료 (${step5Time}초)`);
+      // 단계 완료 시 progress 업데이트
+      await updateAnalysis(analysisId, { 
+        progress: { 
+          step: 5, 
+          total: 5, 
+          message: '최종 판단 계산 완료', 
+          timestamp: new Date().toISOString(),
+          completed: true
+        } 
+      });
+      // 최종 결과 저장 전에 잠시 대기
+      await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
       const step5Time = ((Date.now() - step5Start) / 1000).toFixed(2);
       console.error(`[${analysisId}] ❌ 판단 계산 실패 (${step5Time}초):`, error);
