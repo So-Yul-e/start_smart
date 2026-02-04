@@ -672,14 +672,25 @@
     }
   }
 
-  // iOS 숫자 입력 버그 수정: requestAnimationFrame으로 감싸서 입력 완료 후 검증 실행
+  // iOS 숫자 입력 버그 수정: Debounce + 커서 위치 보존
+  var validationTimeouts = {};
+  
   function handleNumberInput(e) {
-    // iOS에서 입력이 완료된 후에 검증 실행
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        validateForm();
-      });
-    });
+    var input = e.target;
+    var inputId = input.id || input.className;
+    
+    // 이전 타이머 취소
+    if (validationTimeouts[inputId]) {
+      clearTimeout(validationTimeouts[inputId]);
+    }
+    
+    // iOS에서 입력 중에는 값을 읽지 않음 (입력 방해 방지)
+    // 입력이 완료된 후 일정 시간(300ms) 후에 검증 실행
+    validationTimeouts[inputId] = setTimeout(function() {
+      // 입력 완료 후 검증 실행
+      validateForm();
+      delete validationTimeouts[inputId];
+    }, 300);
   }
 
   [inputInvestment, inputRent, inputArea, inputDailySales].forEach(function (el) {
@@ -1287,17 +1298,17 @@
         '<div class="two-col">' +
         '<div class="field-group">' +
         '<label class="field-label">대출 원금 (만원)</label>' +
-        '<input type="number" class="loan-principal field-input" data-loan-id="' + loan.id + '" placeholder="예: 20000" value="' + (loan.principal || '') + '">' +
+        '<input type="number" class="loan-principal field-input" data-loan-id="' + loan.id + '" placeholder="예: 20000" value="' + (loan.principal || '') + '" inputmode="numeric" pattern="[0-9]*">' +
         '</div>' +
         '<div class="field-group">' +
         '<label class="field-label">연 이자율 (%)</label>' +
-        '<input type="number" class="loan-apr field-input" data-loan-id="' + loan.id + '" placeholder="예: 5" step="0.1" value="' + (loan.apr || '') + '">' +
+        '<input type="number" class="loan-apr field-input" data-loan-id="' + loan.id + '" placeholder="예: 5" step="0.1" value="' + (loan.apr || '') + '" inputmode="decimal">' +
         '</div>' +
         '</div>' +
         '<div class="two-col">' +
         '<div class="field-group">' +
         '<label class="field-label">대출 기간 (개월)</label>' +
-        '<input type="number" class="loan-term field-input" data-loan-id="' + loan.id + '" placeholder="예: 60" value="' + (loan.termMonths || '') + '">' +
+        '<input type="number" class="loan-term field-input" data-loan-id="' + loan.id + '" placeholder="예: 60" value="' + (loan.termMonths || '') + '" inputmode="numeric" pattern="[0-9]*">' +
         '</div>' +
         '<div class="field-group">' +
         '<label class="field-label">상환 방식</label>' +
@@ -1323,25 +1334,34 @@
     loansContainer.querySelectorAll('.loan-principal, .loan-apr, .loan-term, .loan-repayment').forEach(function(input) {
       input.addEventListener('input', function() {
         var self = this;
-        // iOS 숫자 입력 버그 수정: 숫자 입력 필드는 requestAnimationFrame으로 감싸기
+        var inputKey = this.getAttribute('data-loan-id') + '_' + (this.classList.contains('loan-principal') ? 'principal' : 
+                                                                  this.classList.contains('loan-apr') ? 'apr' : 
+                                                                  this.classList.contains('loan-term') ? 'term' : 'repayment');
+        
+        // iOS 숫자 입력 버그 수정: Debounce 사용
         if (this.classList.contains('loan-principal') || 
             this.classList.contains('loan-apr') || 
             this.classList.contains('loan-term')) {
-          requestAnimationFrame(function() {
-            requestAnimationFrame(function() {
-              var loanId = self.getAttribute('data-loan-id');
-              var loan = loans.find(function(l) { return l.id === loanId; });
-              if (loan) {
-                if (self.classList.contains('loan-principal')) {
-                  loan.principal = self.value;
-                } else if (self.classList.contains('loan-apr')) {
-                  loan.apr = self.value;
-                } else if (self.classList.contains('loan-term')) {
-                  loan.termMonths = self.value;
-                }
+          // 이전 타이머 취소
+          if (validationTimeouts[inputKey]) {
+            clearTimeout(validationTimeouts[inputKey]);
+          }
+          
+          // 입력 완료 후 일정 시간(300ms) 후에 데이터 업데이트
+          validationTimeouts[inputKey] = setTimeout(function() {
+            var loanId = self.getAttribute('data-loan-id');
+            var loan = loans.find(function(l) { return l.id === loanId; });
+            if (loan) {
+              if (self.classList.contains('loan-principal')) {
+                loan.principal = self.value;
+              } else if (self.classList.contains('loan-apr')) {
+                loan.apr = self.value;
+              } else if (self.classList.contains('loan-term')) {
+                loan.termMonths = self.value;
               }
-            });
-          });
+            }
+            delete validationTimeouts[inputKey];
+          }, 300);
         } else {
           // select 요소는 즉시 처리
           var loanId = this.getAttribute('data-loan-id');

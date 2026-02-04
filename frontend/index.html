@@ -284,11 +284,21 @@
         if (n >= 10000) return Math.round(n / 10000).toLocaleString() + '만';
         return n.toLocaleString() + '원';
       }
+      
+      // 맥 사파리 한글 깨짐 방지: 유니코드 정규화 (NFD → NFC)
+      var normalizedName = brand.name;
+      if (normalizedName && normalizedName.normalize) {
+        normalizedName = normalizedName.normalize('NFC');
+      }
+      var normalizedPosition = brand.position;
+      if (normalizedPosition && normalizedPosition.normalize) {
+        normalizedPosition = normalizedPosition.normalize('NFC');
+      }
 
       card.innerHTML =
         '<div class="brand-icon" style="height:70px;display:flex;align-items:center;justify-content:center;">' + logoHtml + '</div>' +
-        '<h3 class="brand-name">' + brand.name + '</h3>' +
-        '<span class="brand-tag" style="color:' + posColor + ';">' + brand.position + '</span>' +
+        '<h3 class="brand-name" style="font-family:\'Noto Sans KR\', -apple-system, BlinkMacSystemFont, \'Malgun Gothic\', sans-serif; font-feature-settings:\'liga\' 1, \'kern\' 1;">' + normalizedName + '</h3>' +
+        '<span class="brand-tag" style="color:' + posColor + '; font-family:\'Noto Sans KR\', -apple-system, BlinkMacSystemFont, \'Malgun Gothic\', sans-serif;">' + normalizedPosition + '</span>' +
         '<div class="brand-stats">' +
         '<div class="stat-item"><span>초기투자</span><strong>' + formatMoney(brand.initialInvestment) + '</strong></div>' +
         '<div class="stat-item"><span>평균 판매</span><strong>' + brand.avgDailySales + '잔/일</strong></div>' +

@@ -142,11 +142,24 @@
       }
 
       var posColor = b.position === '프리미엄' ? 'var(--gold)' : b.position === '저가' ? 'var(--primary-glow)' : 'var(--text-muted)';
+      
+      // 맥 사파리 한글 깨짐 방지: 유니코드 정규화 (NFD → NFC)
+      var normalizedName = b.name;
+      if (normalizedName && normalizedName.normalize) {
+        normalizedName = normalizedName.normalize('NFC');
+      }
+      var escapedName = Utils.escapeHtml(normalizedName);
+      
+      // position도 정규화
+      var normalizedPosition = b.position;
+      if (normalizedPosition && normalizedPosition.normalize) {
+        normalizedPosition = normalizedPosition.normalize('NFC');
+      }
 
       return '<div class="brand-card" data-brand-id="' + b.id + '" style="animation:fadeUp 0.5s ease-out ' + (idx * 0.05) + 's both;">' +
         '<div class="brand-icon" style="height:70px;display:flex;align-items:center;justify-content:center;">' + logoHtml + '</div>' +
-        '<h3 class="brand-name">' + Utils.escapeHtml(b.name) + '</h3>' +
-        '<span class="brand-tag" style="color:' + posColor + ';">' + b.position + '</span>' +
+        '<h3 class="brand-name" style="font-family:\'Noto Sans KR\', -apple-system, BlinkMacSystemFont, \'Malgun Gothic\', sans-serif; font-feature-settings:\'liga\' 1, \'kern\' 1;">' + escapedName + '</h3>' +
+        '<span class="brand-tag" style="color:' + posColor + '; font-family:\'Noto Sans KR\', -apple-system, BlinkMacSystemFont, \'Malgun Gothic\', sans-serif;">' + normalizedPosition + '</span>' +
         '<div class="brand-stats">' +
         '<div class="stat-item"><span>초기투자</span><strong>' + formatMoney(b.initialInvestment) + '</strong></div>' +
         '<div class="stat-item"><span>평균 판매</span><strong>' + b.avgDailySales + '잔/일</strong></div>' +
