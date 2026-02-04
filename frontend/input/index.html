@@ -114,19 +114,19 @@
         <div class="two-col" style="margin-top:1rem;">
           <div class="field-group">
             <label class="field-label">초기 투자금 (만원)</label>
-            <input type="number" id="inputInvestment" class="field-input" placeholder="예: 12000">
+            <input type="number" id="inputInvestment" class="field-input" placeholder="예: 12000" inputmode="numeric" pattern="[0-9]*">
             <div class="field-hint" id="investHint"></div>
           </div>
           <div class="field-group">
             <label class="field-label">월세 (만원)</label>
-            <input type="number" id="inputRent" class="field-input" placeholder="예: 300">
+            <input type="number" id="inputRent" class="field-input" placeholder="예: 300" inputmode="numeric" pattern="[0-9]*">
           </div>
         </div>
 
         <div class="two-col">
           <div class="field-group">
             <label class="field-label">매장 평수 (평)</label>
-            <input type="number" id="inputArea" class="field-input" placeholder="예: 15">
+            <input type="number" id="inputArea" class="field-input" placeholder="예: 15" inputmode="numeric" pattern="[0-9]*">
           </div>
           <div class="field-group">
             <label class="field-label">점주 직접 근무</label>
@@ -152,7 +152,7 @@
       <div class="glass-card">
         <h3><i class="fa-solid fa-bullseye" style="color:var(--gold); margin-right:0.5rem;"></i> 목표 일 판매량</h3>
         <div class="field-group" style="margin-top:1rem;">
-          <input type="number" id="inputDailySales" class="field-input" placeholder="예: 300" style="font-size:2rem; text-align:center;">
+          <input type="number" id="inputDailySales" class="field-input" placeholder="예: 300" style="font-size:2rem; text-align:center;" inputmode="numeric" pattern="[0-9]*">
           <div class="field-hint" style="text-align:center;">잔/일 (AI 기대치 기준 입력 추천)</div>
         </div>
       </div>
@@ -185,22 +185,22 @@
           <div class="two-col" style="margin-top:0.5rem;">
             <div class="field-group">
               <label class="field-label">권리금 (만원)</label>
-              <input type="number" id="inputKeyMoney" class="field-input" placeholder="예: 5000">
+              <input type="number" id="inputKeyMoney" class="field-input" placeholder="예: 5000" inputmode="numeric" pattern="[0-9]*">
               <div class="field-hint">Exit Plan 계산에 사용됩니다</div>
             </div>
             <div class="field-group">
               <label class="field-label">철거 기본비 (만원)</label>
-              <input type="number" id="inputDemolitionBase" class="field-input" placeholder="예: 1500" value="1500">
+              <input type="number" id="inputDemolitionBase" class="field-input" placeholder="예: 1500" value="1500" inputmode="numeric" pattern="[0-9]*">
             </div>
           </div>
           <div class="two-col">
             <div class="field-group">
               <label class="field-label">평당 철거비 (만원)</label>
-              <input type="number" id="inputDemolitionPerPyeong" class="field-input" placeholder="예: 100" value="100">
+              <input type="number" id="inputDemolitionPerPyeong" class="field-input" placeholder="예: 100" value="100" inputmode="numeric" pattern="[0-9]*">
             </div>
             <div class="field-group">
               <label class="field-label">운영자금 (만원)</label>
-              <input type="number" id="inputWorkingCapital" class="field-input" placeholder="예: 1000" value="0">
+              <input type="number" id="inputWorkingCapital" class="field-input" placeholder="예: 1000" value="0" inputmode="numeric" pattern="[0-9]*">
               <div class="field-hint">향후 사용 예정</div>
             </div>
           </div>
