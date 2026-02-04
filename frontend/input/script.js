@@ -252,6 +252,11 @@
         // showMockCards(); // 목업 데이터 제거
         showRoadview(prevLatlng);
         validateForm();
+        // 이전 위치가 있으면 가이드 숨김
+        hideMapGuide();
+      } else {
+        // 위치가 선택되지 않았으면 가이드 표시
+        showMapGuide();
       }
 
       // Click event
@@ -260,6 +265,14 @@
         placeMarker(latlng);
         reverseGeocode(latlng);
         showRoadview(latlng);
+        // 위치 선택 시 가이드 숨김
+        hideMapGuide();
+      });
+      
+      // 터치 이벤트도 처리 (모바일)
+      kakao.maps.event.addListener(map, 'touchstart', function() {
+        // 터치 시작 시 가이드 숨김 (터치 중에는 가이드가 방해하지 않도록)
+        hideMapGuide();
       });
     } catch (e) {
       console.error('[createKakaoMap] 오류:', e);
@@ -308,6 +321,23 @@
     // showMockCards(); // 목업 데이터 제거
     showScenario(); // 시나리오만 표시
     validateForm();
+    // 위치 선택 시 가이드 숨김
+    hideMapGuide();
+  }
+  
+  // 지도 가이드 표시/숨김 함수
+  function showMapGuide() {
+    var guideOverlay = document.getElementById('mapGuideOverlay');
+    if (guideOverlay) {
+      guideOverlay.classList.remove('hidden');
+    }
+  }
+  
+  function hideMapGuide() {
+    var guideOverlay = document.getElementById('mapGuideOverlay');
+    if (guideOverlay) {
+      guideOverlay.classList.add('hidden');
+    }
   }
 
   function reverseGeocode(latlng) {
@@ -642,8 +672,18 @@
     }
   }
 
+  // iOS 숫자 입력 버그 수정: requestAnimationFrame으로 감싸서 입력 완료 후 검증 실행
+  function handleNumberInput(e) {
+    // iOS에서 입력이 완료된 후에 검증 실행
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        validateForm();
+      });
+    });
+  }
+
   [inputInvestment, inputRent, inputArea, inputDailySales].forEach(function (el) {
-    el.addEventListener('input', validateForm);
+    el.addEventListener('input', handleNumberInput);
   });
 
   // ── Analysis Execution ──
@@ -1195,6 +1235,8 @@
       // showMockCards(); // 목업 데이터 제거
       showScenario(); // 시나리오만 표시
       validateForm();
+      // 수동 주소 입력 시 가이드 숨김
+      hideMapGuide();
     }
     btnManual.addEventListener('click', applyManualAddress);
     inputManual.addEventListener('keydown', function (e) {
@@ -1280,16 +1322,31 @@
 
     loansContainer.querySelectorAll('.loan-principal, .loan-apr, .loan-term, .loan-repayment').forEach(function(input) {
       input.addEventListener('input', function() {
-        var loanId = this.getAttribute('data-loan-id');
-        var loan = loans.find(function(l) { return l.id === loanId; });
-        if (loan) {
-          if (this.classList.contains('loan-principal')) {
-            loan.principal = this.value;
-          } else if (this.classList.contains('loan-apr')) {
-            loan.apr = this.value;
-          } else if (this.classList.contains('loan-term')) {
-            loan.termMonths = this.value;
-          } else if (this.classList.contains('loan-repayment')) {
+        var self = this;
+        // iOS 숫자 입력 버그 수정: 숫자 입력 필드는 requestAnimationFrame으로 감싸기
+        if (this.classList.contains('loan-principal') || 
+            this.classList.contains('loan-apr') || 
+            this.classList.contains('loan-term')) {
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              var loanId = self.getAttribute('data-loan-id');
+              var loan = loans.find(function(l) { return l.id === loanId; });
+              if (loan) {
+                if (self.classList.contains('loan-principal')) {
+                  loan.principal = self.value;
+                } else if (self.classList.contains('loan-apr')) {
+                  loan.apr = self.value;
+                } else if (self.classList.contains('loan-term')) {
+                  loan.termMonths = self.value;
+                }
+              }
+            });
+          });
+        } else {
+          // select 요소는 즉시 처리
+          var loanId = this.getAttribute('data-loan-id');
+          var loan = loans.find(function(l) { return l.id === loanId; });
+          if (loan && this.classList.contains('loan-repayment')) {
             loan.repaymentType = this.value;
           }
         }

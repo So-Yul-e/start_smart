@@ -42,11 +42,27 @@
       <!-- ========== IA 2: 지도 섹션 ========== -->
       <div class="glass-card">
         <h3><i class="fa-solid fa-map-location-dot" style="color:var(--gold); margin-right:0.5rem;"></i> 입지 선택</h3>
-        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">지도를 클릭하여 매장 위치를 선택하세요</p>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;" id="mapInstructionText">
+          <span class="desktop-only">지도를 클릭하여 매장 위치를 선택하세요</span>
+          <span class="mobile-only">지도를 터치하여 매장 위치를 선택하세요</span>
+        </p>
 
         <!-- Map Container -->
         <div id="mapContainer" class="map-container">
           <div id="map" style="width:100%; height:100%;"></div>
+          <!-- 지도 선택 가이드 오버레이 -->
+          <div id="mapGuideOverlay" class="map-guide-overlay">
+            <div class="map-guide-content">
+              <div class="map-guide-icon">
+                <i class="fa-solid fa-hand-pointer"></i>
+              </div>
+              <p class="map-guide-text">
+                <span class="map-guide-title">지도를 터치하여 위치를 선택하세요</span>
+                <span class="map-guide-subtitle">원하는 매장 위치를 지도에서 선택해주세요</span>
+              </p>
+              <div class="map-guide-pulse"></div>
+            </div>
+          </div>
           <div id="mapFallback" class="map-fallback" style="display:none;">
             <i class="fa-solid fa-map" style="font-size:3rem; color:var(--text-muted); margin-bottom:1rem;"></i>
             <p>지도를 불러올 수 없습니다</p>
@@ -214,7 +230,7 @@
   </div>
 
   <footer class="sub-footer">
-    <p>&copy; 2024 StartSmart. Premium Intelligence.</p>
+    <p>&copy; 2026 StartSmart. Premium Intelligence.</p>
   </footer>
 
   <!-- Kakao Map SDK (입지 선택용) -->

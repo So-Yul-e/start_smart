@@ -1,5 +1,24 @@
 /* Input Page - Map & Form Layout */
 
+/* 반응형 유틸리티 클래스 */
+.desktop-only {
+    display: inline;
+}
+
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .desktop-only {
+        display: none;
+    }
+    
+    .mobile-only {
+        display: inline;
+    }
+}
+
 .map-container {
     width: 100%;
     height: 400px;
@@ -8,6 +27,112 @@
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     position: relative;
+}
+
+/* 지도 선택 가이드 오버레이 */
+.map-guide-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 17, 16, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.map-guide-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.map-guide-content {
+    position: relative;
+    text-align: center;
+    padding: 2rem;
+    max-width: 90%;
+}
+
+.map-guide-icon {
+    font-size: 3rem;
+    color: var(--gold);
+    margin-bottom: 1rem;
+    animation: mapGuideBounce 2s ease-in-out infinite;
+}
+
+.map-guide-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.map-guide-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+    line-height: 1.4;
+}
+
+.map-guide-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.map-guide-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    height: 120px;
+    border: 3px solid var(--gold);
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: mapGuidePulse 2s ease-in-out infinite;
+}
+
+.map-guide-pulse::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border: 3px solid var(--gold);
+    border-radius: 50%;
+    opacity: 0.2;
+    animation: mapGuidePulse 2s ease-in-out infinite 0.5s;
+}
+
+@keyframes mapGuideBounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes mapGuidePulse {
+    0% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0.3;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 0.1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0;
+    }
 }
 
 .map-container.fallback-mode {
@@ -111,11 +236,51 @@
     .map-container {
         height: 300px;
     }
+    
+    .map-guide-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .map-guide-title {
+        font-size: 1rem;
+    }
+    
+    .map-guide-subtitle {
+        font-size: 0.85rem;
+    }
+    
+    .map-guide-pulse {
+        width: 100px;
+        height: 100px;
+    }
 }
 
 @media (max-width: 480px) {
     .map-container {
         height: 220px;
+    }
+    
+    .map-guide-content {
+        padding: 1.5rem;
+    }
+    
+    .map-guide-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .map-guide-title {
+        font-size: 0.9rem;
+    }
+    
+    .map-guide-subtitle {
+        font-size: 0.8rem;
+    }
+    
+    .map-guide-pulse {
+        width: 80px;
+        height: 80px;
     }
 
     .roadview-preview {
